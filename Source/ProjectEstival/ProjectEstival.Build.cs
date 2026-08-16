@@ -9,9 +9,15 @@ public class ProjectEstival : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] {
+			//Core default
 			"Core",
 			"CoreUObject",
 			"Engine",
+			
+			//New modules
+			"AssetTools",
+			
+			//Other
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",

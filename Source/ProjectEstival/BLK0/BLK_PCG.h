@@ -1,17 +1,51 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "BLK_PCG.generated.h"
 
+/**Prefabs */
+enum class EWFCDirection : uint8
+{
+	North,
+	East,
+	South,
+	West
+};
+
+/**Edge sockets must match between neighboring tiles for them to be considered compatible. */
+USTRUCT(BlueprintType)
+struct FWFCTile
+{
+	GENERATED_BODY()
+
+	/** Prefab spawned into the level for this tile */
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	TSubclassOf<AActor> ActorClass;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	FName NorthSocket = NAME_None;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	FName EastSocket = NAME_None;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	FName SouthSocket = NAME_None;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	FName WestSocket = NAME_None;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile", meta = (ClampMin = 0.01))
+	float Weight = 1.0f;
+};
+
+/** Fills a rectangular grid with prefabs picked by WFC, matching tile sockets so near prefabs can connect. */
 UCLASS()
 class PROJECTESTIVAL_API ABLK_PCG : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
+
+public:
 	// Sets default values for this actor's properties
 	ABLK_PCG();
 
@@ -19,8 +53,61 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
+public:
+	
+	UPROPERTY(EditAnywhere, Category = "WFC")
+	TArray<FWFCTile> Tiles;
+
+	/**grid cells along X */
+	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1))
+	int32 GridWidth = 10;
+
+	/**grid cells along Y */
+	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1))
+	int32 GridHeight = 10;
+
+	/**size of a cell*/
+	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
+	float CellSize = 400.0f;
+
+	/**TESTING using RandomSeed instead of a new randomseed every time we generate */
+	UPROPERTY(EditAnywhere, Category = "WFC")
+	bool bUseRandomSeed = false;
+	
+	UPROPERTY(EditAnywhere, Category = "WFC", meta = (EditCondition = "bUseRandomSeed"))
+	int32 RandomSeed = 0;
+
+	/**Autorun on start */
+	UPROPERTY(EditAnywhere, Category = "WFC")
+	bool bGenerateOnBeginPlay = true;
+	
+	UFUNCTION(CallInEditor, Category = "WFC")
+	void GenerateGrid();
+	
+	UFUNCTION(CallInEditor, Category = "WFC")
+	void ClearGrid();
+
+private:
+	
+	TArray<TArray<int32>> CellPossibilities;
+	
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AActor>> SpawnedActors;
+
+	/**Random stream for tile selection */
+	FRandomStream RandomStream;
+	
+	bool InitializeCells();
+
+	/**Remove incompatible cells */
+	void PropagateFrom(int32 CellIndex);
+	
+	bool AreCompatible(const FWFCTile& CellTile, const FWFCTile& NeighborTile, EWFCDirection DirectionToNeighbor) const;
+	
+	int32 PickWeightedTile(const TArray<int32>& Options) const;
+	
+	bool GetNeighborIndex(int32 CellIndex, EWFCDirection Direction, int32& OutNeighborIndex) const;
+	
+	void SpawnTiles();
 
 };

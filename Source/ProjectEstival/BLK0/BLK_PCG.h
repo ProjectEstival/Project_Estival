@@ -4,16 +4,16 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "TestPCGw0.generated.h"
+#include "BLK_PCG.generated.h"
 
 UCLASS()
-class PROJECTESTIVAL_API ATestPCGw0 : public AActor
+class PROJECTESTIVAL_API ABLK_PCG : public AActor
 {
 	GENERATED_BODY()
 	
 public:	
 	// Sets default values for this actor's properties
-	ATestPCGw0();
+	ABLK_PCG();
 
 protected:
 	// Called when the game starts or when spawned

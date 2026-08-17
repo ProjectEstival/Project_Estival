@@ -100,6 +100,35 @@ bool ABLK_PCG::InitializeCells()
 	}
 
 	CellPossibilities.Init(AllOptions, GridWidth * GridHeight);
+
+	//pin forced cells to their tile first, so propagation below sees every pin at once
+	for (const FWFCForcedTile& Forced : ForcedTiles)
+	{
+		if (Forced.X < 0 || Forced.X >= GridWidth || Forced.Y < 0 || Forced.Y >= GridHeight)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: forced tile (%d, %d) is outside the grid, skipping"), Forced.X, Forced.Y);
+			continue;
+		}
+
+		const int32 TileIndex = Tiles.IndexOfByPredicate([&Forced](const FWFCTile& Tile) { return Tile.TileName == Forced.TileName; });
+		if (TileIndex == INDEX_NONE)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: forced tile name '%s' not found in Tiles, skipping"), *Forced.TileName.ToString());
+			continue;
+		}
+
+		CellPossibilities[Forced.Y * GridWidth + Forced.X] = { TileIndex };
+	}
+
+	//now propagate each pin's constraints out into the rest of the grid
+	for (const FWFCForcedTile& Forced : ForcedTiles)
+	{
+		if (Forced.X >= 0 && Forced.X < GridWidth && Forced.Y >= 0 && Forced.Y < GridHeight)
+		{
+			PropagateFrom(Forced.Y * GridWidth + Forced.X);
+		}
+	}
+
 	return true;
 }
 

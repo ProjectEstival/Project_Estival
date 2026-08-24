@@ -4,6 +4,8 @@
 #include "GameFramework/Actor.h"
 #include "BLK_PCG.generated.h"
 
+class UTextRenderComponent;
+
 //Prefabs
 enum class EWFCDirection : uint8
 {
@@ -107,19 +109,34 @@ public:
 	//Autorun on start
 	UPROPERTY(EditAnywhere, Category = "WFC")
 	bool bGenerateOnBeginPlay = true;
-	
+
 	UFUNCTION(CallInEditor, Category = "WFC")
 	void GenerateGrid();
-	
+
 	UFUNCTION(CallInEditor, Category = "WFC")
 	void ClearGrid();
 
+	//Draw the resolved tile name (or an error) above every cell so the grid can be inspected visually
+	UPROPERTY(EditAnywhere, Category = "WFC|Debug")
+	bool bShowDebugLabels = true;
+
+	UFUNCTION(CallInEditor, Category = "WFC|Debug")
+	void ShowDebugGrid();
+
+	UFUNCTION(CallInEditor, Category = "WFC|Debug")
+	void ClearDebugGrid();
+
 private:
-	
+
 	TArray<TArray<int32>> CellPossibilities;
-	
+
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<AActor>> SpawnedActors;
+
+	//Text labels drawn per cell by ShowDebugGrid; TextRenderComponent is used instead of DrawDebugString because
+	//DrawDebugString only renders through a HUD/Canvas, which doesn't exist outside of Play-In-Editor
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UTextRenderComponent>> DebugTextComponents;
 
 	//Random stream for tile selection
 	FRandomStream RandomStream;

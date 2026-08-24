@@ -1,5 +1,7 @@
 #include "BLK0/BLK_PCG.h"
 #include "Engine/World.h"
+#include "DrawDebugHelpers.h"
+#include "Components/TextRenderComponent.h"
 
 // Sets default values
 ABLK_PCG::ABLK_PCG()
@@ -68,6 +70,11 @@ void ABLK_PCG::GenerateGrid()
 	}
 
 	SpawnTiles();
+
+	if (bShowDebugLabels)
+	{
+		ShowDebugGrid();
+	}
 }
 
 void ABLK_PCG::ClearGrid()
@@ -82,6 +89,89 @@ void ABLK_PCG::ClearGrid()
 
 	SpawnedActors.Reset();
 	CellPossibilities.Reset();
+	ClearDebugGrid();
+}
+
+void ABLK_PCG::ShowDebugGrid()
+{
+	if (CellPossibilities.Num() != GridWidth * GridHeight)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no grid data to show, generate the grid first"));
+		return;
+	}
+
+	ClearDebugGrid();
+
+	const int32 CellCount = GridWidth * GridHeight;
+
+	for (int32 CellIndex = 0; CellIndex < CellCount; ++CellIndex)
+	{
+		const int32 X = CellIndex % GridWidth;
+		const int32 Y = CellIndex / GridWidth;
+		const FVector CellOrigin = GetActorLocation() + FVector(X * CellSize, Y * CellSize, 0.0f);
+		const FVector CellCenter = CellOrigin + FVector(CellSize * 0.5f, CellSize * 0.5f, 0.0f);
+
+		const TArray<int32>& Options = CellPossibilities[CellIndex];
+
+		FString Label;
+		FColor DebugColor;
+
+		if (Options.Num() == 0)
+		{
+			Label = TEXT("CONTRADICTION");
+			DebugColor = FColor::Red;
+		}
+		else if (Options.Num() > 1)
+		{
+			Label = FString::Printf(TEXT("%d options"), Options.Num());
+			DebugColor = FColor::Yellow;
+		}
+		else
+		{
+			const FWFCTile& Tile = Tiles[Options[0]];
+			if (Tile.ActorClass)
+			{
+				Label = Tile.TileName != NAME_None ? Tile.TileName.ToString() : Tile.ActorClass->GetName();
+				DebugColor = FColor::Green;
+			}
+			else
+			{
+				Label = TEXT("NO ACTOR CLASS");
+				DebugColor = FColor::Orange;
+			}
+		}
+
+		DrawDebugBox(GetWorld(), CellCenter, FVector(CellSize * 0.5f, CellSize * 0.5f, 5.0f), DebugColor, true, -1.0f, 0, 5.0f);
+
+		//TextRenderComponent is used instead of DrawDebugString because DrawDebugString only renders
+		//through a HUD/Canvas, which doesn't exist outside of Play-In-Editor
+		UTextRenderComponent* TextComp = NewObject<UTextRenderComponent>(this, NAME_None, RF_Transient);
+		TextComp->RegisterComponentWithWorld(GetWorld());
+		TextComp->SetWorldLocation(CellCenter + FVector(0.0f, 0.0f, 50.0f));
+		TextComp->SetWorldRotation(FRotator(90.0f, 0.0f, 0.0f));
+		TextComp->SetText(FText::FromString(Label));
+		TextComp->SetTextRenderColor(DebugColor);
+		TextComp->SetWorldSize(40.0f);
+		TextComp->SetHorizontalAlignment(EHTA_Center);
+		TextComp->SetVerticalAlignment(EVRTA_TextCenter);
+
+		DebugTextComponents.Add(TextComp);
+	}
+}
+
+void ABLK_PCG::ClearDebugGrid()
+{
+	FlushPersistentDebugLines(GetWorld());
+	FlushDebugStrings(GetWorld());
+
+	for (UTextRenderComponent* TextComp : DebugTextComponents)
+	{
+		if (IsValid(TextComp))
+		{
+			TextComp->DestroyComponent();
+		}
+	}
+	DebugTextComponents.Reset();
 }
 
 bool ABLK_PCG::InitializeCells()

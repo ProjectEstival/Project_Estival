@@ -1,0 +1,242 @@
+def shouldSendWebhook = true
+pipeline {
+
+    agent any
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '5'))
+    }
+
+    parameters {
+        choice(name: 'BUILD_TYPE', choices: ['Shipping', 'Development'], description: 'Build configuration for Unreal Engine')
+        string(name: 'UE_VERSION', defaultValue: '5.7', description: 'Unreal Engine Version')
+        string(name: 'GITHUB_REPO_LINK', defaultValue: 'https://github.com/AlkiviadisBoulas/ProjectBetrayal.git', description: 'Link of Github Repository')
+        string(name: 'STEAM_BRANCH', defaultValue: 'internal_branch', description: 'Branch which the build will be deployed to')
+        booleanParam(name: 'SEND_GIT_WEBHOOK', defaultValue: true, description: 'Bool that defines if a git push webhook notification should be sent or not.')
+    }
+
+    environment {
+        DISCORD_WEBHOOK_URL = credentials('PROJECT_BETRAYAL_DISCORD_WEBHOOK_BUILD_RESULT')
+        DISCORD_WEBHOOK_GIT_URL = credentials('PROJECT_BETRAYAL_DISCORD_WEBHOOK_GIT_PUSH_NOTIFIER_LINK')
+        CREDS = credentials('STEAMWORKS_CREDS')
+        STEAM_BUILD_NUMBER = 'steam_build_number.txt'
+        STEAM_APP_ID = credentials ('PROJECT_BETRAYAL_STEAM_APP_ID')
+        STEAM_DEPOT_ID = credentials ('PROJECT_BETRAYAL_STEAM_DEPOT_ID')
+        BUILD_DIR = "${env.WORKSPACE}\\Builds"
+        UE_BASE = "C:\\Program Files\\Epic Games"
+        UE_LOG_PATH = "C:\\Users\\PC_GAMES\\AppData\\Roaming\\Unreal Engine\\AutomationTool\\Logs\\C+Program+Files+Epic+Games+UE_${params.UE_VERSION}\\Log.txt"
+        UE_UAT_PATH = "${UE_BASE}\\UE_${params.UE_VERSION}\\Engine\\Build\\BatchFiles\\RunUAT.bat"
+    }
+
+    stages{
+        /*Checks for changes in commit hash txt file compared to git last commit hash. If there is no txt it creates one with the latest commit hash. 
+        If there are changes it stores the new commit hash to the txt and goes to next stage which checks out the selected branch.*/
+        stage('Check for changes'){
+            steps{
+                script{
+
+                def hasChanges = currentBuild.changeSets.size() > 0
+                def isFirstBuild = currentBuild.number == 1
+
+                if (!hasChanges && !isFirstBuild){
+                    currentBuild.result = 'ABORTED'
+                    error("Stopping build early because no changes were found.") 
+                }
+
+
+                if (params.SEND_GIT_WEBHOOK){
+                def commitSummary = powershell(script: "git log -1 --pretty=%s", returnStdout: true).trim()
+                def commitDescription = powershell(script: "git log -1 --pretty=%b", returnStdout: true).trim()
+                def commitAuthor = powershell(script: "git log -1 --pretty='%an'", returnStdout: true).trim()
+
+                    discordSend title: 'Github Push Notification', description: "New Push has been made to **${env.BRANCH_NAME}** Branch by **${commitAuthor}** \n \n **Commit Summary:** \n ${commitSummary} \n **Commit Description:** \n ${commitDescription}", webhookURL: DISCORD_WEBHOOK_GIT_URL, customUsername:'Github Push Notifier', customAvatarUrl: 'https://images.icon-icons.com/3685/PNG/512/github_logo_icon_229278.png'
+
+                }
+            }
+
+            }
+        }
+        //Checks out the selected branch from the selected repository and cleans up the previous executable.
+        stage('Checkout') {
+            steps {
+                //checkout scm
+                checkout([
+            $class: 'GitSCM', 
+            branches: scm.branches,
+            doGenerateSubmoduleConfigurations: scm.doGenerateSubmoduleConfigurations, 
+            extensions: scm.extensions + [
+
+                [$class: 'CheckoutOption', timeout: 60],
+
+                [$class: 'CloneOption', timeout: 60, shallow: true, depth: 1, noTags: true]
+            ], 
+            userRemoteConfigs: scm.userRemoteConfigs
+        ])
+            }
+        }
+        //Deletes old build executable before creating the new one
+        stage('Clean Up Old Build'){
+            steps{
+                script{
+                    if (fileExists(BUILD_DIR)){
+                        echo "Removing old executable."
+                        bat "rd /s /q \"${BUILD_DIR}\""
+                    }
+                }
+            }
+        }
+        //Builds the game based on given config parameters using unreal uat.bat
+        stage('Build') {
+            steps {
+                bat """
+                "${UE_UAT_PATH}" ^
+                BuildCookRun ^
+                -project="${env.WORKSPACE}\\ProjectBetrayal.uproject" ^
+                -targetplatform=Win64 ^
+                -clientconfig=${params.BUILD_TYPE} ^
+                -serverconfig=${params.BUILD_TYPE} ^
+                -build ^
+                -stage ^
+                -pak ^
+                -archive ^
+                -archivedirectory="${env.WORKSPACE}\\Builds" ^
+                -compresspak ^
+                -closestzensnapshot=0 ^
+                -cook^
+                -CookMapsOnly ^
+                -utf8output
+                """
+            }
+        }
+        //Checks build log output to determine if game was successfully built or not. If it was not successful it marks the build as failed.
+        stage('Check Unreal Build Success'){
+            steps{
+                script{
+                    def logFile = readFile(file: UE_LOG_PATH)
+                    if (logFile.contains('AutomationTool exiting with ExitCode=1')){
+                        currentBuild.result = 'FAILURE'
+                        error 'Unreal build failed based on log file.'
+                    }
+                }
+            }
+        }
+        // Copies required workspace folders into the Windows build output directory before Steam staging
+        stage('Copy Workspace Folders') {
+            steps {
+                bat """
+                xcopy "${env.WORKSPACE}\\EACBinaries\\EasyAntiCheat" "${env.WORKSPACE}\\Builds\\Windows\\EasyAntiCheat" /E /I /Y
+                copy /Y "${env.WORKSPACE}\\EACBinaries\\ProjectBetrayalClient.exe" "${env.WORKSPACE}\\Builds\\Windows\\ProjectBetrayalClient.exe"
+                """
+            }
+        }
+        // Runs the Epic Online Services Easy Anti-Cheat Integrity Tool on the built files
+        stage('Anti-Cheat Integrity Check') {
+            steps {
+                bat """
+                cd /d "${env.WORKSPACE}\\EACBuildTool"
+                anticheat_integritytool.exe -target_game_dir "${env.WORKSPACE}\\Builds\\Windows" -productid fc9d623d42a945d48aea89cfd0ab3bf7
+                """
+            }
+        }
+
+        //Generates Steam VDF files based on given parameters
+        stage('Generate Steam VDFs'){
+            steps{
+                script{
+                    def depotVDFContent ="""
+                    "DepotBuildConfig"
+                    {
+                        "DepotID" "${env.STEAM_DEPOT_ID}"
+                        "ContentRoot" "${env.WORKSPACE}\\Builds\\Windows"
+                        "FileMapping"
+                        {
+                            "LocalPath" "*"
+                            "DepotPath" "."
+                            "recursive" "1"
+                        }
+                        "FileExclusion" "temp/*"
+                        "InstallScript" "EasyAntiCheat\\eac_installscript.vdf"
+                    }
+                    """
+                    writeFile(file: "${env.WORKSPACE}\\BuildScripts\\depot_build_${env.STEAM_APP_ID}.vdf", text: depotVDFContent)
+
+                    def vdfContent = """
+                    "AppBuild"
+                    {
+                        "AppID" "${env.STEAM_APP_ID}" 
+                        "Desc" "Auto build from ${env.BRANCH_NAME} git branch for ${params.STEAM_BRANCH} steam branch."
+                        "BuildOutput" "C:\\steam_build_output"
+                        "ContentRoot" "${env.WORKSPACE}\\Builds\\Windows"
+                        "SetLive" "${params.STEAM_BRANCH}"
+                        "Depots"
+                        {
+                            "${env.STEAM_DEPOT_ID}" "${env.WORKSPACE}\\BuildScripts\\depot_build_${env.STEAM_APP_ID}.vdf"
+                        }
+                    }
+                    """
+
+                    writeFile(file: "${env.WORKSPACE}\\BuildScripts\\app_build.vdf", text: vdfContent)
+                }
+            }
+        }
+        //If build was successful it opens steam cmd, logs in with credentials and uploads game to steamworks using app_build.vdf script
+        stage('Deploy to Steam') {
+            steps {
+                bat """
+                cd /d C:\\Tools\\steamcmd
+                steamcmd +login %CREDS_USR% %CREDS_PSW% +run_app_build \"${env.WORKSPACE}\\BuildScripts\\app_build.vdf\" +quit 
+                """
+            }
+        }
+        //Deletes VDF Files after build was deployed, so they are not stored on the server.
+        stage('Clean Up VDF Files'){
+            steps{
+                script{
+                    if (fileExists("${env.WORKSPACE}\\BuildScripts")){
+                        echo "Removing generated vdf files."
+                        bat "rd /s /q \"${env.WORKSPACE}\\BuildScripts\""
+                    }
+                }
+            }
+        }
+    }
+
+    //Always sends a discord webhook that informs team members about build result. If the build failed it also puts in the error logs.
+    post {
+        always {
+            script{
+                if (shouldSendWebhook){
+                    //def currentStatus = (currentBuild.currentResult == 'SUCCESS') ? "✅ Success \n Build has been uploaded to **${params.STEAM_BRANCH}** on SteamWorks" : "❌ Failure \n\n Error Logs"
+                    def currentStatus = ""
+                    switch(currentBuild.currentResult) {
+                        case 'SUCCESS':
+                            currentStatus = "✅ Success \n Build has been uploaded to **${params.STEAM_BRANCH}** on SteamWorks"            
+                            break
+                        case 'ABORTED':
+                            currentStatus = "⚠️ Aborted \n No changes detected. Build skipped early."
+                            break
+                        case 'FAILURE':
+                            currentStatus = "❌ Failure \n\n Error Logs"
+                            break
+                    }
+                    def logFileContents = readFile(file: UE_LOG_PATH)
+                    def uniqueLogLines = logFileContents.readLines().toSet().join("\n")
+                    def errorLines = uniqueLogLines.readLines().findAll {it.toLowerCase().contains(': error')}
+                    def buildNumberFile = "${env.WORKSPACE}/${STEAM_BUILD_NUMBER}"
+                    def buildCount = 0
+                    if (fileExists(buildNumberFile)){
+                        buildCount = readFile(buildNumberFile).trim().toInteger()
+                    }
+                    buildCount++
+                    def message = "Build Info: Build Number **${env.BUILD_NUMBER}** from **${env.BRANCH_NAME}** Git Branch\nBuild Status: ${currentStatus}\n\n"
+                    if (errorLines.size() > 0 && currentBuild.currentResult == 'FAILURE') {
+                    message += errorLines.join("\n\n")
+                    }
+                    discordSend title: 'Jenkins Steam Build Notification', description: message, webhookURL: DISCORD_WEBHOOK_URL, customUsername:'Steam Build Notifier', customAvatarUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/83/Steam_icon_logo.svg/960px-Steam_icon_logo.svg.png' 
+                    writeFile(file: buildNumberFile, text: buildCount.toString())
+                }
+            }
+
+        }
+    }
+}

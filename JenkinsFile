@@ -55,20 +55,6 @@ pipeline {
             }
         }
 
-<<<<<<< Updated upstream
-=======
-        stage('Clean Up Old Build') {
-            steps {
-                script {
-                    if (fileExists(BUILD_DIR)) {
-                        echo "Removing old executable."
-                        bat "rd /s /q \"${BUILD_DIR}\""
-                    }
-                }
-            }
-        }
-
->>>>>>> Stashed changes
         stage('Merge Notification') {
             when {
                 allOf {

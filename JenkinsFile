@@ -7,7 +7,7 @@ def steamBuildId = ""
 def commitMsg = "unknown"
 def isMerge = false
 
-def programmerRole = "@&1506638634462351399"
+def programmerRole = "<@&1506638634462351399>"
 
 pipeline {
     agent any
@@ -17,6 +17,7 @@ pipeline {
         disableConcurrentBuilds()
         lock('project-estival-build-queue')
         skipDefaultCheckout()
+        timeout(time: 3, unit: 'HOURS')
     }
 
     parameters {
@@ -33,16 +34,12 @@ pipeline {
         ESTIVAL_DISCORD_WEBHOOK_MERGE_URL = credentials('PROJECT_ESTIVAL_DISCORD_WEBHOOK_MERGE')
 
         UE_BASE = "C:\\Program Files\\Epic Games"
-
         BUILD_DIR = "${env.WORKSPACE}\\Builds"
-
         UE_LOG_PATH = "C:\\Users\\PC_GAMES\\AppData\\Roaming\\Unreal Engine\\AutomationTool\\Logs\\C+Program+Files+Epic+Games+UE_${params.UE_VERSION}\\Log.txt"
         UE_UAT_PATH = "${UE_BASE}\\UE_${params.UE_VERSION}\\Engine\\Build\\BatchFiles\\RunUAT.bat"
 
         STEAMCMD_PATH = "C:\\Tools\\steamcmd\\steamcmd.exe"
         STEAM_APP_ID = "4383760"
-
-        STEAM_WEBAPI_KEY = credentials('PROJECT_ESTIVAL_STEAM_WEBAPI_KEY')
         GAME_VERSION = "0.0.${env.BUILD_NUMBER}"
     }
 
@@ -70,7 +67,6 @@ pipeline {
                 }
             }
         }
-
 
         stage('Merge Notification') {
             when {
@@ -109,8 +105,8 @@ pipeline {
                 -project="${env.WORKSPACE}\\ProjectEstival.uproject" ^
                 -targetplatform=Win64 ^
                 -clientconfig=${params.BUILD_TYPE} ^
-                -serverconfig=${params.BUILD_TYPE} ^
                 -build ^
+                -skipbuildeditor ^
                 -stage ^
                 -pak ^
                 -archive ^
@@ -118,6 +114,7 @@ pipeline {
                 -compresspak ^
                 -closestzensnapshot=0 ^
                 -cook ^
+                -legacyiterative ^
                 -CookMapsOnly ^
                 -utf8output
                 """
@@ -155,7 +152,7 @@ pipeline {
                 script {
                     steamBranch = branchMap.get(env.BRANCH_NAME, "internal_testing")
 
-                    def contentRoot = BUILD_DIR
+                    def contentRoot = "${BUILD_DIR}\\Windows"
                     def outputRoot  = "${env.WORKSPACE}\\SteamOutput"
 
                     def vdfTemplate      = "${env.WORKSPACE}\\BuildScripts\\app_build.vdf"
@@ -172,7 +169,17 @@ pipeline {
                     bat """powershell -Command "(Get-Content '${vdfTemplate}') -replace 'STEAM_BRANCH_PLACEHOLDER','${steamBranch}' -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${vdfPath}'" """
                     bat """powershell -Command "(Get-Content '${depotVdfTemplate}') -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${depotVdfPath}'" """
 
-                    bat "\"${STEAMCMD_PATH}\" +login %CREDS_USR% %CREDS_PSW% +run_app_build \"${vdfPath}\" +quit"
+                    def out = bat(returnStdout: true,
+                        script: "@echo off\r\n\"${STEAMCMD_PATH}\" +login %CREDS_USR% %CREDS_PSW% +run_app_build \"${vdfPath}\" +quit")
+                    echo out
+
+                    def m = (out =~ /BuildID\s+(\d+)/)
+                    if (m) {
+                        steamBuildId = m[0][1]
+                        echo "Steam BuildID: ${steamBuildId}"
+                    } else {
+                        error "steamcmd did not report a BuildID — the upload did not complete."
+                    }
                 }
             }
         }
@@ -186,20 +193,22 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    def rc = bat(returnStatus: true, script: """
-                        curl.exe -sS -f -X POST ^
-                          "https://partner.steam-api.com/ISteamApps/SetAppBuildLive/v1/" ^
-                          -d "key=%STEAM_WEBAPI_KEY%" ^
-                          -d "appid=%STEAM_APP_ID%" ^
-                          -d "buildid=${steamBuildId}" ^
-                          -d "betakey=" ^
-                          -d "description=Jenkins ${env.BRANCH_NAME} #${env.BUILD_NUMBER}"
-                    """)
-                    if (rc != 0) {
-                        error "SetAppBuildLive failed (curl exit ${rc}). Build ${steamBuildId} is uploaded but NOT live."
+                withCredentials([string(credentialsId: 'PROJECT_ESTIVAL_STEAM_WEBAPI_KEY', variable: 'STEAM_WEBAPI_KEY')]) {
+                    script {
+                        def rc = bat(returnStatus: true, script: """
+                            curl.exe -sS -f -X POST ^
+                              "https://partner.steam-api.com/ISteamApps/SetAppBuildLive/v1/" ^
+                              -d "key=%STEAM_WEBAPI_KEY%" ^
+                              -d "appid=%STEAM_APP_ID%" ^
+                              -d "buildid=${steamBuildId}" ^
+                              -d "betakey=" ^
+                              -d "description=Jenkins ${env.BRANCH_NAME} #${env.BUILD_NUMBER}"
+                        """)
+                        if (rc != 0) {
+                            error "SetAppBuildLive failed (curl exit ${rc}). Build ${steamBuildId} is uploaded but NOT live."
+                        }
+                        echo "Build ${steamBuildId} promoted to the default branch."
                     }
-                    echo "Build ${steamBuildId} promoted to the default branch."
                 }
             }
         }

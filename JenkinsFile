@@ -1,12 +1,13 @@
 def branchMap = [:]
 branchMap['develop'] = "internal_testing"
-branchMap['main'] = "default"
+branchMap['main'] = ""
 
 def steamBranch = "unknown"
+def steamBuildId = ""
 def commitMsg = "unknown"
 def isMerge = false
 
-def programmerRole = "@Programmer"
+def programmerRole = "@&1506638634462351399"
 
 pipeline {
     agent any
@@ -23,6 +24,7 @@ pipeline {
         string(name: 'UE_VERSION', defaultValue: '5.7', description: 'Unreal Engine Version')
         string(name: 'GITHUB_REPO_LINK', defaultValue: 'https://github.com/thanostham/Project_Estival.git', description: 'Link of Github Repository')
         string(name: 'STEAM_BRANCH', defaultValue: 'internal_testing', description: 'Branch which the build will be deployed to')
+        booleanParam(name: 'PROMOTE_TO_DEFAULT', defaultValue: false, description: 'On main only: set the uploaded build live on the DEFAULT (public) branch')
     }
 
     environment {
@@ -38,6 +40,9 @@ pipeline {
         UE_UAT_PATH = "${UE_BASE}\\UE_${params.UE_VERSION}\\Engine\\Build\\BatchFiles\\RunUAT.bat"
 
         STEAMCMD_PATH = "C:\\Tools\\steamcmd\\steamcmd.exe"
+        STEAM_APP_ID = "4383760"
+
+        STEAM_WEBAPI_KEY = credentials('PROJECT_ESTIVAL_STEAM_WEBAPI_KEY')
         GAME_VERSION = "0.0.${env.BUILD_NUMBER}"
     }
 
@@ -47,13 +52,25 @@ pipeline {
             steps {
                 checkout scm
                 script {
-                    bat "git clean -fd -e Library/"
+                    bat "git clean -fd -e Intermediate/ -e Saved/ -e Binaries/ -e DerivedDataCache/"
                     commitMsg = bat(script: "@echo off\ngit log -1 --pretty=%%s", returnStdout: true).trim().split('\n').last()
                     def parentHashes = bat(script: "@echo off\ngit log -1 --pretty=%%p", returnStdout: true).trim().split('\n').last()
                     isMerge = parentHashes.tokenize(' ').size() > 1
                 }
             }
         }
+
+        stage('Clean Up Old Build') {
+            steps {
+                script {
+                    if (fileExists(BUILD_DIR)) {
+                        echo "Removing old executable."
+                        bat "rd /s /q \"${BUILD_DIR}\""
+                    }
+                }
+            }
+        }
+
 
         stage('Merge Notification') {
             when {
@@ -156,6 +173,33 @@ pipeline {
                     bat """powershell -Command "(Get-Content '${depotVdfTemplate}') -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${depotVdfPath}'" """
 
                     bat "\"${STEAMCMD_PATH}\" +login %CREDS_USR% %CREDS_PSW% +run_app_build \"${vdfPath}\" +quit"
+                }
+            }
+        }
+
+        stage('Promote to Default') {
+            when {
+                allOf {
+                    branch 'main'
+                    expression { return params.PROMOTE_TO_DEFAULT }
+                    expression { return steamBuildId?.trim() }
+                }
+            }
+            steps {
+                script {
+                    def rc = bat(returnStatus: true, script: """
+                        curl.exe -sS -f -X POST ^
+                          "https://partner.steam-api.com/ISteamApps/SetAppBuildLive/v1/" ^
+                          -d "key=%STEAM_WEBAPI_KEY%" ^
+                          -d "appid=%STEAM_APP_ID%" ^
+                          -d "buildid=${steamBuildId}" ^
+                          -d "betakey=" ^
+                          -d "description=Jenkins ${env.BRANCH_NAME} #${env.BUILD_NUMBER}"
+                    """)
+                    if (rc != 0) {
+                        error "SetAppBuildLive failed (curl exit ${rc}). Build ${steamBuildId} is uploaded but NOT live."
+                    }
+                    echo "Build ${steamBuildId} promoted to the default branch."
                 }
             }
         }

@@ -5,6 +5,7 @@ branchMap['main'] = ""
 def steamBranch = "unknown"
 def steamBuildId = ""
 def commitMsg = "unknown"
+def gameVersion = "unknown"
 def isMerge = false
 
 def programmerRole = "<@&1506638634462351399>"
@@ -26,6 +27,8 @@ pipeline {
         string(name: 'GITHUB_REPO_LINK', defaultValue: 'https://github.com/thanostham/Project_Estival.git', description: 'Link of Github Repository')
         string(name: 'STEAM_BRANCH', defaultValue: 'internal_testing', description: 'Branch which the build will be deployed to')
         booleanParam(name: 'PROMOTE_TO_DEFAULT', defaultValue: false, description: 'On main only: set the uploaded build live on the DEFAULT (public) branch')
+        string(name: 'VERSION_MAJOR', defaultValue: '0', description: 'Major version')
+        string(name: 'VERSION_MINOR', defaultValue: '0', description: 'Minor version')
     }
 
     environment {
@@ -40,7 +43,8 @@ pipeline {
 
         STEAMCMD_PATH = "C:\\Tools\\steamcmd\\steamcmd.exe"
         STEAM_APP_ID = "4383760"
-        GAME_VERSION = "0.0.${env.BUILD_NUMBER}"
+        VERSION_COUNTER_DIR = "D:\\Jenkins_Home\\ProjectEstival"
+        VERSION_COUNTER_FILE = "D:\\Jenkins_Home\\ProjectEstival\\build_counter.txt"
     }
 
     stages {
@@ -53,6 +57,29 @@ pipeline {
                     commitMsg = bat(script: "@echo off\ngit log -1 --pretty=%%s", returnStdout: true).trim().split('\n').last()
                     def parentHashes = bat(script: "@echo off\ngit log -1 --pretty=%%p", returnStdout: true).trim().split('\n').last()
                     isMerge = parentHashes.tokenize(' ').size() > 1
+                }
+            }
+        }
+
+        stage('Version') {
+            steps {
+                script {
+                    bat "if not exist \"${VERSION_COUNTER_DIR}\" mkdir \"${VERSION_COUNTER_DIR}\""
+
+                    def count = 0
+                    if (fileExists(VERSION_COUNTER_FILE)) {
+                        def raw = readFile(file: VERSION_COUNTER_FILE).trim()
+                        if (raw ==~ /\d+/) {
+                            count = raw.toInteger()
+                        }
+                    }
+                    count++
+                    writeFile(file: VERSION_COUNTER_FILE, text: count.toString())
+
+                    gameVersion = "${params.VERSION_MAJOR}.${params.VERSION_MINOR}.${count.toString().padLeft(2, '0')}"
+                    env.GAME_VERSION = gameVersion
+                    currentBuild.displayName = "#${env.BUILD_NUMBER} - v${gameVersion}"
+                    echo "Game version: ${gameVersion}"
                 }
             }
         }
@@ -232,7 +259,7 @@ pipeline {
                 def actionDesc = env.CHANGE_ID ? "The pipeline stages for Pull Request #${env.CHANGE_ID} were successfully completed." : "The build and the Deployment to Steam (${env.BRANCH_NAME}) were successful."
 
                 discordSend title: "✅ Build Success: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${env.GAME_VERSION}\n",
+                    description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
                     link: env.BUILD_URL,
                     result: 'SUCCESS',
                     webhookURL: DISCORD_WEBHOOK_URL
@@ -252,7 +279,7 @@ pipeline {
         failure {
             script {
                 discordSend title: "❌ Build Failed: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${env.GAME_VERSION}\n",
+                    description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
                     link: env.BUILD_URL,
                     result: 'FAILURE',
                     webhookURL: DISCORD_WEBHOOK_URL

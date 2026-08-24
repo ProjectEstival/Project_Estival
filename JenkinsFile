@@ -89,7 +89,7 @@ pipeline {
                 bat """
                 "${UE_UAT_PATH}" ^
                 BuildCookRun ^
-                -project="${env.WORKSPACE}\\ProjectBetrayal.uproject" ^
+                -project="${env.WORKSPACE}\\ProjectEstival.uproject" ^
                 -targetplatform=Win64 ^
                 -clientconfig=${params.BUILD_TYPE} ^
                 -serverconfig=${params.BUILD_TYPE} ^

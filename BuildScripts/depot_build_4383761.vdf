@@ -1,0 +1,12 @@
+"DepotBuildConfig"
+{
+	"DepotID" "4383761"
+	"ContentRoot" "CONTENT_ROOT_PLACEHOLDER"
+	"FileMapping"
+	{
+		"LocalPath" "*"
+		"DepotPath" "."
+		"recursive" "1"
+	}
+	"FileExclusion" "temp/*"
+}

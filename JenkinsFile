@@ -47,18 +47,6 @@ pipeline {
             }
         }
 
-
-        stage('Clean Up Old Build'){
-            steps{
-                script{
-                    if (fileExists(BUILD_DIR)){
-                        echo "Removing old executable."
-                        bat "rd /s /q \"${BUILD_DIR}\""
-                    }
-                }
-            }
-        }
-
         stage('Merge Notification') {
             when {
                 allOf {

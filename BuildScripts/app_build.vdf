@@ -1,0 +1,14 @@
+"AppBuild"
+{
+    "AppID" "4383760"
+    "Desc" "Jenkins Build - STEAM_BRANCH_PLACEHOLDER"
+    "ContentRoot" "CONTENT_ROOT_PLACEHOLDER" 
+    "BuildOutput" "OUTPUT_ROOT_PLACEHOLDER"
+
+    "SetLive" "STEAM_BRANCH_PLACEHOLDER"
+
+    "Depots"
+    {
+        "4383761" "depot_build_4383761.vdf"
+    }
+}

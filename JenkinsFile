@@ -6,13 +6,15 @@ def steamBranch = "unknown"
 def commitMsg = "unknown"
 def isMerge = false
 
+def programmerRole = "@Programmer"
+
 pipeline {
     agent any
 
     options {
         buildDiscarder(logRotator(numToKeepStr: '2'))
         disableConcurrentBuilds()
-        lock ('project-anomaly-build-queue')
+        lock('project-estival-build-queue')
         skipDefaultCheckout()
     }
 
@@ -24,12 +26,18 @@ pipeline {
     }
 
     environment {
-        UNITY_PATH = '"C:\\Program Files\\Unity\\Hub\\Editor\\6000.3.10f1\\Editor\\Unity.exe"'
-        CREDS = credentials('MY_SECRET_ID') 
+        CREDS = credentials('MY_SECRET_ID')
         DISCORD_WEBHOOK_URL = credentials('PROJECT_ESTIVAL_DISCORD_WEBHOOK_BUILD_RESULT')
         ESTIVAL_DISCORD_WEBHOOK_MERGE_URL = credentials('PROJECT_ESTIVAL_DISCORD_WEBHOOK_MERGE')
+
+        UE_BASE = "C:\\Program Files\\Epic Games"
+
+        BUILD_DIR = "${env.WORKSPACE}\\Builds"
+
         UE_LOG_PATH = "C:\\Users\\PC_GAMES\\AppData\\Roaming\\Unreal Engine\\AutomationTool\\Logs\\C+Program+Files+Epic+Games+UE_${params.UE_VERSION}\\Log.txt"
         UE_UAT_PATH = "${UE_BASE}\\UE_${params.UE_VERSION}\\Engine\\Build\\BatchFiles\\RunUAT.bat"
+
+        STEAMCMD_PATH = "C:\\Tools\\steamcmd\\steamcmd.exe"
         GAME_VERSION = "0.0.${env.BUILD_NUMBER}"
     }
 
@@ -47,6 +55,20 @@ pipeline {
             }
         }
 
+<<<<<<< Updated upstream
+=======
+        stage('Clean Up Old Build') {
+            steps {
+                script {
+                    if (fileExists(BUILD_DIR)) {
+                        echo "Removing old executable."
+                        bat "rd /s /q \"${BUILD_DIR}\""
+                    }
+                }
+            }
+        }
+
+>>>>>>> Stashed changes
         stage('Merge Notification') {
             when {
                 allOf {
@@ -60,7 +82,7 @@ pipeline {
                         description: "${programmerRole} \nSir, a merge was detected on ${env.BRANCH_NAME}. \n**Commit:** ${commitMsg}",
                         link: env.BUILD_URL,
                         result: 'ABORTED',
-                        webhookURL: "${env.ANOMALY_DISCORD_WEBHOOK_MERGE_URL}"
+                        webhookURL: ESTIVAL_DISCORD_WEBHOOK_MERGE_URL
                 }
             }
         }
@@ -73,6 +95,11 @@ pipeline {
                 }
             }
             steps {
+                script {
+                    if (!fileExists(UE_UAT_PATH)) {
+                        error "RunUAT.bat not found at: ${UE_UAT_PATH}"
+                    }
+                }
                 bat """
                 "${UE_UAT_PATH}" ^
                 BuildCookRun ^
@@ -84,10 +111,10 @@ pipeline {
                 -stage ^
                 -pak ^
                 -archive ^
-                -archivedirectory="${env.WORKSPACE}\\Builds" ^
+                -archivedirectory="${BUILD_DIR}" ^
                 -compresspak ^
                 -closestzensnapshot=0 ^
-                -cook^
+                -cook ^
                 -CookMapsOnly ^
                 -utf8output
                 """
@@ -103,8 +130,11 @@ pipeline {
             }
             steps {
                 script {
+                    if (!fileExists(UE_LOG_PATH)) {
+                        error "No UAT log found at ${UE_LOG_PATH} — the build likely never started."
+                    }
                     def logFile = readFile(file: UE_LOG_PATH)
-                    if (logFile.contains('Build Finished, Result: Failure')) {
+                    if (logFile.contains('AutomationTool exiting with ExitCode=1')) {
                         error 'Unreal Engine build reported a failure in the logs.'
                     }
                 }
@@ -121,19 +151,37 @@ pipeline {
             steps {
                 script {
                     steamBranch = branchMap.get(env.BRANCH_NAME, "internal_testing")
-                    def contentRoot = "${WORKSPACE}\\Builds"
-                    def outputRoot = "${WORKSPACE}\\SteamOutput"
-                    def vdfPath = "${WORKSPACE}\\BuildScripts\\app_build.vdf"
 
-                    bat "if not exist Builds mkdir Builds"
-                    bat "if not exist SteamOutput mkdir SteamOutput"
+                    def contentRoot = BUILD_DIR
+                    def outputRoot  = "${env.WORKSPACE}\\SteamOutput"
 
-                    def depotVdfPath = "${WORKSPACE}\\BuildScripts\\depot_build_4383761.vdf"
+                    def vdfTemplate      = "${env.WORKSPACE}\\BuildScripts\\app_build.vdf"
+                    def depotVdfTemplate = "${env.WORKSPACE}\\BuildScripts\\depot_build_4383761.vdf"
 
-                    bat """powershell -Command "(Get-Content '${vdfPath}') -replace 'STEAM_BRANCH_PLACEHOLDER','${steamBranch}' -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${vdfPath}'" """
-                    bat """powershell -Command "(Get-Content '${depotVdfPath}') -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${depotVdfPath}'" """
+                    def genDir       = "${env.WORKSPACE}\\BuildScripts\\generated"
+                    def vdfPath      = "${genDir}\\app_build.vdf"
+                    def depotVdfPath = "${genDir}\\depot_build_4383761.vdf"
 
-                    bat "\"C:\\Tools\\steamcmd\\steamcmd.exe\" +login %CREDS_USR% %CREDS_PSW% +run_app_build \"${vdfPath}\" +quit"
+                    bat "if not exist \"${BUILD_DIR}\" mkdir \"${BUILD_DIR}\""
+                    bat "if not exist \"${outputRoot}\" mkdir \"${outputRoot}\""
+                    bat "if not exist \"${genDir}\" mkdir \"${genDir}\""
+
+                    bat """powershell -Command "(Get-Content '${vdfTemplate}') -replace 'STEAM_BRANCH_PLACEHOLDER','${steamBranch}' -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${vdfPath}'" """
+                    bat """powershell -Command "(Get-Content '${depotVdfTemplate}') -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${depotVdfPath}'" """
+
+                    bat "\"${STEAMCMD_PATH}\" +login %CREDS_USR% %CREDS_PSW% +run_app_build \"${vdfPath}\" +quit"
+                }
+            }
+        }
+
+        stage('Clean Up VDF Files') {
+            steps {
+                script {
+                    def genDir = "${env.WORKSPACE}\\BuildScripts\\generated"
+                    if (fileExists(genDir)) {
+                        echo "Removing generated vdf files."
+                        bat "rd /s /q \"${genDir}\""
+                    }
                 }
             }
         }
@@ -143,22 +191,22 @@ pipeline {
         success {
             script {
                 def actionDesc = env.CHANGE_ID ? "The pipeline stages for Pull Request #${env.CHANGE_ID} were successfully completed." : "The build and the Deployment to Steam (${env.BRANCH_NAME}) were successful."
-                
+
                 discordSend title: "✅ Build Success: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
                     description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${env.GAME_VERSION}\n",
                     link: env.BUILD_URL,
                     result: 'SUCCESS',
-                    webhookURL: "${DISCORD_WEBHOOK_URL}"
+                    webhookURL: DISCORD_WEBHOOK_URL
             }
         }
 
         aborted {
             script {
                 discordSend title: "⚪ Build Aborted: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Sir, the build was aborted. ?\n This is a manual operation so no commit descreption will be provided.",
+                    description: "Sir, the build was aborted.\nThis is a manual operation so no commit description will be provided.",
                     link: env.BUILD_URL,
                     result: 'ABORTED',
-                    webhookURL: "${DISCORD_WEBHOOK_URL}"
+                    webhookURL: DISCORD_WEBHOOK_URL
             }
         }
 
@@ -168,11 +216,17 @@ pipeline {
                     description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${env.GAME_VERSION}\n",
                     link: env.BUILD_URL,
                     result: 'FAILURE',
-                    webhookURL: "${DISCORD_WEBHOOK_URL}"
+                    webhookURL: DISCORD_WEBHOOK_URL
 
-                    if (fileExists(UE_LOG_PATH)) {
+                if (fileExists(UE_LOG_PATH)) {
                     echo "Alfred: Dispatching the failure logs for investigation..."
-                    bat "curl.exe -F \"file=@${UE_LOG_PATH}\" %ANOMALY_DISCORD_WEBHOOK_URL%"
+                    def rc = bat(returnStatus: true,
+                                 script: "curl.exe -F \"file=@${UE_LOG_PATH}\" %DISCORD_WEBHOOK_URL%")
+                    if (rc != 0) {
+                        echo "Alfred: Log upload failed (curl exit ${rc}), carrying on regardless."
+                    }
+                } else {
+                    echo "Alfred: No UAT log to dispatch — none was written at ${UE_LOG_PATH}"
                 }
             }
         }

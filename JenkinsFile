@@ -1,4 +1,5 @@
 def branchMap = [:]
+branchMap['w0-blockout-testing'] = "blk_testing"
 branchMap['develop'] = "internal_testing"
 branchMap['main'] = ""
 
@@ -118,6 +119,7 @@ pipeline {
                 anyOf {
                     branch 'develop'
                     branch 'main'
+                    branch 'w0-blockout-testing'
                 }
             }
             steps {
@@ -153,6 +155,7 @@ pipeline {
                 anyOf {
                     branch 'develop'
                     branch 'main'
+                    branch 'w0-blockout-testing'
                 }
             }
             steps {
@@ -173,6 +176,7 @@ pipeline {
                 anyOf {
                     branch 'develop'
                     branch 'main'
+                    branch 'w0-blockout-testing'
                 }
             }
             steps {

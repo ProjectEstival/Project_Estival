@@ -108,8 +108,8 @@ void ABLK_PCG::ShowDebugGrid()
 	{
 		const int32 X = CellIndex % GridWidth;
 		const int32 Y = CellIndex / GridWidth;
-		const FVector CellOrigin = GetActorLocation() + FVector(X * CellSize, Y * CellSize, 0.0f);
-		const FVector CellCenter = CellOrigin + FVector(CellSize * 0.5f, CellSize * 0.5f, 0.0f);
+		const FVector CellOrigin = GetActorLocation() + FVector(X * CellSizeX, Y * CellSizeY, 0.0f);
+		const FVector CellCenter = CellOrigin + FVector(CellSizeX * 0.5f, CellSizeY * 0.5f, 0.0f);
 
 		const TArray<int32>& Options = CellPossibilities[CellIndex];
 
@@ -141,7 +141,7 @@ void ABLK_PCG::ShowDebugGrid()
 			}
 		}
 
-		DrawDebugBox(GetWorld(), CellCenter, FVector(CellSize * 0.5f, CellSize * 0.5f, 5.0f), DebugColor, true, -1.0f, 0, 5.0f);
+		DrawDebugBox(GetWorld(), CellCenter, FVector(CellSizeX * 0.5f, CellSizeY * 0.5f, 5.0f), DebugColor, true, -1.0f, 0, 5.0f);
 
 		//TextRenderComponent is used instead of DrawDebugString because DrawDebugString only renders
 		//through a HUD/Canvas, which doesn't exist outside of Play-In-Editor
@@ -370,7 +370,7 @@ void ABLK_PCG::SpawnTiles()
 		const int32 X = CellIndex % GridWidth;
 		const int32 Y = CellIndex / GridWidth;
 
-		const FVector Location = GetActorLocation() + FVector(X * CellSize, Y * CellSize, 0.0f);
+		const FVector Location = GetActorLocation() + FVector(X * CellSizeX, Y * CellSizeY, 0.0f);
 		const FTransform SpawnTransform(GetActorRotation(), Location);
 
 		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(Tile.ActorClass, SpawnTransform, SpawnParams))

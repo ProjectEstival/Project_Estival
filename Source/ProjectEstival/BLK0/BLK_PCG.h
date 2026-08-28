@@ -94,15 +94,10 @@ public:
 	//grid cells along Y
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1))
 	int32 GridHeight = 10;
-	
-	//UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
-	//float CellSize = 400.0f;
-	
+
+	//size of a cell
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
-	float CellSizeX = 400.0f;
-	
-	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
-	float CellSizeY = 400.0f;
+	float CellSize = 400.0f;
 
 	//TESTING using RandomSeed instead of a new randomseed every time we generate
 	UPROPERTY(EditAnywhere, Category = "WFC")

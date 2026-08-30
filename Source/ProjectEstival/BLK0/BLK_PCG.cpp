@@ -191,6 +191,8 @@ bool ABLK_PCG::InitializeCells()
 
 	CellPossibilities.Init(AllOptions, GridWidth * GridHeight);
 
+	RestrictBoundaryCells();
+
 	//pin forced cells to their tile first, so propagation below sees every pin at once
 	for (const FWFCForcedTile& Forced : ForcedTiles)
 	{
@@ -220,6 +222,59 @@ bool ABLK_PCG::InitializeCells()
 	}
 
 	return true;
+}
+
+void ABLK_PCG::RestrictBoundaryCells()
+{
+	const int32 CellCount = GridWidth * GridHeight;
+
+	for (int32 CellIndex = 0; CellIndex < CellCount; ++CellIndex)
+	{
+		const int32 X = CellIndex % GridWidth;
+		const int32 Y = CellIndex / GridWidth;
+
+		TArray<EWFCDirection> OutwardDirections;
+		if (Y == 0) OutwardDirections.Add(EWFCDirection::North);
+		if (Y == GridHeight - 1) OutwardDirections.Add(EWFCDirection::South);
+		if (X == 0) OutwardDirections.Add(EWFCDirection::West);
+		if (X == GridWidth - 1) OutwardDirections.Add(EWFCDirection::East);
+
+		if (OutwardDirections.Num() == 0)
+		{
+			continue;
+		}
+
+		TArray<int32>& Options = CellPossibilities[CellIndex];
+
+		for (int32 i = Options.Num() - 1; i >= 0; --i)
+		{
+			const FWFCTile& Tile = Tiles[Options[i]];
+
+			bool bAllOutwardSidesClosed = true;
+			for (EWFCDirection Direction : OutwardDirections)
+			{
+				FName Socket;
+				switch (Direction)
+				{
+				case EWFCDirection::North: Socket = Tile.NorthSocket; break;
+				case EWFCDirection::East:  Socket = Tile.EastSocket;  break;
+				case EWFCDirection::South: Socket = Tile.SouthSocket; break;
+				case EWFCDirection::West:  Socket = Tile.WestSocket;  break;
+				}
+
+				if (Socket != BoundaryClosedSocket)
+				{
+					bAllOutwardSidesClosed = false;
+					break;
+				}
+			}
+
+			if (!bAllOutwardSidesClosed)
+			{
+				Options.RemoveAt(i);
+			}
+		}
+	}
 }
 
 void ABLK_PCG::PropagateFrom(int32 StartCellIndex)

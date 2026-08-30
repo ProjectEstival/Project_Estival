@@ -87,6 +87,10 @@ public:
 	UPROPERTY(EditAnywhere, Category = "WFC")
 	TArray<FWFCForcedTile> ForcedTiles;
 
+	//Any socket facing outside the grid must equal this value, so no door/opening ever faces the void
+	UPROPERTY(EditAnywhere, Category = "WFC")
+	FName BoundaryClosedSocket = "Wall";
+
 	//grid cells along X
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1))
 	int32 GridWidth = 10;
@@ -147,6 +151,9 @@ private:
 	FRandomStream RandomStream;
 	
 	bool InitializeCells();
+
+	//Removes any tile from border cells whose outward-facing socket(s) don't match BoundaryClosedSocket
+	void RestrictBoundaryCells();
 
 	//Remove incompatible cells
 	void PropagateFrom(int32 CellIndex);

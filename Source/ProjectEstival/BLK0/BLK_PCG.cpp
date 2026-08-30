@@ -143,8 +143,7 @@ void ABLK_PCG::ShowDebugGrid()
 
 		DrawDebugBox(GetWorld(), CellCenter, FVector(CellSizeX * 0.5f, CellSizeY * 0.5f, 5.0f), DebugColor, true, -1.0f, 0, 5.0f);
 
-		//TextRenderComponent is used instead of DrawDebugString because DrawDebugString only renders
-		//through a HUD/Canvas, which doesn't exist outside of Play-In-Editor
+		//Debug magic, i have no clue but i need it
 		UTextRenderComponent* TextComp = NewObject<UTextRenderComponent>(this, NAME_None, RF_Transient);
 		TextComp->RegisterComponentWithWorld(GetWorld());
 		TextComp->SetWorldLocation(CellCenter + FVector(0.0f, 0.0f, 50.0f));
@@ -193,7 +192,7 @@ bool ABLK_PCG::InitializeCells()
 
 	RestrictBoundaryCells();
 
-	//pin forced cells to their tile first, so propagation below sees every pin at once
+	//pin forced cells to their tile first
 	for (const FWFCForcedTile& Forced : ForcedTiles)
 	{
 		if (Forced.X < 0 || Forced.X >= GridWidth || Forced.Y < 0 || Forced.Y >= GridHeight)
@@ -211,8 +210,7 @@ bool ABLK_PCG::InitializeCells()
 
 		CellPossibilities[Forced.Y * GridWidth + Forced.X] = { TileIndex };
 	}
-
-	//now propagate each pin's constraints out into the rest of the grid
+	
 	for (const FWFCForcedTile& Forced : ForcedTiles)
 	{
 		if (Forced.X >= 0 && Forced.X < GridWidth && Forced.Y >= 0 && Forced.Y < GridHeight)

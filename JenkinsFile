@@ -144,7 +144,6 @@ pipeline {
                 -compresspak ^
                 -closestzensnapshot=0 ^
                 -cook ^
-                -legacyiterative ^
                 -CookMapsOnly ^
                 -utf8output
                 """

@@ -10,8 +10,6 @@ def commitMsg = "unknown"
 def gameVersion = "unknown"
 def isMerge = false
 
-//test
-
 def programmerRole = "<@&1506638634462351399>"
 
 pipeline {

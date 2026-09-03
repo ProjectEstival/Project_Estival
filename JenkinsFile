@@ -1,3 +1,4 @@
+//map
 def branchMap = [:]
 branchMap['w0-blockout-testing'] = "blk_testing"
 branchMap['develop'] = "internal_testing"
@@ -135,7 +136,7 @@ pipeline {
                 -targetplatform=Win64 ^
                 -clientconfig=${params.BUILD_TYPE} ^
                 -build ^
-                -skipbuildeditor ^
+                --skipbuildeditor ^
                 -stage ^
                 -pak ^
                 -archive ^
@@ -143,7 +144,6 @@ pipeline {
                 -compresspak ^
                 -closestzensnapshot=0 ^
                 -cook ^
-                -legacyiterative ^
                 -CookMapsOnly ^
                 -utf8output
                 """

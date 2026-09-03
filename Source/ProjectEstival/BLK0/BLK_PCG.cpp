@@ -1,5 +1,7 @@
 #include "BLK0/BLK_PCG.h"
 #include "Engine/World.h"
+#include "DrawDebugHelpers.h"
+#include "Components/TextRenderComponent.h"
 
 // Sets default values
 ABLK_PCG::ABLK_PCG()
@@ -68,6 +70,11 @@ void ABLK_PCG::GenerateGrid()
 	}
 
 	SpawnTiles();
+
+	if (bShowDebugLabels)
+	{
+		ShowDebugGrid();
+	}
 }
 
 void ABLK_PCG::ClearGrid()
@@ -82,6 +89,88 @@ void ABLK_PCG::ClearGrid()
 
 	SpawnedActors.Reset();
 	CellPossibilities.Reset();
+	ClearDebugGrid();
+}
+
+void ABLK_PCG::ShowDebugGrid()
+{
+	if (CellPossibilities.Num() != GridWidth * GridHeight)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no grid data to show, generate the grid first"));
+		return;
+	}
+
+	ClearDebugGrid();
+
+	const int32 CellCount = GridWidth * GridHeight;
+
+	for (int32 CellIndex = 0; CellIndex < CellCount; ++CellIndex)
+	{
+		const int32 X = CellIndex % GridWidth;
+		const int32 Y = CellIndex / GridWidth;
+		const FVector CellOrigin = GetActorLocation() + FVector(X * CellSizeX, Y * CellSizeY, 0.0f);
+		const FVector CellCenter = CellOrigin + FVector(CellSizeX * 0.5f, CellSizeY * 0.5f, 0.0f);
+
+		const TArray<int32>& Options = CellPossibilities[CellIndex];
+
+		FString Label;
+		FColor DebugColor;
+
+		if (Options.Num() == 0)
+		{
+			Label = TEXT("CONTRADICTION");
+			DebugColor = FColor::Red;
+		}
+		else if (Options.Num() > 1)
+		{
+			Label = FString::Printf(TEXT("%d options"), Options.Num());
+			DebugColor = FColor::Yellow;
+		}
+		else
+		{
+			const FWFCTile& Tile = Tiles[Options[0]];
+			if (Tile.ActorClass)
+			{
+				Label = Tile.TileName != NAME_None ? Tile.TileName.ToString() : Tile.ActorClass->GetName();
+				DebugColor = FColor::Green;
+			}
+			else
+			{
+				Label = TEXT("NO ACTOR CLASS");
+				DebugColor = FColor::Orange;
+			}
+		}
+
+		DrawDebugBox(GetWorld(), CellCenter, FVector(CellSizeX * 0.5f, CellSizeY * 0.5f, 5.0f), DebugColor, true, -1.0f, 0, 5.0f);
+
+		//Debug magic, i have no clue but i need it
+		UTextRenderComponent* TextComp = NewObject<UTextRenderComponent>(this, NAME_None, RF_Transient);
+		TextComp->RegisterComponentWithWorld(GetWorld());
+		TextComp->SetWorldLocation(CellCenter + FVector(0.0f, 0.0f, 50.0f));
+		TextComp->SetWorldRotation(FRotator(90.0f, 0.0f, 0.0f));
+		TextComp->SetText(FText::FromString(Label));
+		TextComp->SetTextRenderColor(DebugColor);
+		TextComp->SetWorldSize(40.0f);
+		TextComp->SetHorizontalAlignment(EHTA_Center);
+		TextComp->SetVerticalAlignment(EVRTA_TextCenter);
+
+		DebugTextComponents.Add(TextComp);
+	}
+}
+
+void ABLK_PCG::ClearDebugGrid()
+{
+	FlushPersistentDebugLines(GetWorld());
+	FlushDebugStrings(GetWorld());
+
+	for (UTextRenderComponent* TextComp : DebugTextComponents)
+	{
+		if (IsValid(TextComp))
+		{
+			TextComp->DestroyComponent();
+		}
+	}
+	DebugTextComponents.Reset();
 }
 
 bool ABLK_PCG::InitializeCells()
@@ -100,7 +189,90 @@ bool ABLK_PCG::InitializeCells()
 	}
 
 	CellPossibilities.Init(AllOptions, GridWidth * GridHeight);
+
+	RestrictBoundaryCells();
+
+	//pin forced cells to their tile first
+	for (const FWFCForcedTile& Forced : ForcedTiles)
+	{
+		if (Forced.X < 0 || Forced.X >= GridWidth || Forced.Y < 0 || Forced.Y >= GridHeight)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: forced tile (%d, %d) is outside the grid, skipping"), Forced.X, Forced.Y);
+			continue;
+		}
+
+		const int32 TileIndex = Tiles.IndexOfByPredicate([&Forced](const FWFCTile& Tile) { return Tile.TileName == Forced.TileName; });
+		if (TileIndex == INDEX_NONE)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: forced tile name '%s' not found in Tiles, skipping"), *Forced.TileName.ToString());
+			continue;
+		}
+
+		CellPossibilities[Forced.Y * GridWidth + Forced.X] = { TileIndex };
+	}
+	
+	for (const FWFCForcedTile& Forced : ForcedTiles)
+	{
+		if (Forced.X >= 0 && Forced.X < GridWidth && Forced.Y >= 0 && Forced.Y < GridHeight)
+		{
+			PropagateFrom(Forced.Y * GridWidth + Forced.X);
+		}
+	}
+
 	return true;
+}
+
+void ABLK_PCG::RestrictBoundaryCells()
+{
+	const int32 CellCount = GridWidth * GridHeight;
+
+	for (int32 CellIndex = 0; CellIndex < CellCount; ++CellIndex)
+	{
+		const int32 X = CellIndex % GridWidth;
+		const int32 Y = CellIndex / GridWidth;
+
+		TArray<EWFCDirection> OutwardDirections;
+		if (Y == 0) OutwardDirections.Add(EWFCDirection::North);
+		if (Y == GridHeight - 1) OutwardDirections.Add(EWFCDirection::South);
+		if (X == 0) OutwardDirections.Add(EWFCDirection::West);
+		if (X == GridWidth - 1) OutwardDirections.Add(EWFCDirection::East);
+
+		if (OutwardDirections.Num() == 0)
+		{
+			continue;
+		}
+
+		TArray<int32>& Options = CellPossibilities[CellIndex];
+
+		for (int32 i = Options.Num() - 1; i >= 0; --i)
+		{
+			const FWFCTile& Tile = Tiles[Options[i]];
+
+			bool bAllOutwardSidesClosed = true;
+			for (EWFCDirection Direction : OutwardDirections)
+			{
+				FName Socket;
+				switch (Direction)
+				{
+				case EWFCDirection::North: Socket = Tile.NorthSocket; break;
+				case EWFCDirection::East:  Socket = Tile.EastSocket;  break;
+				case EWFCDirection::South: Socket = Tile.SouthSocket; break;
+				case EWFCDirection::West:  Socket = Tile.WestSocket;  break;
+				}
+
+				if (Socket != BoundaryClosedSocket)
+				{
+					bAllOutwardSidesClosed = false;
+					break;
+				}
+			}
+
+			if (!bAllOutwardSidesClosed)
+			{
+				Options.RemoveAt(i);
+			}
+		}
+	}
 }
 
 void ABLK_PCG::PropagateFrom(int32 StartCellIndex)
@@ -251,7 +423,7 @@ void ABLK_PCG::SpawnTiles()
 		const int32 X = CellIndex % GridWidth;
 		const int32 Y = CellIndex / GridWidth;
 
-		const FVector Location = GetActorLocation() + FVector(X * CellSize, Y * CellSize, 0.0f);
+		const FVector Location = GetActorLocation() + FVector(X * CellSizeX, Y * CellSizeY, 0.0f);
 		const FTransform SpawnTransform(GetActorRotation(), Location);
 
 		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(Tile.ActorClass, SpawnTransform, SpawnParams))

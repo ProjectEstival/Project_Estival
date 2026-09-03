@@ -13,10 +13,7 @@ public class ProjectEstival : ModuleRules
 			"Core",
 			"CoreUObject",
 			"Engine",
-			
-			//New modules
-			"AssetTools",
-			
+
 			//Other
 			"InputCore",
 			"EnhancedInput",
@@ -28,6 +25,13 @@ public class ProjectEstival : ModuleRules
 			"UMG",
 			"Slate"
 		});
+
+		// AssetTools depends on UnrealEd, which only exists for Editor targets -
+		// pulling it in unconditionally breaks Shipping/Game builds (e.g. the Jenkins BuildCookRun)
+		if (Target.Type == TargetType.Editor)
+		{
+			PublicDependencyModuleNames.Add("AssetTools");
+		}
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 

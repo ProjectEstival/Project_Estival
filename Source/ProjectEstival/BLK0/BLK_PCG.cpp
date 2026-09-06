@@ -129,14 +129,15 @@ void ABLK_PCG::ShowDebugGrid()
 		else
 		{
 			const FWFCTile& Tile = Tiles[Options[0]];
-			if (Tile.ActorClass)
+			if (Tile.ActorVariants.Num() > 0)
 			{
-				Label = Tile.TileName != NAME_None ? Tile.TileName.ToString() : Tile.ActorClass->GetName();
+				const FName RowName = TileRowNames.IsValidIndex(Options[0]) ? TileRowNames[Options[0]] : NAME_None;
+				Label = RowName != NAME_None ? RowName.ToString() : TEXT("Tile");
 				DebugColor = FColor::Green;
 			}
 			else
 			{
-				Label = TEXT("NO ACTOR CLASS");
+				Label = TEXT("NO ACTOR VARIANTS");
 				DebugColor = FColor::Orange;
 			}
 		}
@@ -173,11 +174,39 @@ void ABLK_PCG::ClearDebugGrid()
 	DebugTextComponents.Reset();
 }
 
-bool ABLK_PCG::InitializeCells()
+bool ABLK_PCG::BuildTileCache()
 {
+	Tiles.Reset();
+	TileRowNames.Reset();
+
+	if (!TileSet)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no TileSet data table assigned, nothing to generate"));
+		return false;
+	}
+
+	for (const FName& RowName : TileSet->GetRowNames())
+	{
+		if (const FWFCTile* Row = TileSet->FindRow<FWFCTile>(RowName, TEXT("BLK_PCG BuildTileCache")))
+		{
+			Tiles.Add(*Row);
+			TileRowNames.Add(RowName);
+		}
+	}
+
 	if (Tiles.Num() == 0)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no tiles assigned, nothing to generate"));
+		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: TileSet has no valid rows, nothing to generate"));
+		return false;
+	}
+
+	return true;
+}
+
+bool ABLK_PCG::InitializeCells()
+{
+	if (!BuildTileCache())
+	{
 		return false;
 	}
 
@@ -201,10 +230,10 @@ bool ABLK_PCG::InitializeCells()
 			continue;
 		}
 
-		const int32 TileIndex = Tiles.IndexOfByPredicate([&Forced](const FWFCTile& Tile) { return Tile.TileName == Forced.TileName; });
+		const int32 TileIndex = TileRowNames.IndexOfByKey(Forced.TileName);
 		if (TileIndex == INDEX_NONE)
 		{
-			UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: forced tile name '%s' not found in Tiles, skipping"), *Forced.TileName.ToString());
+			UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: forced tile name '%s' not found in TileSet, skipping"), *Forced.TileName.ToString());
 			continue;
 		}
 
@@ -367,6 +396,33 @@ int32 ABLK_PCG::PickWeightedTile(const TArray<int32>& Options) const
 	return Options.Last();
 }
 
+TSubclassOf<AActor> ABLK_PCG::PickActorVariant(const FWFCTile& Tile) const
+{
+	if (Tile.ActorVariants.Num() == 0)
+	{
+		return nullptr;
+	}
+
+	float TotalWeight = 0.0f;
+	for (const FWFCActorVariant& Variant : Tile.ActorVariants)
+	{
+		TotalWeight += FMath::Max(Variant.Weight, KINDA_SMALL_NUMBER);
+	}
+
+	float Roll = RandomStream.FRandRange(0.0f, TotalWeight);
+	for (const FWFCActorVariant& Variant : Tile.ActorVariants)
+	{
+		const float Weight = FMath::Max(Variant.Weight, KINDA_SMALL_NUMBER);
+		if (Roll <= Weight)
+		{
+			return Variant.ActorClass;
+		}
+		Roll -= Weight;
+	}
+
+	return Tile.ActorVariants.Last().ActorClass;
+}
+
 bool ABLK_PCG::GetNeighborIndex(int32 CellIndex, EWFCDirection Direction, int32& OutNeighborIndex) const
 {
 	const int32 X = CellIndex % GridWidth;
@@ -415,7 +471,8 @@ void ABLK_PCG::SpawnTiles()
 		}
 
 		const FWFCTile& Tile = Tiles[CellPossibilities[CellIndex][0]];
-		if (!Tile.ActorClass)
+		const TSubclassOf<AActor> ActorClass = PickActorVariant(Tile);
+		if (!ActorClass)
 		{
 			continue;
 		}
@@ -426,7 +483,7 @@ void ABLK_PCG::SpawnTiles()
 		const FVector Location = GetActorLocation() + FVector(X * CellSizeX, Y * CellSizeY, 0.0f);
 		const FTransform SpawnTransform(GetActorRotation(), Location);
 
-		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(Tile.ActorClass, SpawnTransform, SpawnParams))
+		if (AActor* SpawnedActor = GetWorld()->SpawnActor<AActor>(ActorClass, SpawnTransform, SpawnParams))
 		{
 			SpawnedActors.Add(SpawnedActor);
 		}

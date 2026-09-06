@@ -67,10 +67,12 @@ pipeline {
                     try {
                         def commitJson = bat(returnStdout: true,
                             script: "@echo off\r\ncurl.exe -s https://api.github.com/repos/thanostham/Project_Estival/commits/${commitSha}").trim()
+                        echo "GitHub commit API response: ${commitJson.take(500)}"
                         def avatarMatch = (commitJson =~ /"avatar_url"\s*:\s*"([^"]+)"/)
                         if (avatarMatch) {
                             avatarUrl = avatarMatch[0][1]
                         }
+                        echo "Resolved avatarUrl: ${avatarUrl}"
                     } catch (e) {
                         echo "Could not fetch commit author avatar: ${e}"
                     }

@@ -65,14 +65,17 @@ pipeline {
 
                     def commitSha = bat(script: "@echo off\ngit rev-parse HEAD", returnStdout: true).trim().split('\n').last()
                     try {
-                        def commitJson = bat(returnStdout: true,
-                            script: "@echo off\r\ncurl.exe -s https://api.github.com/repos/thanostham/Project_Estival/commits/${commitSha}").trim()
-                        echo "GitHub commit API response: ${commitJson.take(500)}"
-                        def avatarMatch = (commitJson =~ /"avatar_url"\s*:\s*"([^"]+)"/)
-                        if (avatarMatch) {
-                            avatarUrl = avatarMatch[0][1]
+                        withCredentials([string(credentialsId: 'GITHUB_API_TOKEN', variable: 'GITHUB_API_TOKEN')]) {
+                            def commitJson = bat(returnStdout: true,
+                                script: "@echo off\r\ncurl.exe -s -H \"Authorization: Bearer %GITHUB_API_TOKEN%\" -H \"Accept: application/vnd.github+json\" https://api.github.com/repos/thanostham/Project_Estival/commits/${commitSha}").trim()
+                            def avatarMatch = (commitJson =~ /"avatar_url"\s*:\s*"([^"]+)"/)
+                            if (avatarMatch) {
+                                avatarUrl = avatarMatch[0][1]
+                                echo "Resolved avatarUrl: ${avatarUrl}"
+                            } else {
+                                echo "GitHub commit API response did not contain an avatar_url: ${commitJson.take(300)}"
+                            }
                         }
-                        echo "Resolved avatarUrl: ${avatarUrl}"
                     } catch (e) {
                         echo "Could not fetch commit author avatar: ${e}"
                     }

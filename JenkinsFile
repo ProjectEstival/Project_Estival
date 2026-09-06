@@ -67,7 +67,7 @@ pipeline {
                     try {
                         withCredentials([string(credentialsId: 'GITHUB_API_TOKEN', variable: 'GITHUB_API_TOKEN')]) {
                             def commitJson = bat(returnStdout: true,
-                                script: "@echo off\r\ncurl.exe -s -H \"Authorization: Bearer %GITHUB_API_TOKEN%\" -H \"Accept: application/vnd.github+json\" https://api.github.com/repos/thanostham/Project_Estival/commits/${commitSha}").trim()
+                                script: "@echo off\r\ncurl.exe -s -L -H \"Authorization: Bearer %GITHUB_API_TOKEN%\" -H \"Accept: application/vnd.github+json\" https://api.github.com/repos/thanostham/Project_Estival/commits/${commitSha}").trim()
                             def avatarMatch = (commitJson =~ /"avatar_url"\s*:\s*"([^"]+)"/)
                             if (avatarMatch) {
                                 avatarUrl = avatarMatch[0][1]

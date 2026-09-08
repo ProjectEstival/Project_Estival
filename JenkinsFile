@@ -1,4 +1,4 @@
-//map
+//map1
 def branchMap = [:]
 branchMap['w0-blockout-testing'] = "blk_testing"
 branchMap['develop'] = "internal_testing"
@@ -7,6 +7,8 @@ branchMap['main'] = ""
 def steamBranch = "unknown"
 def steamBuildId = ""
 def commitMsg = "unknown"
+def commitAuthor = "unknown"
+def avatarUrl = ""
 def gameVersion = "unknown"
 def isMerge = false
 
@@ -57,8 +59,26 @@ pipeline {
                 script {
                     bat "git clean -fd -e Intermediate/ -e Saved/ -e Binaries/ -e DerivedDataCache/"
                     commitMsg = bat(script: "@echo off\ngit log -1 --pretty=%%s", returnStdout: true).trim().split('\n').last()
+                    commitAuthor = bat(script: "@echo off\ngit log -1 --pretty=%%an", returnStdout: true).trim().split('\n').last()
                     def parentHashes = bat(script: "@echo off\ngit log -1 --pretty=%%p", returnStdout: true).trim().split('\n').last()
                     isMerge = parentHashes.tokenize(' ').size() > 1
+
+                    def commitSha = bat(script: "@echo off\ngit rev-parse HEAD", returnStdout: true).trim().split('\n').last()
+                    try {
+                        withCredentials([string(credentialsId: 'GITHUB_API_TOKEN', variable: 'GITHUB_API_TOKEN')]) {
+                            def commitJson = bat(returnStdout: true,
+                                script: "@echo off\r\ncurl.exe -s -L -H \"Authorization: Bearer %GITHUB_API_TOKEN%\" -H \"Accept: application/vnd.github+json\" https://api.github.com/repos/thanostham/Project_Estival/commits/${commitSha}").trim()
+                            def avatarMatch = (commitJson =~ /"avatar_url"\s*:\s*"([^"]+)"/)
+                            if (avatarMatch) {
+                                avatarUrl = avatarMatch[0][1]
+                                echo "Resolved avatarUrl: ${avatarUrl}"
+                            } else {
+                                echo "GitHub commit API response did not contain an avatar_url: ${commitJson.take(300)}"
+                            }
+                        }
+                    } catch (e) {
+                        echo "Could not fetch commit author avatar: ${e}"
+                    }
                 }
             }
         }
@@ -107,9 +127,10 @@ pipeline {
             steps {
                 script {
                     discordSend title: "🔀 New Merge: ${env.BRANCH_NAME}",
-                        description: "${programmerRole} \nSir, a merge was detected on ${env.BRANCH_NAME}. \n**Commit:** ${commitMsg}",
+                        description: "${programmerRole} \nSir, a merge was detected on ${env.BRANCH_NAME}. \n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}",
                         link: env.BUILD_URL,
                         result: 'ABORTED',
+                        thumbnail: avatarUrl,
                         webhookURL: ESTIVAL_DISCORD_WEBHOOK_MERGE_URL
                 }
             }
@@ -263,9 +284,10 @@ pipeline {
                 def actionDesc = env.CHANGE_ID ? "The pipeline stages for Pull Request #${env.CHANGE_ID} were successfully completed." : "The build and the Deployment to Steam (${env.BRANCH_NAME}) were successful."
 
                 discordSend title: "✅ Build Success: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
+                    description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
                     link: env.BUILD_URL,
                     result: 'SUCCESS',
+                    thumbnail: avatarUrl,
                     webhookURL: DISCORD_WEBHOOK_URL
             }
         }
@@ -283,20 +305,21 @@ pipeline {
         failure {
             script {
                 discordSend title: "❌ Build Failed: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
+                    description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
                     link: env.BUILD_URL,
                     result: 'FAILURE',
+                    thumbnail: avatarUrl,
                     webhookURL: DISCORD_WEBHOOK_URL
 
                 if (fileExists(UE_LOG_PATH)) {
-                    echo "Alfred: Dispatching the failure logs for investigation..."
+                    echo "Dispatching the failure logs for investigation..."
                     def rc = bat(returnStatus: true,
                                  script: "curl.exe -F \"file=@${UE_LOG_PATH}\" %DISCORD_WEBHOOK_URL%")
                     if (rc != 0) {
-                        echo "Alfred: Log upload failed (curl exit ${rc}), carrying on regardless."
+                        echo "Log upload failed (curl exit ${rc}), carrying on regardless."
                     }
                 } else {
-                    echo "Alfred: No UAT log to dispatch — none was written at ${UE_LOG_PATH}"
+                    echo "No UAT log to dispatch — none was written at ${UE_LOG_PATH}"
                 }
             }
         }

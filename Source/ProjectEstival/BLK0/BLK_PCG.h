@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Engine/DataTable.h"
 #include "BLK_PCG.generated.h"
 
 class UTextRenderComponent;
@@ -9,26 +10,36 @@ class UTextRenderComponent;
 //Prefabs
 enum class EWFCDirection : uint8
 {
+	/**TO BE RENAMED TO U, D, L, R (U is East) */ 
 	North,
 	East,
 	South,
 	West
 };
 
-//Edge sockets must match between neighboring tiles for them to be considered compatible. */
+//Select one of the variants based on the weight of each prefab
 USTRUCT(BlueprintType)
-struct FWFCTile
+struct FWFCActorVariant
 {
 	GENERATED_BODY()
 
-	//Identifier used by ForcedTiles to pin this tile to a specific cell */
-	UPROPERTY(EditAnywhere, Category = "Tile")
-	FName TileName = NAME_None;
-
-	//Prefab spawned into the level for this tile
-	UPROPERTY(EditAnywhere, Category = "Tile")
+	UPROPERTY(EditAnywhere, Category = "Variant")
 	TSubclassOf<AActor> ActorClass;
-	
+
+	UPROPERTY(EditAnywhere, Category = "Variant", meta = (ClampMin = 0.01))
+	float Weight = 1.0f;
+};
+
+//DataTable based architecture
+USTRUCT(BlueprintType)
+struct FWFCTile : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	//Variant for this tile - random based on weight.
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	TArray<FWFCActorVariant> ActorVariants;
+
 	UPROPERTY(EditAnywhere, Category = "Tile")
 	FName NorthSocket = NAME_None;
 	
@@ -45,7 +56,7 @@ struct FWFCTile
 	float Weight = 1.0f;
 };
 
-//Locks a specific grid cell to a specific tile before generation runs, e.g. to force corner pieces into the corners of the grid
+//Force tiles to place before the generation
 USTRUCT(BlueprintType)
 struct FWFCForcedTile
 {
@@ -59,7 +70,7 @@ struct FWFCForcedTile
 	UPROPERTY(EditAnywhere, Category = "Forced Tile")
 	int32 Y = 0;
 
-	/** Must match a Tiles entry's TileName */
+	/** Must match a row name in TileSet */
 	UPROPERTY(EditAnywhere, Category = "Forced Tile")
 	FName TileName = NAME_None;
 };
@@ -71,7 +82,7 @@ class PROJECTESTIVAL_API ABLK_PCG : public AActor
 	GENERATED_BODY()
 
 public:
-	// Sets default values for this actor's properties
+	//Sets default values
 	ABLK_PCG();
 
 protected:
@@ -80,8 +91,9 @@ protected:
 
 public:
 	
+	//Data Table of FWFCTile rows - the row name is each tile's identifier, used by ForcedTiles
 	UPROPERTY(EditAnywhere, Category = "WFC")
-	TArray<FWFCTile> Tiles;
+	TObjectPtr<UDataTable> TileSet;
 
 	//Cells locked to a specific tile before generation runs
 	UPROPERTY(EditAnywhere, Category = "WFC")
@@ -98,8 +110,9 @@ public:
 	//grid cells along Y
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1))
 	int32 GridHeight = 10;
-	
-	//UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
+
+	/** LEGACY SET DIMENSIONS */
+	//UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm")) 
 	//float CellSize = 400.0f;
 	
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
@@ -125,7 +138,7 @@ public:
 	UFUNCTION(CallInEditor, Category = "WFC")
 	void ClearGrid();
 
-	//Draw the resolved tile name (or an error) above every cell so the grid can be inspected visually
+	//Debug magic (draw the name on the grid / or draw an error so we can see what went right or wrong during gen and where)
 	UPROPERTY(EditAnywhere, Category = "WFC|Debug")
 	bool bShowDebugLabels = true;
 
@@ -149,11 +162,29 @@ private:
 
 	//Random stream for tile selection
 	FRandomStream RandomStream;
-	
+
+	//Cached copy of TileSet's rows, rebuilt every InitializeCells() call
+	TArray<FWFCTile> Tiles;
+
+	//Row name for each entry in Tiles
+	TArray<FName> TileRowNames;
+
+	/** Change to DT option when we change the dimensions to be easier to import to other iterations */
+	//float CellSizeX(const TArray<float>& Options) const; <- Create Option for those.
+	//float CellSizeY(const TArray<float>& Options) const;
+
+	//Rebuilds Tiles/TileRowNames from TileSet. Returns false if TileSet is unset or has no valid rows.
+	bool BuildTileCache();
+
 	bool InitializeCells();
 
-	//Removes any tile from border cells whose outward-facing socket(s) don't match BoundaryClosedSocket
+	bool OnPath();
+
+	//Removes any tile from border cells that their outward socket does not match BoundaryClosedSocket
 	void RestrictBoundaryCells();
+	
+	//Determine which cells are concidered "OnPath"
+	void DeterminePath();
 
 	//Remove incompatible cells
 	void PropagateFrom(int32 CellIndex);
@@ -161,6 +192,9 @@ private:
 	bool AreCompatible(const FWFCTile& CellTile, const FWFCTile& NeighborTile, EWFCDirection DirectionToNeighbor) const;
 	
 	int32 PickWeightedTile(const TArray<int32>& Options) const;
+
+	//Picks a variant from ActorVariants based on weight
+	TSubclassOf<AActor> PickActorVariant(const FWFCTile& Tile) const;
 	
 	bool GetNeighborIndex(int32 CellIndex, EWFCDirection Direction, int32& OutNeighborIndex) const;
 	

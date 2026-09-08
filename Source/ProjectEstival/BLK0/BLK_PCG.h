@@ -10,6 +10,7 @@ class UTextRenderComponent;
 //Prefabs
 enum class EWFCDirection : uint8
 {
+	/**TO BE RENAMED TO U, D, L, R (U is East) */ 
 	North,
 	East,
 	South,
@@ -109,8 +110,9 @@ public:
 	//grid cells along Y
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1))
 	int32 GridHeight = 10;
-	
-	//UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
+
+	/** LEGACY SET DIMENSIONS */
+	//UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm")) 
 	//float CellSize = 400.0f;
 	
 	UPROPERTY(EditAnywhere, Category = "WFC", meta = (ClampMin = 1, Units = "cm"))
@@ -167,13 +169,22 @@ private:
 	//Row name for each entry in Tiles
 	TArray<FName> TileRowNames;
 
+	/** Change to DT option when we change the dimensions to be easier to import to other iterations */
+	//float CellSizeX(const TArray<float>& Options) const; <- Create Option for those.
+	//float CellSizeY(const TArray<float>& Options) const;
+
 	//Rebuilds Tiles/TileRowNames from TileSet. Returns false if TileSet is unset or has no valid rows.
 	bool BuildTileCache();
 
 	bool InitializeCells();
 
+	bool OnPath();
+
 	//Removes any tile from border cells that their outward socket does not match BoundaryClosedSocket
 	void RestrictBoundaryCells();
+	
+	//Determine which cells are concidered "OnPath"
+	void DeterminePath();
 
 	//Remove incompatible cells
 	void PropagateFrom(int32 CellIndex);

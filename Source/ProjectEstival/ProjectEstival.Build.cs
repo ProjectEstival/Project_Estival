@@ -9,9 +9,12 @@ public class ProjectEstival : ModuleRules
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 
 		PublicDependencyModuleNames.AddRange(new string[] {
+			//Core default
 			"Core",
 			"CoreUObject",
 			"Engine",
+
+			//Other
 			"InputCore",
 			"EnhancedInput",
 			"AIModule",
@@ -22,6 +25,13 @@ public class ProjectEstival : ModuleRules
 			"UMG",
 			"Slate"
 		});
+
+		// AssetTools depends on UnrealEd, which only exists for Editor targets -
+		// pulling it in unconditionally breaks Shipping/Game builds (e.g. the Jenkins BuildCookRun)
+		if (Target.Type == TargetType.Editor)
+		{
+			PublicDependencyModuleNames.Add("AssetTools");
+		}
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });
 

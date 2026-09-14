@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "DevTools/CameraPresets/CameraPresetTarget.h"
 #include "ProjectEstivalCharacter.generated.h"
 
 class UCameraComponent;
@@ -13,7 +14,7 @@ class USpringArmComponent;
  *  A controllable top-down perspective character
  */
 UCLASS(abstract)
-class AProjectEstivalCharacter : public ACharacter
+class AProjectEstivalCharacter : public ACharacter, public ICameraPresetTarget
 {
 	GENERATED_BODY()
 
@@ -43,6 +44,11 @@ public:
 
 	/** Returns the Camera Boom component **/
 	USpringArmComponent* GetCameraBoom() const { return CameraBoom.Get(); }
+
+	//~ Begin ICameraPresetTarget
+	virtual void ApplyCameraPreset_Implementation(const FCameraPresetData& Preset) override;
+	virtual FCameraPresetData CaptureCameraPreset_Implementation() const override;
+	//~ End ICameraPresetTarget
 
 };
 

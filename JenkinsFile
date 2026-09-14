@@ -102,6 +102,21 @@ pipeline {
                     env.GAME_VERSION = gameVersion
                     currentBuild.displayName = "#${env.BUILD_NUMBER} - v${gameVersion}"
                     echo "Game version: ${gameVersion}"
+
+                    def projectFile = "${env.WORKSPACE}\\ProjectEstival.uproject"
+
+                    powershell 
+                    """
+                    \$projectPath = '${projectFile}'
+                    \$version = '${gameVersion}'
+
+                    \$project = Get-Content -Raw -Path \$projectPath | ConvertFrom-Json
+                    \$project.ProjectVersion = \$version
+
+                    \$project | ConvertTo-Json -Depth 100 | Set-Content -Path \$projectPath -Encoding UTF8
+
+                    Write-Host "Unreal Project Version updated to \$version"
+                    """
                 }
             }
         }

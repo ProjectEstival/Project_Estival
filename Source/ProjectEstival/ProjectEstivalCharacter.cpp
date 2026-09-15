@@ -54,6 +54,34 @@ void AProjectEstivalCharacter::BeginPlay()
 	// stub
 }
 
+void AProjectEstivalCharacter::ApplyCameraPreset_Implementation(const FCameraPresetData& Preset)
+{
+	CameraBoom->TargetArmLength = Preset.ArmLength;
+	CameraBoom->SetRelativeRotation(Preset.ArmRotation);
+
+	if (TopDownCameraComponent->ProjectionMode == ECameraProjectionMode::Orthographic)
+	{
+		TopDownCameraComponent->SetOrthoWidth(Preset.OrthoWidthOrFOV);
+	}
+	else
+	{
+		TopDownCameraComponent->SetFieldOfView(Preset.OrthoWidthOrFOV);
+	}
+}
+
+FCameraPresetData AProjectEstivalCharacter::CaptureCameraPreset_Implementation() const
+{
+	FCameraPresetData Preset;
+	Preset.PresetName = TEXT("Default");
+	Preset.ArmLength = CameraBoom->TargetArmLength;
+	Preset.ArmRotation = CameraBoom->GetRelativeRotation();
+	Preset.OrthoWidthOrFOV = (TopDownCameraComponent->ProjectionMode == ECameraProjectionMode::Orthographic)
+		? TopDownCameraComponent->OrthoWidth
+		: TopDownCameraComponent->FieldOfView;
+
+	return Preset;
+}
+
 void AProjectEstivalCharacter::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);

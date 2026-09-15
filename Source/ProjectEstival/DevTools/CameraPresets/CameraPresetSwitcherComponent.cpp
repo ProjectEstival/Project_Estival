@@ -41,6 +41,17 @@ void UCameraPresetSwitcherComponent::BindDebugKeys()
 	PC->InputComponent->BindKey(EKeys::Eight, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey8);
 	PC->InputComponent->BindKey(EKeys::Nine, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey9);
 	PC->InputComponent->BindKey(EKeys::Zero, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnReturnKey);
+	
+	PC->InputComponent->BindKey(EKeys::NumPadOne, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey1);
+	PC->InputComponent->BindKey(EKeys::NumPadTwo, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey2);
+	PC->InputComponent->BindKey(EKeys::NumPadThree, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey3);
+	PC->InputComponent->BindKey(EKeys::NumPadFour, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey4);
+	PC->InputComponent->BindKey(EKeys::NumPadFive, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey5);
+	PC->InputComponent->BindKey(EKeys::NumPadSix, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey6);
+	PC->InputComponent->BindKey(EKeys::NumPadSeven, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey7);
+	PC->InputComponent->BindKey(EKeys::NumPadEight, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey8);
+	PC->InputComponent->BindKey(EKeys::NumPadNine, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnPresetKey9);
+	PC->InputComponent->BindKey(EKeys::NumPadZero, IE_Pressed, this, &UCameraPresetSwitcherComponent::OnReturnKey);
 }
 
 void UCameraPresetSwitcherComponent::ActivatePreset(int32 Slot)

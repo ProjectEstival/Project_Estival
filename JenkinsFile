@@ -157,7 +157,6 @@ pipeline {
                 -targetplatform=Win64 ^
                 -clientconfig=${params.BUILD_TYPE} ^
                 -build ^
-                --skipbuildeditor ^
                 -stage ^
                 -pak ^
                 -archive ^

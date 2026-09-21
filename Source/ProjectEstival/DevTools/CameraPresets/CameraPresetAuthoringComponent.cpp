@@ -3,36 +3,64 @@
 #include "CameraPresetAuthoringComponent.h"
 #include "CameraPresetData.h"
 #include "CameraPresetTarget.h"
-#include "Engine/DataTable.h"
 
 #if WITH_EDITOR
+
+#include "CameraPresetTableWriter.h"
+#include "Engine/DataTable.h"
+#include "Framework/Notifications/NotificationManager.h"
+#include "Widgets/Notifications/SNotificationList.h"
+
+namespace
+{
+	void Report(bool bSuccess, const FString& Message)
+	{
+		if (bSuccess)
+		{
+			UE_LOG(LogTemp, Log, TEXT("CameraPresetAuthoring: %s"), *Message);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("CameraPresetAuthoring: %s"), *Message);
+		}
+
+		FNotificationInfo Info(FText::FromString(Message));
+		Info.ExpireDuration = bSuccess ? 4.0f : 8.0f;
+
+		if (TSharedPtr<SNotificationItem> Notification = FSlateNotificationManager::Get().AddNotification(Info))
+		{
+			Notification->SetCompletionState(bSuccess ? SNotificationItem::CS_Success : SNotificationItem::CS_Fail);
+		}
+	}
+}
+
 void UCameraPresetAuthoringComponent::SaveCurrentCameraToPresetRow()
 {
 	AActor* Owner = GetOwner();
 
 	if (!Owner || !Owner->GetClass()->ImplementsInterface(UCameraPresetTarget::StaticClass()))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CameraPresetAuthoringComponent: owning actor does not implement ICameraPresetTarget."));
+		Report(false, TEXT("The owning actor does not implement Camera Preset Target."));
 		return;
 	}
 
 	if (!TargetPresetTable)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("CameraPresetAuthoringComponent: no Target Preset Table assigned."));
+		Report(false, TEXT("No Target Preset Table assigned."));
 		return;
 	}
 
 	FCameraPresetData Preset = ICameraPresetTarget::Execute_CaptureCameraPreset(Owner);
 	Preset.PresetName = PresetNameToSave.IsEmpty() ? FString::FromInt(PresetSlotToSave) : PresetNameToSave;
 
-	const FName RowName(*FString::FromInt(PresetSlotToSave));
+	if (!FCameraPresetTableWriter::WriteRow(*TargetPresetTable, FCameraPresetData::RowNameForSlot(PresetSlotToSave), Preset))
+	{
+		Report(false, FString::Printf(TEXT("%s does not use the Camera Preset Data row type, nothing was written."), *TargetPresetTable->GetName()));
+		return;
+	}
 
-	TargetPresetTable->Modify();
-	TargetPresetTable->AddRow(RowName, Preset);
-	TargetPresetTable->MarkPackageDirty();
-	TargetPresetTable->OnDataTableChanged().Broadcast();
-
-	UE_LOG(LogTemp, Log, TEXT("Saved camera preset to row '%d' (Arm Length %.1f, Rotation %s, Ortho/FOV %.1f). Remember to save the Data Table asset."),
-		PresetSlotToSave, Preset.ArmLength, *Preset.ArmRotation.ToString(), Preset.OrthoWidthOrFOV);
+	Report(true, FString::Printf(TEXT("Saved slot %d to %s (arm %.0f, rotation %s, zoom %.0f). Save the Data Table asset to keep it."),
+		PresetSlotToSave, *TargetPresetTable->GetName(), Preset.ArmLength, *Preset.ArmRotation.ToString(), Preset.OrthoWidthOrFOV));
 }
+
 #endif

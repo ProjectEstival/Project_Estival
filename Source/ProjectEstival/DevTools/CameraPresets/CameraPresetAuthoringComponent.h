@@ -15,7 +15,7 @@ class UCameraPresetAuthoringComponent : public UActorComponent
 
 public:
 	
-	UPROPERTY(EditAnywhere, Category = "Camera Preset Authoring")
+	UPROPERTY(EditAnywhere, Category = "Camera Preset Authoring", meta = (RequiredAssetDataTags = "RowStructure=/Script/ProjectEstival.CameraPresetData"))
 	TObjectPtr<UDataTable> TargetPresetTable;
 	
 	UPROPERTY(EditAnywhere, Category = "Camera Preset Authoring", meta = (ClampMin = "1", ClampMax = "9"))

@@ -31,6 +31,9 @@ public class ProjectEstival : ModuleRules
 		if (Target.Type == TargetType.Editor)
 		{
 			PublicDependencyModuleNames.Add("AssetTools");
+
+			// DevTools/CameraPresets authoring tool (editor-only code, guarded by WITH_EDITOR): DataTableEditorUtils + ScopedTransaction
+			PrivateDependencyModuleNames.Add("UnrealEd");
 		}
 
 		PrivateDependencyModuleNames.AddRange(new string[] { });

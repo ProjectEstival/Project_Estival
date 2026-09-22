@@ -62,6 +62,8 @@ pipeline {
                     commitAuthor = bat(script: "@echo off\ngit log -1 --pretty=%%an", returnStdout: true).trim().split('\n').last()
                     def parentHashes = bat(script: "@echo off\ngit log -1 --pretty=%%p", returnStdout: true).trim().split('\n').last()
                     isMerge = parentHashes.tokenize(' ').size() > 1
+                    echo "Commit message: ${commitMsg}"
+                    echo "Parent hashes: '${parentHashes}' (count: ${parentHashes.tokenize(' ').size()}) -> isMerge=${isMerge}"
 
                     def commitSha = bat(script: "@echo off\ngit rev-parse HEAD", returnStdout: true).trim().split('\n').last()
                     try {

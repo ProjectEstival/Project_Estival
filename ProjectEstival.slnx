@@ -10,14 +10,14 @@
     <Platform Name="Win64-arm64ec" />
   </Configurations>
   <Folder Name="/Engine/">
-    <Project Path="Intermediate/ProjectFiles/UE5.vcxproj" Id="ecad5827-6737-30c5-8e7e-71ac4f0b6cf9">
+    <Project Path="Intermediate/ProjectFiles/UE5.vcxproj" Id="ad38c4da-b149-37e1-9818-3e9e96171a8f">
       <BuildType Project="BuiltWithUnrealBuildTool" />
       <Platform Project="Win64" />
       <Build Project="false" />
     </Project>
   </Folder>
   <Folder Name="/Games/">
-    <Project Path="Intermediate/ProjectFiles/ProjectEstival.vcxproj" Id="639c013d-7d4f-3668-98d9-05ac5ed32d6d">
+    <Project Path="Intermediate/ProjectFiles/ProjectEstival.vcxproj" Id="7841a449-ba33-3f40-b602-61c8abb3639a">
       <BuildType Solution="DebugGame Editor|Win64" Project="DebugGame_Editor" />
       <BuildType Solution="DebugGame Editor|Win64-arm64" Project="Win64_arm64_DebugGame_Editor" />
       <BuildType Solution="DebugGame Editor|Win64-arm64ec" Project="Win64_arm64ec_DebugGame_Editor" />
@@ -34,9 +34,9 @@
     </Project>
   </Folder>
   <Folder Name="/Visualizers/">
-    <File Path="../../../../../../../UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natjmc" />
-    <File Path="../../../../../../../UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natstepfilter" />
-    <File Path="../../../../../../../UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natvis" />
+    <File Path="../../EpicGames/UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natjmc" />
+    <File Path="../../EpicGames/UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natstepfilter" />
+    <File Path="../../EpicGames/UE_5.8/Engine/Extras/VisualStudioDebugging/Unreal.natvis" />
   </Folder>
   <Properties Name="ddbf523f-7eb6-4887-bd51-85a714ff87eb">
     <Property Name="AvailablePlatforms" Value="Win64" />

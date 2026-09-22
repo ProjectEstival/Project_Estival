@@ -166,6 +166,7 @@ pipeline {
                 -CookMapsOnly ^
                 -utf8output
                 """
+                // -skipbuildeditor
             }
         }
 

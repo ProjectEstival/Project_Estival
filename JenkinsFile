@@ -27,7 +27,7 @@ pipeline {
 
     parameters {
         choice(name: 'BUILD_TYPE', choices: ['Shipping', 'Development'], description: 'Build configuration for Unreal Engine')
-        string(name: 'UE_VERSION', defaultValue: '5.7', description: 'Unreal Engine Version')
+        string(name: 'UE_VERSION', defaultValue: '5.8', description: 'Unreal Engine Version')
         string(name: 'GITHUB_REPO_LINK', defaultValue: 'https://github.com/thanostham/Project_Estival.git', description: 'Link of Github Repository')
         string(name: 'STEAM_BRANCH', defaultValue: 'internal_testing', description: 'Branch which the build will be deployed to')
         booleanParam(name: 'PROMOTE_TO_DEFAULT', defaultValue: false, description: 'On main only: set the uploaded build live on the DEFAULT (public) branch')

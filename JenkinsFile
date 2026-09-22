@@ -1,4 +1,3 @@
-//map1
 def branchMap = [:]
 branchMap['w0-blockout-testing'] = "blk_testing"
 branchMap['develop'] = "internal_testing"

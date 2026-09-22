@@ -104,6 +104,30 @@ pipeline {
                     env.GAME_VERSION = gameVersion
                     currentBuild.displayName = "#${env.BUILD_NUMBER} - v${gameVersion}"
                     echo "Game version: ${gameVersion}"
+
+                    def gameIniPath = "${env.WORKSPACE}\\Config\\DefaultGame.ini"
+                    def sectionHeader = '[/Script/EngineSettings.GeneralProjectSettings]'
+                    def iniLines = readFile(file: gameIniPath).split('\r?\n') as List
+                    def sectionIdx = iniLines.findIndexOf { it.trim() == sectionHeader }
+                    if (sectionIdx == -1) {
+                        error "Could not find ${sectionHeader} in DefaultGame.ini"
+                    }
+                    def versionLineIdx = -1
+                    for (int i = sectionIdx + 1; i < iniLines.size(); i++) {
+                        def line = iniLines[i].trim()
+                        if (line.startsWith('[') && line.endsWith(']')) break
+                        if (line.startsWith('ProjectVersion=')) {
+                            versionLineIdx = i
+                            break
+                        }
+                    }
+                    if (versionLineIdx >= 0) {
+                        iniLines[versionLineIdx] = "ProjectVersion=${gameVersion}"
+                    } else {
+                        iniLines.add(sectionIdx + 1, "ProjectVersion=${gameVersion}")
+                    }
+                    writeFile(file: gameIniPath, text: iniLines.join('\r\n') + '\r\n')
+                    echo "Set ProjectVersion=${gameVersion} in DefaultGame.ini"
                 }
             }
         }
@@ -291,6 +315,18 @@ pipeline {
                     result: 'SUCCESS',
                     thumbnail: avatarUrl,
                     webhookURL: DISCORD_WEBHOOK_URL
+
+                if (steamBuildId?.trim()) {
+                    try {
+                        withCredentials([string(credentialsId: 'GITHUB_API_TOKEN', variable: 'GITHUB_API_TOKEN')]) {
+                            bat "git tag v${gameVersion}"
+                            bat "git push https://%GITHUB_API_TOKEN%@github.com/thanostham/Project_Estival.git v${gameVersion}"
+                        }
+                        echo "Pushed tag v${gameVersion}"
+                    } catch (e) {
+                        echo "Could not push tag v${gameVersion}: ${e}"
+                    }
+                }
             }
         }
 

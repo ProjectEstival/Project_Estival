@@ -26,4 +26,7 @@ struct FCameraPresetData : public FTableRowBase
 	//Ortho width if the camera is orthographic, or FOV (degrees) if perspective
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Camera Preset", meta = (ClampMin = "1.0"))
 	float OrthoWidthOrFOV = 2000.0f;
+
+	//Data Table row name for a slot - the switcher (reads) and the authoring tool (writes) must agree on this
+	static FName RowNameForSlot(int32 Slot) { return FName(*FString::FromInt(Slot)); }
 };

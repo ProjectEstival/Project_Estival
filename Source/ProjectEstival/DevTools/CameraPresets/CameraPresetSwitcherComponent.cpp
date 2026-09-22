@@ -71,7 +71,7 @@ void UCameraPresetSwitcherComponent::ActivatePreset(int32 Slot)
 		return;
 	}
 
-	const FName RowName(*FString::FromInt(Slot));
+	const FName RowName = FCameraPresetData::RowNameForSlot(Slot);
 	const FCameraPresetData* Row = PresetTable->FindRow<FCameraPresetData>(RowName, TEXT("CameraPresetSwitcherComponent::ActivatePreset"));
 
 	if (!Row)

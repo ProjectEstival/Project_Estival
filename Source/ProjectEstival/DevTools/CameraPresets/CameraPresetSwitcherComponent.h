@@ -18,7 +18,7 @@ public:
 
 	UCameraPresetSwitcherComponent();
 	
-	UPROPERTY(EditAnywhere, Category = "Camera Preset Switcher", meta = (RequiredAssetDataTags = "RowStructure=CameraPresetData"))
+	UPROPERTY(EditAnywhere, Category = "Camera Preset Switcher", meta = (RequiredAssetDataTags = "RowStructure=/Script/ProjectEstival.CameraPresetData"))
 	TObjectPtr<UDataTable> PresetTable;
 
 	//If false, number keys are not bound - use this to disable the tool in non-dev builds

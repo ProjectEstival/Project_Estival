@@ -11,5 +11,6 @@ public class ProjectEstivalTarget : TargetRules
 		DefaultBuildSettings = BuildSettingsVersion.V7;
 		IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 		ExtraModuleNames.Add("ProjectEstival");
+		
 	}
 }

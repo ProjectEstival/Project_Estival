@@ -47,6 +47,8 @@ public class ProjectEstival : ModuleRules
 			"ProjectEstival/Variant_TwinStick/Gameplay",
 			"ProjectEstival/Variant_TwinStick/UI"
 		});
+		
+		PrivateDependencyModuleNames.AddRange(new string[] { "OnlineSubsystem", "OnlineSubsystemUtils" });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

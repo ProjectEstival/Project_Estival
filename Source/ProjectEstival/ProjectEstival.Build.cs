@@ -17,6 +17,7 @@ public class ProjectEstival : ModuleRules
 			//Other
 			"InputCore",
 			"EnhancedInput",
+			"GameplayTags",
 			"AIModule",
 			"NavigationSystem",
 			"StateTreeModule",

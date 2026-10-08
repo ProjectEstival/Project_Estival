@@ -4,11 +4,18 @@ branchMap['w0-blockout-testing'] = "blk_testing"
 branchMap['develop'] = "internal_testing"
 branchMap['main'] = ""
 
+//Finding all caps branches (for teams) with wizzardry regs
+def deploysToSteam(String name) {
+    return name in ['develop', 'main', 'w0-blockout-testing'] || (name ==~ /^[A-Z0-9_]+(-[A-Z0-9_]+)+$/)
+}
+
 def steamBranch = "unknown"
 def steamBuildId = ""
 def commitMsg = "unknown"
 def commitAuthor = "unknown"
 def avatarUrl = ""
+def commitShort = "unknown"
+def behindLine = ""
 def gameVersion = "unknown"
 def isMerge = false
 
@@ -80,6 +87,27 @@ pipeline {
                         }
                     } catch (e) {
                         echo "Could not fetch commit author avatar: ${e}"
+                    }
+
+                    commitShort = commitSha.take(7)
+
+                    if (deploysToSteam(env.BRANCH_NAME) && !(env.BRANCH_NAME in ['develop', 'main'])) {
+                        try {
+                            withCredentials([string(credentialsId: 'GITHUB_API_TOKEN', variable: 'GITHUB_API_TOKEN')]) {
+                                def compareJson = bat(returnStdout: true,
+                                    script: "@echo off\r\ncurl.exe -s -L -H \"Authorization: Bearer %GITHUB_API_TOKEN%\" -H \"Accept: application/vnd.github+json\" https://api.github.com/repos/thanostham/Project_Estival/compare/develop...${env.BRANCH_NAME}").trim()
+                                def behindMatch = (compareJson =~ /"behind_by"\s*:\s*(\d+)/)
+                                if (behindMatch) {
+                                    def behindBy = behindMatch[0][1].toInteger()
+                                    behindLine = "**Behind develop:** ${behindBy} commit${behindBy == 1 ? '' : 's'}${behindBy > 10 ? ' ⚠️' : ''}\n"
+                                    echo "Behind develop by ${behindBy}"
+                                } else {
+                                    echo "GitHub compare response did not contain behind_by: ${compareJson.take(300)}"
+                                }
+                            }
+                        } catch (e) {
+                            echo "Could not compute behind-develop count: ${e}"
+                        }
                     }
                 }
             }
@@ -164,11 +192,7 @@ pipeline {
 
         stage('UE Build') {
             when {
-                anyOf {
-                    branch 'develop'
-                    branch 'main'
-                    branch 'w0-blockout-testing'
-                }
+                expression { return deploysToSteam(env.BRANCH_NAME) }
             }
             steps {
                 script {
@@ -199,11 +223,7 @@ pipeline {
 
         stage('Verify Build') {
             when {
-                anyOf {
-                    branch 'develop'
-                    branch 'main'
-                    branch 'w0-blockout-testing'
-                }
+                expression { return deploysToSteam(env.BRANCH_NAME) }
             }
             steps {
                 script {
@@ -220,15 +240,11 @@ pipeline {
 
         stage('Deploy to Steam') {
             when {
-                anyOf {
-                    branch 'develop'
-                    branch 'main'
-                    branch 'w0-blockout-testing'
-                }
+                expression { return deploysToSteam(env.BRANCH_NAME) }
             }
             steps {
                 script {
-                    steamBranch = branchMap.get(env.BRANCH_NAME, "internal_testing")
+                    steamBranch = branchMap.containsKey(env.BRANCH_NAME) ? branchMap[env.BRANCH_NAME] : env.BRANCH_NAME.toLowerCase().replace('-', '_')
 
                     def contentRoot = "${BUILD_DIR}\\Windows"
                     def outputRoot  = "${env.WORKSPACE}\\SteamOutput"
@@ -244,7 +260,9 @@ pipeline {
                     bat "if not exist \"${outputRoot}\" mkdir \"${outputRoot}\""
                     bat "if not exist \"${genDir}\" mkdir \"${genDir}\""
 
-                    bat """powershell -Command "(Get-Content '${vdfTemplate}') -replace 'STEAM_BRANCH_PLACEHOLDER','${steamBranch}' -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${vdfPath}'" """
+                    def steamDesc = "v${gameVersion} - ${env.BRANCH_NAME} - ${commitShort} - ${commitAuthor}".replaceAll('[^A-Za-z0-9 ._-]', '')
+
+                    bat """powershell -Command "(Get-Content '${vdfTemplate}') -replace 'STEAM_BRANCH_PLACEHOLDER','${steamBranch}' -replace 'STEAM_DESC_PLACEHOLDER','${steamDesc}' -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${vdfPath}'" """
                     bat """powershell -Command "(Get-Content '${depotVdfTemplate}') -replace 'CONTENT_ROOT_PLACEHOLDER','${contentRoot}' -replace 'OUTPUT_ROOT_PLACEHOLDER','${outputRoot}' | Set-Content '${depotVdfPath}'" """
 
                     def out = bat(returnStdout: true,
@@ -310,7 +328,7 @@ pipeline {
                 def actionDesc = env.CHANGE_ID ? "The pipeline stages for Pull Request #${env.CHANGE_ID} were successfully completed." : "The build and the Deployment to Steam (${env.BRANCH_NAME}) were successful."
 
                 discordSend title: "✅ Build Success: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
+                    description: "Splendid news Sir! ${actionDesc}\n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}\n${behindLine}**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
                     link: env.BUILD_URL,
                     result: 'SUCCESS',
                     thumbnail: avatarUrl,
@@ -343,7 +361,7 @@ pipeline {
         failure {
             script {
                 discordSend title: "❌ Build Failed: ${env.BRANCH_NAME} (#${env.BUILD_NUMBER})",
-                    description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}\n**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
+                    description: "Most unfortunate news Sir, the build for (${env.BRANCH_NAME}) has Failed.\n**Commit:** ${commitMsg}\n**Author:** ${commitAuthor}\n${behindLine}**Steam Depo:** ${steamBranch}\n**Game Version:** ${gameVersion}\n",
                     link: env.BUILD_URL,
                     result: 'FAILURE',
                     thumbnail: avatarUrl,

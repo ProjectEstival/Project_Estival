@@ -1,7 +1,7 @@
 "AppBuild"
 {
     "AppID" "4383760"
-    "Desc" "Jenkins Build - STEAM_BRANCH_PLACEHOLDER"
+    "Desc" "STEAM_DESC_PLACEHOLDER"
     "ContentRoot" "CONTENT_ROOT_PLACEHOLDER" 
     "BuildOutput" "OUTPUT_ROOT_PLACEHOLDER"
 

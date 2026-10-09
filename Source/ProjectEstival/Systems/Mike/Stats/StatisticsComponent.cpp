@@ -58,11 +58,16 @@ void UStatisticsComponent::AddModifier(const FGameplayTag StatTag, const FStatMo
 
 	if (FStatChange Change; Recalculate(StatTag, Change)) BroadcastChanges({ Change });
 }
- 
-void UStatisticsComponent::ApplyModifierSet(UStatModifierSet* Set, UObject* Source)
+
+void UStatisticsComponent::AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source)
+{
+	for (const auto& Mod : Set) AddModifier(Mod.Key, Mod.Value, Source);
+}
+
+void UStatisticsComponent::ApplyModifierAsset(UStatModifierSet* Set, UObject* Source)
 {
 	if (!Set) return;
-	for (const auto& Mod : Set->Modifiers) AddModifier(Mod.Key, Mod.Value, Source);
+	AddModifierSet(Set->Modifiers, Source);
 }
  
 int32 UStatisticsComponent::RemoveAllFromSource(UObject* Source)

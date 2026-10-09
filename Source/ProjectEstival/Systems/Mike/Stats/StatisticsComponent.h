@@ -45,7 +45,10 @@ public:
 	void AddModifier(FGameplayTag StatTag, FStatModifier Modifier, UObject* Source = nullptr);
 	
 	UFUNCTION(BlueprintCallable, Category = "Stats")
-	void ApplyModifierSet(UStatModifierSet* Set, UObject* Source);
+	void AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source);
+	
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void ApplyModifierAsset(UStatModifierSet* Set, UObject* Source);
 	
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	int32 RemoveAllFromSource(UObject* Source);

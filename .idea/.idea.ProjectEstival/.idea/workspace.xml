@@ -9,11 +9,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="39a4a540-771e-4807-950e-4956fa75cfa0" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionAIController.cpp" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionAIController.h" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionStateTreeTasks.cpp" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionStateTreeTasks.h" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/.idea.ProjectEstival/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.ProjectEstival/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Automation_ProjectEstival.slnx" beforeDir="false" afterPath="$PROJECT_DIR$/Automation_ProjectEstival.slnx" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ProjectEstival.slnx" beforeDir="false" afterPath="$PROJECT_DIR$/ProjectEstival.slnx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Content/Estival/AI/Companion/BP_CompanionAIController.uasset" beforeDir="false" afterPath="$PROJECT_DIR$/Content/Estival/AI/Companion/BP_CompanionAIController.uasset" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -30,6 +29,8 @@
     <setting file="file://$PROJECT_DIR$/Source/ProjectEstival.Target.cs" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionAIController.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionAIController.h" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionStateTreeTasks.cpp" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/AI/Companion/CompanionStateTreeTasks.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/BLK0/BLK_PCG.cpp" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/BLK0/BLK_PCG.h" root0="FORCE_HIGHLIGHTING" />
     <setting file="file://$PROJECT_DIR$/Source/ProjectEstival/ProjectEstival.Build.cs" root0="FORCE_HIGHLIGHTING" />
@@ -68,6 +69,7 @@
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;advanced.settings&quot;,
     &quot;to.speed.mode.migration.done&quot;: &quot;true&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
@@ -114,7 +116,8 @@
       <workItem from="1791815696235" duration="1195000" />
       <workItem from="1791818349508" duration="127000" />
       <workItem from="1791818847845" duration="1453000" />
-      <workItem from="1791820340736" duration="622000" />
+      <workItem from="1791820340736" duration="3669000" />
+      <workItem from="1791828665315" duration="2175000" />
     </task>
     <servers />
   </component>

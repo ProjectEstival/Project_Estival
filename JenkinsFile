@@ -337,8 +337,12 @@ pipeline {
                 if (steamBuildId?.trim()) {
                     try {
                         withCredentials([string(credentialsId: 'GITHUB_API_TOKEN', variable: 'GITHUB_API_TOKEN')]) {
-                            bat "git tag v${gameVersion}"
-                            bat "git push https://%GITHUB_API_TOKEN%@github.com/thanostham/Project_Estival.git v${gameVersion}"
+                            withEnv(['GIT_TERMINAL_PROMPT=0', 'GCM_INTERACTIVE=never']) {
+                                timeout(time: 2, unit: 'MINUTES') {
+                                    bat "git tag -f v${gameVersion}"
+                                    bat "git push https://x-access-token:%GITHUB_API_TOKEN%@github.com/thanostham/Project_Estival.git v${gameVersion}"
+                                }
+                            }
                         }
                         echo "Pushed tag v${gameVersion}"
                     } catch (e) {

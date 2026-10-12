@@ -7,8 +7,6 @@
 #include "A_CharacterBase.generated.h"
 
 class UInputAction;
-class UAC_DashComponent;
-class UAC_AbilityComponent;
 class UAC_LookAtComponent;
 class UAC_StatusEffectComponent;
 
@@ -26,7 +24,7 @@ protected:
 	TObjectPtr<UAC_StatusEffectComponent> StatusEffects;
 
 	UPROPERTY(EditAnywhere, Category="Input")
-	TObjectPtr<UInputAction> MoveAction;
+	TObjectPtr<UInputAction> MoveAction; 
 
 public:
 

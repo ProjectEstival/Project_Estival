@@ -22,7 +22,7 @@ void ADevConsoleTestActor::BeginPlay()
 void ADevConsoleTestActor::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	
 }
 
 void ADevConsoleTestActor::TestLogs()

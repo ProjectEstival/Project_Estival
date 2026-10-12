@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Public/Characters/Components/AC_LookAtComponent.h"
+#include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "GameFramework/Actor.h"
 
 UAC_LookAtComponent::UAC_LookAtComponent()

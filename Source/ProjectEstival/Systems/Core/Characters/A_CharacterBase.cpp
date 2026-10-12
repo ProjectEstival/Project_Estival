@@ -1,8 +1,8 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Public/Characters/A_CharacterBase.h"
-#include "Public/Characters/Components/AC_LookAtComponent.h"
-#include "Public/Characters/Components/AC_StatusEffectComponent.h"
+#include "Systems/Core/Characters/A_CharacterBase.h"
+#include "Systems/Thanos/Components/AC_LookAtComponent.h"
+#include "Systems/Thanos/Components/AC_StatusEffectComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputAction.h"

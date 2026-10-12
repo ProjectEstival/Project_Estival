@@ -22,9 +22,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category="Status")
 	FOnStatusEffectChanged OnEffectRemoved;
 
-	/** Adds an effect. Duration <= 0 means it lasts until removed. Re-adding refreshes the duration */
+	/** Adds an effect.*/
 	UFUNCTION(BlueprintCallable, Category="Status")
-	void AddEffect(FGameplayTag Tag, float Duration = 0.0f);
+	void AddEffect(FGameplayTag Tag, float Duration = 0.0f); //If duration is <=0 it lasts until removed or refreshed.
 
 	UFUNCTION(BlueprintCallable, Category="Status")
 	void RemoveEffect(FGameplayTag Tag);

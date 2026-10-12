@@ -33,7 +33,7 @@ void UAC_LookAtComponent::TickComponent(float DeltaTime, ELevelTick TickType, FA
 	AActor* Owner = GetOwner();
 	const FRotator Current = Owner->GetActorRotation();
 
-	//no explicit target face the movement direction
+	//no target face the movement direction
 	float Yaw = Current.Yaw;
 	if (TargetYaw.IsSet())
 	{

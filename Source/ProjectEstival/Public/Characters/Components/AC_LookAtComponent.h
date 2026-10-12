@@ -6,9 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "AC_LookAtComponent.generated.h"
 
-/**
- *  Rotates the owner yaw toward a target.
- */
+/**Rotates the owner yaw toward a target.*/
 UCLASS(ClassGroup=(Estival), meta = (BlueprintSpawnableComponent))
 class PROJECTESTIVAL_API UAC_LookAtComponent : public UActorComponent
 {
@@ -18,19 +16,19 @@ public:
 
 	UAC_LookAtComponent();
 
-	/** Rotation blend speed, 0 = instant */
+	/**Rotation 0 = instant */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="LookAt", meta = (ClampMin = 0))
 	float InterpSpeed = 0.0f;
 
-	/** Face a world location (mouse cursor, enemy...) */
+	/**Face a location*/
 	UFUNCTION(BlueprintCallable, Category="LookAt")
 	void SetLookAtLocation(const FVector& Location);
 
-	/** Face a direction (gamepad stick, AI...) */
+	/**Face a direction*/
 	UFUNCTION(BlueprintCallable, Category="LookAt")
 	void SetLookDirection(const FVector& Direction);
 
-	/** Go back to facing the movement direction */
+	/**Go back to facing the movement direction*/
 	UFUNCTION(BlueprintCallable, Category="LookAt")
 	void ClearLookTarget();
 

@@ -1,6 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
-#include "Systems/Core/Characters/A_CharacterBase.h"
+#include "Systems/Core/Characters/CharacterBase.h"
 #include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "Systems/Thanos/Components/AC_StatusEffectComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
@@ -8,7 +8,7 @@
 #include "InputAction.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
-AA_EstivalBaseCharacter::AA_EstivalBaseCharacter()
+AEstivalBaseCharacter::AEstivalBaseCharacter()
 {
 	// components do their own ticking
 	PrimaryActorTick.bCanEverTick = false;
@@ -23,7 +23,7 @@ AA_EstivalBaseCharacter::AA_EstivalBaseCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = false;
 }
 
-float AA_EstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (IsDead() || DamageAmount <= 0.f) return 0.f;
 	
@@ -31,7 +31,7 @@ float AA_EstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 }
 
-void AA_EstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
+void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
@@ -48,7 +48,7 @@ void AA_EstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerI
 	}
 }
 
-void AA_EstivalBaseCharacter::DoMove(float AxisX, float AxisY)
+void AEstivalBaseCharacter::DoMove(float AxisX, float AxisY)
 {
 	FRotator FlatRot = GetControlRotation();
 	FlatRot.Pitch = 0.0f;
@@ -57,19 +57,19 @@ void AA_EstivalBaseCharacter::DoMove(float AxisX, float AxisY)
 	AddMovementInput(FlatRot.RotateVector(FVector::RightVector), AxisY);
 }
 
-void AA_EstivalBaseCharacter::BeginPlay()
+void AEstivalBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	Resources->OnResourceChanged.AddDynamic(this, &AA_EstivalBaseCharacter::OnResourceChanged);
+	Resources->OnResourceChanged.AddDynamic(this, &AEstivalBaseCharacter::OnResourceChanged);
 }
 
-void AA_EstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)
+void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)
 {
 	if (Stat != HealthTag || IsDead()) return;
 	if (NewValue <= 0.f && OldValue > 0.f) Die();
 }
 
-void AA_EstivalBaseCharacter::Die()
+void AEstivalBaseCharacter::Die()
 {
 	if (bIsDead) return;
 	bIsDead = true;
@@ -82,7 +82,7 @@ void AA_EstivalBaseCharacter::Die()
 	Resources->SetActive(false);
 	OnDeath.Broadcast();
 }
-bool AA_EstivalBaseCharacter::TryRevive(const float HealthPercent)
+bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
 {
 	if (!IsDead()) return false;
  
@@ -101,7 +101,7 @@ bool AA_EstivalBaseCharacter::TryRevive(const float HealthPercent)
 	return true;
 }
 
-bool AA_EstivalBaseCharacter::IsDead() const
+bool AEstivalBaseCharacter::IsDead() const
 {
 	return bIsDead;
 }

@@ -6,7 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "GameFramework/Character.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
-#include "A_CharacterBase.generated.h"
+#include "CharacterBase.generated.h"
 
 class UInputAction;
 class UAC_LookAtComponent;
@@ -17,7 +17,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRevived);
 
 /**Base class for every Estival character*/
 UCLASS(Abstract)
-class PROJECTESTIVAL_API AA_EstivalBaseCharacter : public ACharacter
+class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
@@ -48,7 +48,7 @@ public:
 	UPROPERTY(BlueprintAssignable, Category= "Events")
 	FOnRevived OnRevived;
 
-	AA_EstivalBaseCharacter();
+	AEstivalBaseCharacter();
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 

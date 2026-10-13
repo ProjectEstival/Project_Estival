@@ -8,8 +8,7 @@
  
 class UStatModifierSet;
 class UStatDefinitionSet;
- 
-// Fired whenever a stat's final value changes.
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnStatChanged, FGameplayTag, Stat, float, NewValue, float, OldValue);
  
 UCLASS(ClassGroup = (Stats), meta = (BlueprintSpawnableComponent))

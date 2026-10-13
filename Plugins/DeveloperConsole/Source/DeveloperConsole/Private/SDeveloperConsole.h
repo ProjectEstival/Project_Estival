@@ -84,6 +84,6 @@ private:
     static constexpr float UIScaleStep = 0.05f;
     
     // Scroll persistence
-    float ScrollOffset = -1.0f;
     bool bAfterInitialization = false;
+    float ScrollOffset = -1.0f;
 };

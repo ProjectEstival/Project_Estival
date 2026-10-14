@@ -32,7 +32,7 @@ protected:
 	TObjectPtr<UStatisticsComponent> Statistics;
 	
 	UPROPERTY(EditDefaultsOnly, Category= "Resources", meta = (Categories = "Stats.Resources."))
-	FGameplayTag HealthTag;
+	FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;
@@ -74,7 +74,7 @@ public:
 	bool TryRevive(float HealthPercent);
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")
-	bool IsDead() const;
+	bool IsAlive() const;
 	
 private:
 	UFUNCTION()

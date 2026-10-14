@@ -3,8 +3,8 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
-#include "AbilityDefinition.h"
-#include "ResourceComponent.h"
+#include "Systems/Mike/Combat/Abilities/AbilityDefinition.h"
+#include "Systems/Mike/Combat/ResourceComponent.h"
 #include "LoadoutComponent.generated.h"
  
 class ULoadout;

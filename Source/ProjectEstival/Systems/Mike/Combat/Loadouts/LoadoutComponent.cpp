@@ -1,6 +1,6 @@
 ﻿#include "LoadoutComponent.h"
-#include "AbilityContext.h"
-#include "AbilityDefinition.h"
+#include "Systems/Mike/Combat/Abilities/AbilityContext.h"
+#include "Systems/Mike/Combat/Abilities/AbilityDefinition.h"
 #include "Loadout.h"
 #include "TimerManager.h"
 #include "Engine/World.h"

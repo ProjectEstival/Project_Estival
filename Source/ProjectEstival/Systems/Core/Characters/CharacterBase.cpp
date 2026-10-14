@@ -26,6 +26,7 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!IsAlive() || DamageAmount <= 0.f) return 0.f;
+	if (DamageCauser != this && GetTeamAttitudeTowards(*DamageCauser) == ETeamAttitude::Friendly) return 0.f;
 	
 	Resources->Modify(HealthTag, -DamageAmount);
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
@@ -61,6 +62,7 @@ void AEstivalBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	Resources->OnResourceChanged.AddDynamic(this, &AEstivalBaseCharacter::OnResourceChanged);
+	if (TeamId == FGenericTeamId::NoTeam) TeamId = DefaultTeam;
 }
 
 void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)

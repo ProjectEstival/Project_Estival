@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "CharacterBase.generated.h"
@@ -17,7 +18,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRevived);
 
 /**Base class for every Estival character*/
 UCLASS(Abstract)
-class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter
+class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -39,6 +40,9 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MoveAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Combat")
+	FGenericTeamId DefaultTeam = FGenericTeamId(0);
 
 public:
 	
@@ -68,6 +72,15 @@ public:
 		return Resources.Get();
 	}
 	
+	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override
+	{
+		this->TeamId = TeamID;
+	}
+	virtual FGenericTeamId GetGenericTeamId() const override
+	{
+		return this->TeamId;
+	}
+	
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")
@@ -81,4 +94,5 @@ private:
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue);
 	void Die();
 	bool bIsDead = false;
+	FGenericTeamId TeamId = FGenericTeamId::NoTeam;
 };

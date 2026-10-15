@@ -21,6 +21,9 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = .1f, Units = "cm"))
 	float DamageWidth = 100;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TEnumAsByte<ECollisionChannel> CollisionChannel = ECC_Pawn;
 
 public:
 	virtual TSet<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const override;

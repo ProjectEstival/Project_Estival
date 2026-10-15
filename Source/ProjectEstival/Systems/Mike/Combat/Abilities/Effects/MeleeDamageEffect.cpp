@@ -25,7 +25,7 @@ TSet<AActor*> UMeleeDamageEffect::GetTargets_Implementation(const FAbilityContex
 		Overlaps,
 		Center,
 		Rotation,
-		ECC_WorldDynamic,
+		CollisionChannel,
 		FCollisionShape::MakeBox(HalfExtent),
 		Params
 	);

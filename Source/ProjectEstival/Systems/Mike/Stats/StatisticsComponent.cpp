@@ -10,10 +10,10 @@ UStatisticsComponent::UStatisticsComponent()
 void UStatisticsComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
-	if (DefaultStats) InitializeFromDefinitions(DefaultStats);
+	if (DefaultStats) SetStatCollection(DefaultStats);
 }
  
-void UStatisticsComponent::InitializeFromDefinitions(const UStatDefinitionSet* Definitions)
+void UStatisticsComponent::SetStatCollection(const UStatDefinitionSet* Definitions)
 {
 	if (!Definitions) return;
 	
@@ -26,8 +26,12 @@ void UStatisticsComponent::RegisterStat(const FGameplayTag StatTag, const FStatD
 	if (!StatTag.IsValid()) return;
 	
 	FStat& Stat = Stats.FindOrAdd(StatTag);
+	const float OldValue = Stat.CachedValue;
+	
 	Stat.SetupFromDef(Definition);
 	RegisteredStats.Add(StatTag);
+	
+	OnStatChanged.Broadcast(StatTag, Stat.CachedValue, OldValue);
 }
 
 bool UStatisticsComponent::HasStat(const FGameplayTag Stat) const

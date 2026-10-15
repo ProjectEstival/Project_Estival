@@ -26,12 +26,7 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
  
 	if (UStatisticsComponent* Stats = ResolveStats())
 	{
-		if (OldLoadout) Stats->RemoveAllFromSource(OldLoadout);
-		
-		if (NewLoadout && NewLoadout->StatModifiers)
-		{
-			Stats->ApplyModifierAsset(NewLoadout->StatModifiers, NewLoadout);
-		}
+		if (NewLoadout && NewLoadout->BaseStats) Stats->SetStatCollection(NewLoadout->BaseStats);
 	}
  
 	CurrentLoadout = NewLoadout;

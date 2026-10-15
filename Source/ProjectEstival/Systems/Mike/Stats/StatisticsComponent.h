@@ -70,4 +70,7 @@ private:
  
 	UPROPERTY(VisibleInstanceOnly, Category = "Stats|Debug")
 	TMap<FGameplayTag, FStat> Stats;
+	
+	UPROPERTY(Transient)
+	TSet<FGameplayTag> RegisteredStats;
 };

@@ -17,34 +17,34 @@ void UStatisticsComponent::InitializeFromDefinitions(const UStatDefinitionSet* D
 {
 	if (!Definitions) return;
 	
-	for (const TPair<FGameplayTag, FStatDefinition>& Pair : Definitions->Stats)
-		RegisterStat(Pair.Key, Pair.Value);
+	RegisteredStats.Reset();
+	for (const TPair<FGameplayTag, FStatDefinition>& Pair : Definitions->Stats) RegisterStat(Pair.Key, Pair.Value);
 }
  
 void UStatisticsComponent::RegisterStat(const FGameplayTag StatTag, const FStatDefinition& Definition)
 {
 	if (!StatTag.IsValid()) return;
 	
-	FStat Stat;
+	FStat& Stat = Stats.FindOrAdd(StatTag);
 	Stat.SetupFromDef(Definition);
-	Stats.Add(StatTag, Stat);
+	RegisteredStats.Add(StatTag);
 }
 
 bool UStatisticsComponent::HasStat(const FGameplayTag Stat) const
 {
-	return Stats.Contains(Stat);
+	return RegisteredStats.Contains(Stat);
 }
  
 float UStatisticsComponent::GetFloat(const FGameplayTag Stat, const float Fallback) const
 {
+	if (!HasStat(Stat)) return Fallback;
 	const FStat* Found = Stats.Find(Stat);
 	return Found? Found->CachedValue : Fallback;
 }
  
 int32 UStatisticsComponent::GetInt(const FGameplayTag Stat, const int32 Fallback) const
 {
-	const FStat* Found = Stats.Find(Stat);
-	return Found ? FMath::RoundToInt(Found->CachedValue) : Fallback;
+	return FMath::RoundToInt(GetFloat(Stat, Fallback));
 }
  
 void UStatisticsComponent::AddModifier(const FGameplayTag StatTag, const FStatModifier Modifier, UObject* Source)
@@ -88,7 +88,7 @@ int32 UStatisticsComponent::RemoveAllFromSource(UObject* Source)
 		{
 			TotalRemoved += Removed;
 			FStatChange Change;
-			if (Recalculate(Pair.Key, Change)) Changes.Add(Change);
+			if (Recalculate(Pair.Key, Change) && HasStat(Pair.Key)) Changes.Add(Change);
 		}
 	}
  
@@ -107,7 +107,7 @@ void UStatisticsComponent::ClearAllModifiers()
 		Pair.Value.Modifiers.Reset();
  
 		FStatChange Change;
-		if (Recalculate(Pair.Key, Change)) Changes.Add(Change);
+		if (Recalculate(Pair.Key, Change) && HasStat(Pair.Key)) Changes.Add(Change);
 	}
  
 	BroadcastChanges(Changes);

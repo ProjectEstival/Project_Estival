@@ -1,7 +1,7 @@
 ﻿#pragma once
  
 #include "CoreMinimal.h"
-#include "ResourceComponent.h"
+#include "Systems/Mike/Combat/ResourceComponent.h"
 #include "AbilityContext.generated.h"
  
 class UStatisticsComponent;

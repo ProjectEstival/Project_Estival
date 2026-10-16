@@ -25,7 +25,8 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 
 float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (IsDead() || DamageAmount <= 0.f) return 0.f;
+	if (!IsAlive() || DamageAmount <= 0.f) return 0.f;
+	if (DamageCauser != this && GetTeamAttitudeTowards(*DamageCauser) == ETeamAttitude::Friendly) return 0.f;
 	
 	Resources->Modify(HealthTag, -DamageAmount);
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
@@ -61,11 +62,12 @@ void AEstivalBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	Resources->OnResourceChanged.AddDynamic(this, &AEstivalBaseCharacter::OnResourceChanged);
+	if (TeamId == FGenericTeamId::NoTeam) TeamId = DefaultTeam;
 }
 
 void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)
 {
-	if (Stat != HealthTag || IsDead()) return;
+	if (Stat != HealthTag || !IsAlive()) return;
 	if (NewValue <= 0.f && OldValue > 0.f) Die();
 }
 
@@ -84,7 +86,7 @@ void AEstivalBaseCharacter::Die()
 }
 bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
 {
-	if (!IsDead()) return false;
+	if (IsAlive()) return false;
  
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 	
@@ -101,7 +103,7 @@ bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
 	return true;
 }
 
-bool AEstivalBaseCharacter::IsDead() const
+bool AEstivalBaseCharacter::IsAlive() const
 {
-	return bIsDead;
+	return !bIsDead;
 }

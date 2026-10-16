@@ -1,6 +1,6 @@
 ﻿#include "LoadoutComponent.h"
-#include "AbilityContext.h"
-#include "AbilityDefinition.h"
+#include "Systems/Mike/Combat/Abilities/AbilityContext.h"
+#include "Systems/Mike/Combat/Abilities/AbilityDefinition.h"
 #include "Loadout.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
@@ -26,12 +26,7 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
  
 	if (UStatisticsComponent* Stats = ResolveStats())
 	{
-		if (OldLoadout) Stats->RemoveAllFromSource(OldLoadout);
-		
-		if (NewLoadout && NewLoadout->StatModifiers)
-		{
-			Stats->ApplyModifierAsset(NewLoadout->StatModifiers, NewLoadout);
-		}
+		if (NewLoadout && NewLoadout->BaseStats) Stats->SetStatCollection(NewLoadout->BaseStats);
 	}
  
 	CurrentLoadout = NewLoadout;

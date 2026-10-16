@@ -31,7 +31,7 @@ void UStatisticsComponent::RegisterStat(const FGameplayTag StatTag, const FStatD
 	Stat.SetupFromDef(Definition);
 	RegisteredStats.Add(StatTag);
 	
-	OnStatChanged.Broadcast(StatTag, Stat.CachedValue, OldValue);
+	if (!FMath::IsNearlyEqual(Stat.CachedValue, OldValue)) OnStatChanged.Broadcast(StatTag, Stat.CachedValue, OldValue);
 }
 
 bool UStatisticsComponent::HasStat(const FGameplayTag Stat) const
@@ -119,6 +119,8 @@ void UStatisticsComponent::ClearAllModifiers()
  
 bool UStatisticsComponent::Recalculate(const FGameplayTag& Tag, FStatChange& OutChange)
 {
+	if (!HasStat(Tag)) return false;
+	
 	FStat& Stat = Stats[Tag];
 	const float Old = Stat.CachedValue;
 	Stat.CachedValue = Stat.Calculate();

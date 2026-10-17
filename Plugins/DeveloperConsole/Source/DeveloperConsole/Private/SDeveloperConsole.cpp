@@ -2,7 +2,6 @@
 #include "SDeveloperConsole.h"
 
 #include "DevConsoleLogEvent.h"
-#include "DeveloperConsole.h"
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -192,7 +191,7 @@ void SDeveloperConsole::Construct(const FArguments& InArgs)
 }
 
 // Event Drawing
-TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable) const
 {
     const TCHAR* LevelText = TEXT("LOG");
     FSlateColor LevelColor = FSlateColor(FLinearColor(0.75f, 0.78f, 0.82f));
@@ -404,7 +403,7 @@ void SDeveloperConsole::ClearLogs()
 }
 
 // Details Panel (Stack Trace)
-void SDeveloperConsole::UpdateDetails()
+void SDeveloperConsole::UpdateDetails() const
 {
     if (DetailsText.IsValid()) DetailsText->SetText(GetSelectedDetails());
 }

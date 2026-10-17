@@ -87,7 +87,7 @@ void FDevConsoleLogSink::Serialize(const TCHAR* Message, ELogVerbosity::Type Ver
 }
 
 
-void FDevConsoleLogSink::CaptureStack(TArray<FDevConsoleStackFrame>& OutStack) const
+void FDevConsoleLogSink::CaptureStack(TArray<FDevConsoleStackFrame>& OutStack)
 {
     constexpr uint32 MaxDepth = 64;
     uint64 BackTrace[MaxDepth] = {};

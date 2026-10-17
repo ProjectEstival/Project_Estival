@@ -19,17 +19,20 @@ public:
 
 	AEnemyAIController();
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "AI Senses")
-	UAIPerceptionComponent* AIPerceptionComp;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AI Senses")
+	TObjectPtr<UAIPerceptionComponent> AIPerceptionComp;
 	
-	UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "AI State Tree")
-	UStateTreeAIComponent* StateTree;
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AI State Tree")
+	TObjectPtr<UStateTreeAIComponent> StateTree;
 	
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
-	AEstivalBaseCharacter* PlayerRef;
+	TObjectPtr<AEstivalBaseCharacter> PlayerRef;
+	
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
+	TArray<TObjectPtr<AEstivalBaseCharacter>> SensedPlayerRef;
 	
 	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Targets")
-	int PatrolIndex = 0;
+	int32 PatrolIndex = 0;
 	
 protected:
 	
@@ -38,6 +41,9 @@ protected:
 private:
 
 	UFUNCTION()
-	void OnTargetSensotUpdated(AActor* Actor, FAIStimulus Stimulus);
+	void OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+	UFUNCTION()
+	void UpdatePlayerRef();
 	
 };

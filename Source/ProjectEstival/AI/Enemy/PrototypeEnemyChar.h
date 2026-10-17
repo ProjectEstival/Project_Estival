@@ -7,7 +7,7 @@
 #include "PrototypeEnemyChar.generated.h"
 
 UENUM(BlueprintType)
-enum class PatrolType : uint8
+enum class EPatrolType : uint8
 {
 	NextInLine UMETA(DisplayName = "Next In Line"),
 	RNG UMETA(DisplayName = "RNG"),
@@ -21,10 +21,10 @@ class PROJECTESTIVAL_API APrototypeEnemyChar : public AEstivalBaseCharacter
 	
 public:
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AI Patrol")
+	UPROPERTY(BlueprintReadWrite, EditInstanceOnly, Category = "AI Patrol")
 	TArray<AActor*> PatrolPoints;
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "AI Patrol")
-	PatrolType PatrolType = PatrolType::NextInLine;
+	UPROPERTY(BlueprintReadWrite, EditInstanceOnly, Category = "AI Patrol")
+	EPatrolType PatrolType = EPatrolType::NextInLine;
 	
 };

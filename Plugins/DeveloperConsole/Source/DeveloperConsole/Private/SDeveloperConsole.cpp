@@ -231,7 +231,6 @@ TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEv
     })
     [
         SNew(SHorizontalBox)
-        
         + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(TAttribute<FMargin>::CreateLambda([this]()
         {
             return FMargin(0.0f, 0.0f, Scaled(10.0f),0.0f);

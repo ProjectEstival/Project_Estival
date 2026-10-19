@@ -104,12 +104,15 @@ void AEstivalSharedCamera::SetFocusOnTarget(AActor* NewFocusTarget)
 void AEstivalSharedCamera::GatherFramedActors(TArray<AActor*>& OutActors) const
 {
 	OutActors.Reset();
-	if (!FramedActorClass) return;
 	
-	// class filtered search, cheap for a handful of party members
-	for (TActorIterator<AActor> It(GetWorld(), FramedActorClass); It; ++It)
+	// filtering through controllers to make sure only human characters are framed
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
-		OutActors.Add(*It);
+		const APlayerController* PlayerController = It->Get();
+		if (PlayerController && PlayerController->GetPawn())
+		{
+			OutActors.Add(PlayerController->GetPawn());
+		}
 	}
 }
 

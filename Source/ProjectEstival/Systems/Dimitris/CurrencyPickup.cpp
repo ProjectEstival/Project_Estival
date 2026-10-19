@@ -19,15 +19,15 @@ ACurrencyPickup::ACurrencyPickup()
 	Mesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Mesh"));
 	Mesh->SetupAttachment(CollisionSphere);
 	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-
-	CollisionSphere->OnComponentBeginOverlap.AddDynamic(
-		this, &ACurrencyPickup::OnPickupOverlap
-	);
 }
 
 void ACurrencyPickup::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	CollisionSphere->OnComponentBeginOverlap.AddDynamic(
+	this, &ACurrencyPickup::OnPickupOverlap
+);
 }
 
 void ACurrencyPickup::OnPickupOverlap(

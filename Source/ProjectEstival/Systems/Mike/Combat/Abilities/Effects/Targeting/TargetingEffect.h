@@ -11,7 +11,10 @@ class PROJECTESTIVAL_API UTargetingEffect : public UAbilityEffect
 	GENERATED_BODY()
 	
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0))
+	UPROPERTY(BlueprintReadWrite)
+	bool bAllowTargetLimit = true;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowTargetLimit", EditConditionHides))
 	int TargetLimit = 0;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")

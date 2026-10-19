@@ -12,7 +12,7 @@ void UTargetingEffect::Execute_Implementation(const FAbilityContext& Context) co
 	{
 		if (TargetLimit > 0 && SuccessCounter >= TargetLimit) break;
 		
-		if (!Target || Target == Context.Instigator || AlreadyHit.Contains(Target)) continue;
+		if (!Target || AlreadyHit.Contains(Target)) continue;
  
 		AlreadyHit.Add(Target);
 		

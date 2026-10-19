@@ -35,6 +35,9 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category= "Resources", meta = (Categories = "Stats.Resources."))
 	FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
 	
+	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status.."))
+	FGameplayTag InvincibilityTag = FGameplayTag::RequestGameplayTag(FName("Status.Invincible"));
+	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;
 
@@ -64,6 +67,12 @@ public:
 	UStatisticsComponent* GetStatistics() const
 	{
 		return Statistics.Get();
+	}
+	
+	UFUNCTION(BlueprintCallable, Category= "Character")
+	UAC_StatusEffectComponent* GetStatusEffects() const
+	{
+		return StatusEffects.Get();
 	}
 	
 	UFUNCTION(BlueprintCallable, Category= "Character")

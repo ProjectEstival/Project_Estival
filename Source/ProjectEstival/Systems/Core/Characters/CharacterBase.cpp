@@ -25,7 +25,7 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 
 float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (!IsAlive() || DamageAmount <= 0.f) return 0.f;
+	if (!IsAlive() || DamageAmount <= 0.f || StatusEffects->HasEffect(InvincibilityTag)) return 0.f;
 	if (DamageCauser != this && GetTeamAttitudeTowards(*DamageCauser) == ETeamAttitude::Friendly) return 0.f;
 	
 	Resources->Modify(HealthTag, -DamageAmount);

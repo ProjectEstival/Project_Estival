@@ -17,6 +17,7 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 	StatusEffects = CreateDefaultSubobject<UAC_StatusEffectComponent>(TEXT("StatusEffects"));
 	Statistics = CreateDefaultSubobject<UStatisticsComponent>(TEXT("Statistics"));
 	Resources = CreateDefaultSubobject<UResourceComponent>(TEXT("Resources"));
+	Loadout = CreateDefaultSubobject<ULoadoutComponent>(TEXT("Loadout"));
 
 	// rotation is driven by the LookAt component
 	bUseControllerRotationYaw = false;
@@ -47,6 +48,11 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 			DoMove(Axis.X, Axis.Y);
 		});
 	}
+	
+	for (const auto& InputPair : AbilityInputMap)
+	{
+		BindAbilityInput(Input, InputPair.Key, InputPair.Value);
+	}
 }
 
 void AEstivalBaseCharacter::DoMove(float AxisX, float AxisY)
@@ -69,6 +75,18 @@ void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue,
 {
 	if (Stat != HealthTag || !IsAlive()) return;
 	if (NewValue <= 0.f && OldValue > 0.f) Die();
+}
+
+void AEstivalBaseCharacter::BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag)
+{
+	if (!Input || !Action || !AbilityTag.IsValid()) return;
+	
+	Input->BindActionInstanceLambda(Action, ETriggerEvent::Started, [this, AbilityTag](const FInputActionInstance&)
+		{
+			if (!Loadout || !IsAlive()) return;
+
+			Loadout->TryActivate(AbilityTag);
+		});
 }
 
 void AEstivalBaseCharacter::Die()

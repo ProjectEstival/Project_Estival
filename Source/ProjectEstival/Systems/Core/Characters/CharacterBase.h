@@ -7,6 +7,7 @@
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
+#include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 #include "CharacterBase.generated.h"
 
 class UInputAction;
@@ -40,9 +41,15 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
+	TObjectPtr<ULoadoutComponent> Loadout;
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MoveAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category= "Input")
+	TMap<TObjectPtr<UInputAction>, FGameplayTag> AbilityInputMap;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	FGenericTeamId DefaultTeam = FGenericTeamId(0);
@@ -101,6 +108,8 @@ public:
 private:
 	UFUNCTION()
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue);
+	UFUNCTION()
+	void BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag);
 	void Die();
 	bool bIsDead = false;
 	FGenericTeamId TeamId = FGenericTeamId::NoTeam;

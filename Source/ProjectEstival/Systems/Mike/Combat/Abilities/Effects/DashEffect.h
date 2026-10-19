@@ -16,7 +16,7 @@ class PROJECTESTIVAL_API UDashEffect : public UAbilityEffect
 	
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dash", meta = (Units = "cm"))
-	float DashDistance = 200;
+	float DashDistance = 2000;
 	
 public:
 	virtual void Execute_Implementation(const FAbilityContext& Context) const override;

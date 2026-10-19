@@ -9,7 +9,6 @@
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "CharacterBase.generated.h"
 
-class UInputAction;
 class UAC_LookAtComponent;
 class UAC_StatusEffectComponent;
 
@@ -37,9 +36,6 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;
-
-	UPROPERTY(EditAnywhere, Category="Input")
-	TObjectPtr<UInputAction> MoveAction;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	FGenericTeamId DefaultTeam = FGenericTeamId(0);
@@ -54,7 +50,6 @@ public:
 
 	AEstivalBaseCharacter();
 	virtual void BeginPlay() override;
-	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 
 	/** Moves relative to the control rotation.*/
 	UFUNCTION(BlueprintCallable, Category="Movement")
@@ -72,6 +67,8 @@ public:
 		return Resources.Get();
 	}
 	
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
+	
 	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override
 	{
 		this->TeamId = TeamID;
@@ -80,8 +77,6 @@ public:
 	{
 		return this->TeamId;
 	}
-	
-	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	bool TryRevive(float HealthPercent);

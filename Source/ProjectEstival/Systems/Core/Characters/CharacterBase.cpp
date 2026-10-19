@@ -4,8 +4,6 @@
 #include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "Systems/Thanos/Components/AC_StatusEffectComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "EnhancedInputComponent.h"
-#include "InputAction.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
 AEstivalBaseCharacter::AEstivalBaseCharacter()
@@ -30,23 +28,6 @@ float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& 
 	
 	Resources->Modify(HealthTag, -DamageAmount);
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
-}
-
-void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
-	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	if (!Input) return;
-
-	if (MoveAction)
-	{
-		Input->BindActionValueLambda(MoveAction, ETriggerEvent::Triggered, [this](const FInputActionValue& Value)
-		{
-			const FVector2D Axis = Value.Get<FVector2D>();
-			DoMove(Axis.X, Axis.Y);
-		});
-	}
 }
 
 void AEstivalBaseCharacter::DoMove(float AxisX, float AxisY)

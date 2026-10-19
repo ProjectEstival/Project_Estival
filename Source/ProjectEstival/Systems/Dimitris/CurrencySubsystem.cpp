@@ -39,7 +39,7 @@ bool UCurrencySubsystem::TryConsumeCurrency(ECurrencyType Type, int32 Amount)
 	return true;
 }
 
-void UCurrencySubsystem::ClearCurrency()
+void UCurrencySubsystem::ClearAllCurrency()
 {
 	for (const auto& Entry : CurrencyAmounts)
 	{
@@ -47,4 +47,10 @@ void UCurrencySubsystem::ClearCurrency()
 	}
 
 	CurrencyAmounts.Empty();
+}
+
+void UCurrencySubsystem::ClearCurrency(ECurrencyType Type)
+{
+	CurrencyAmounts.Remove(Type);
+	OnCurrencyChanged.Broadcast(Type, 0);
 }

@@ -38,7 +38,10 @@ public:
 	bool TryConsumeCurrency(ECurrencyType Type, int32 Amount);
 
 	UFUNCTION(BlueprintCallable, Category = "Currency")
-	void ClearCurrency();
+	void ClearAllCurrency();
+	
+	UFUNCTION(BlueprintCallable, Category = "Currency")
+	void ClearCurrency(ECurrencyType Type);
 
 private:
 

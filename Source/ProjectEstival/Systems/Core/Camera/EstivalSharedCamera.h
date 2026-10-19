@@ -47,10 +47,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Shared Camera")
 	TObjectPtr<AActor> FocusTarget;
 	
-	//every actor of this class is kept visible on screen. 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Shared Camera")
-	TSubclassOf<AActor> FramedActorClass;
-	
 	// Prefered distnce from the focus point. Camera never gets closer than this
 	UPROPERTY(EditAnywhere, Category = "Shared Camera|Distance")
 	float MinDistance = 800.0f;

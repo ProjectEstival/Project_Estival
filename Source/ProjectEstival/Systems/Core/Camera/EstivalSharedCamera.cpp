@@ -7,7 +7,6 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/GameViewportClient.h"
 #include "Engine/World.h"
-#include "EngineUtils.h"
 #include "GameFramework/GameModeBase.h"
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -37,6 +36,11 @@ AEstivalSharedCamera::AEstivalSharedCamera()
 
 	Camera = CreateDefaultSubobject<UCameraComponent>(TEXT("Camera"));
 	Camera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
+	
+	// DistanceToFit treats FieldOfView as the horizontal angle so keep it horizontal on every screen shape
+	// (the project default in DefaultEngine.ini keeps the vertical angle fixed instead from what I saw)
+	Camera->bOverrideAspectRatioAxisConstraint = true;
+	Camera->SetAspectRatioAxisConstraint(AspectRatio_MaintainXFOV);
 
 }
 
@@ -198,5 +202,15 @@ void AEstivalSharedCamera::UpdateCamera(float DeltaSeconds, bool bSnap)
 	const float ZoomSpeed = TargetDistance > CurrentDistance ? ZoomOutSpeed : ZoomInSpeed;
 	CameraBoom->TargetArmLength = bSnap ? TargetDistance : FMath::FInterpTo(CurrentDistance, TargetDistance, DeltaSeconds, ZoomSpeed);
 
-	
+	// --- DEBUGGING - TODELETE ---
+	if (bDrawDebug)
+	{
+		// yellow = where the camera looks, green = fits at Max Distance, red = doesn't
+		DrawDebugSphere(GetWorld(), NewFocus, 30.f, 12, FColor::Yellow);
+		for (const AActor* Actor : FramedActors)
+		{
+			const FColor Color = CanFrameLocation(Actor->GetActorLocation()) ? FColor::Green : FColor::Red;
+			DrawDebugSphere(GetWorld(), Actor->GetActorLocation(), 60.f, 12, Color);
+		}
+	}
 }

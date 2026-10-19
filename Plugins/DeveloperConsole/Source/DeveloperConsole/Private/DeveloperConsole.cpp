@@ -10,6 +10,10 @@
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
 
+#if WITH_EDITOR
+#include "Editor.h"
+#endif
+
 namespace
 {
     class FDevConsoleInputProcessor final : public IInputProcessor
@@ -64,6 +68,9 @@ void FDeveloperConsoleModule::StartupModule()
         FSlateApplication::Get().RegisterInputPreProcessor(InputProcessor.ToSharedRef());
     }
 #endif
+#if WITH_EDITOR
+    if (GIsEditor) EndPIEDelegateHandle = FEditorDelegates::EndPIE.AddRaw(this, &FDeveloperConsoleModule::OnPIESessionEnded);
+#endif
 }
 void FDeveloperConsoleModule::ShutdownModule()
 {
@@ -82,6 +89,9 @@ void FDeveloperConsoleModule::ShutdownModule()
     
     if (InputProcessor.IsValid() && FSlateApplication::IsInitialized()) FSlateApplication::Get().UnregisterInputPreProcessor(InputProcessor.ToSharedRef());
     InputProcessor.Reset();
+#endif
+#if WITH_EDITOR
+        if (GIsEditor && EndPIEDelegateHandle.IsValid()) FEditorDelegates::EndPIE.Remove(EndPIEDelegateHandle);
 #endif
 }
 bool FDeveloperConsoleModule::Tick(float DeltaTime)
@@ -112,6 +122,12 @@ bool FDeveloperConsoleModule::Tick(float DeltaTime)
     
     return true;
 }
+#if WITH_EDITOR
+void FDeveloperConsoleModule::OnPIESessionEnded(bool bIsSimulating)
+{
+    bConsoleVisible = false;
+}
+#endif
 
 void FDeveloperConsoleModule::RegisterConsoleCommands()
 {
@@ -141,11 +157,11 @@ void FDeveloperConsoleModule::UnregisterConsoleCommands()
 void FDeveloperConsoleModule::ToggleConsole()
 {
 #if WITH_DEVELOPER_CONSOLE
+    
     if (bConsoleVisible) HideConsole();
     else ShowConsole();
 #endif
 }
-
 void FDeveloperConsoleModule::ShowConsole()
 {
 #if WITH_DEVELOPER_CONSOLE

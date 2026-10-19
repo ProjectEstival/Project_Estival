@@ -4,14 +4,14 @@
 
 #include "CoreMinimal.h"
 #include "TargetingEffect.h"
-#include "TargetSelf.generated.h"
+#include "TargetSelfEffect.generated.h"
 
 UCLASS()
-class PROJECTESTIVAL_API UTargetSelf : public UTargetingEffect
+class PROJECTESTIVAL_API UTargetSelfEffect : public UTargetingEffect
 {
 	GENERATED_BODY()
 	
 public:
-	UTargetSelf() { bAllowTargetLimit = false; }
+	UTargetSelfEffect() { bAllowTargetLimit = false; }
 	virtual TSet<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const override;
 };

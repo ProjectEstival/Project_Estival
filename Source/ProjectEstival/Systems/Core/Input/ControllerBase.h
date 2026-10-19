@@ -17,18 +17,9 @@ class PROJECTESTIVAL_API AControllerBase : public APlayerController {
 protected:
 	
 	UPROPERTY(EditDefaultsOnly, Category = Input)
-	TObjectPtr<UInputMappingContext> DefaultMappingContext;
-	
-	UPROPERTY(EditDefaultsOnly, Category = Input)
-	TObjectPtr<UInputAction> MoveAction;
+	TObjectPtr<UInputMappingContext> DefaultMappingContexts;
 	
 	//setup
 	virtual void SetupInputComponent() override;
-	
-private:
-	
-	//reference to const value to avoid changing the original value with &
-	void Move(const FInputActionValue& Value);
-	
 };
 

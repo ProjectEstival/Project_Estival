@@ -17,7 +17,7 @@ class PROJECTESTIVAL_API AControllerBase : public APlayerController {
 protected:
 	
 	UPROPERTY(EditDefaultsOnly, Category = Input)
-	TObjectPtr<UInputMappingContext> DefaultMappingContexts;
+	TArray<TObjectPtr<UInputMappingContext>> DefaultMappingContexts;
 	
 	//setup
 	virtual void SetupInputComponent() override;

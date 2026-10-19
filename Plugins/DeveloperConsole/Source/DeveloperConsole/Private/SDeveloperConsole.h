@@ -22,14 +22,13 @@ struct FDevConsoleUIState
         // ELogVerbosity::VeryVerbose
     };
     float UIScale = 1.0f;
+    float ScrollOffset = -1.0f;
 };
 
 class SDeveloperConsole : public SCompoundWidget
 {
 public:
-    SLATE_BEGIN_ARGS(SDeveloperConsole) : _LogSink(nullptr)
-    {
-    }
+    SLATE_BEGIN_ARGS(SDeveloperConsole) : _LogSink(nullptr) { }
         SLATE_ARGUMENT(FDevConsoleLogSink*, LogSink)
         SLATE_ARGUMENT(FDevConsoleUIState, InitialUIState)
         SLATE_EVENT(FSimpleDelegate, OnClearLogs)
@@ -53,10 +52,9 @@ private:
     TSharedPtr<SMultiLineEditableTextBox> DetailsText;
     TSharedPtr<FDevConsoleLogEvent> SelectedEvent;
     FText GetSelectedDetails() const;
-    void UpdateDetails();
-    TSharedRef<ITableRow> GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable);
+    void UpdateDetails() const;
+    TSharedRef<ITableRow> GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable) const;
     void OnEventSelected(TSharedPtr<FDevConsoleLogEvent> Event, ESelectInfo::Type SelectInfo);
-    bool initialEventsLoaded = false;
     
     FSimpleDelegate OnClearLogs;
     void ClearLogs();
@@ -82,4 +80,8 @@ private:
     static constexpr float MinUIScale = 0.5f;
     static constexpr float MaxUIScale = 2.0f;
     static constexpr float UIScaleStep = 0.05f;
+    
+    // Scroll persistence
+    bool bAfterInitialization = false;
+    float ScrollOffset = -1.0f;
 };

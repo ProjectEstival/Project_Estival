@@ -77,6 +77,8 @@ float UResourceComponent::GetMax(const FGameplayTag StatTag) const
 
 float UResourceComponent::GetFloat(const FGameplayTag StatTag) const
 {
+	if (Statistics && !Statistics->HasStat(StatTag)) return 0.f;
+	
 	const FResourceConfig* Config = FindConfig(StatTag);
 	if (!Config) return 0.f;
 	

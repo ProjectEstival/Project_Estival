@@ -6,8 +6,8 @@
 #include "Engine/DataAsset.h"
 #include "GameplayTagContainer.h"
 #include "Loadout.generated.h"
- 
-class UStatModifierSet;
+
+class UStatDefinitionSet;
 class UAbilityDefinition;
 class UTexture2D;
  
@@ -28,7 +28,7 @@ public:
 	TObjectPtr<UTexture2D> Icon;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Loadout")
-	TObjectPtr<UStatModifierSet> StatModifiers;
+	TObjectPtr<UStatDefinitionSet> BaseStats;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Loadout", meta = (Categories = "Ability."))
 	TMap<FGameplayTag, TObjectPtr<UAbilityDefinition>> Abilities;

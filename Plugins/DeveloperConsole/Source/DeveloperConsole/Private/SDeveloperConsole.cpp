@@ -30,7 +30,9 @@
 #define LOCTEXT_NAMESPACE "SDeveloperConsole"
 
 void SDeveloperConsole::Construct(const FArguments& InArgs)
-{    
+{
+    bAfterInitialization = false;
+    
     // Hook to module's event list
     OnClearLogs = InArgs._OnClearLogs;
     LogSink = InArgs._LogSink;
@@ -39,6 +41,7 @@ void SDeveloperConsole::Construct(const FArguments& InArgs)
     const FDevConsoleUIState& InitialState = InArgs._InitialUIState;
     EnabledVerbosity = InitialState.EnabledVerbosity;
     UIScale = FMath::Clamp(InitialState.UIScale, MinUIScale, MaxUIScale);
+    ScrollOffset = InitialState.ScrollOffset;
     
     ChildSlot
     [
@@ -86,8 +89,7 @@ void SDeveloperConsole::Construct(const FArguments& InArgs)
                 // Error
                 + SHorizontalBox::Slot().AutoWidth().Padding(4.0f).VAlign(VAlign_Center)
                 [
-                    SNew(SCheckBox).IsChecked(this, &SDeveloperConsole::GetVerbosityCheckState, ELogVerbosity::Error).OnCheckStateChanged_Lambda(
-                    [this](ECheckBoxState State)
+                    SNew(SCheckBox).IsChecked(this, &SDeveloperConsole::GetVerbosityCheckState, ELogVerbosity::Error).OnCheckStateChanged_Lambda([this](ECheckBoxState State)
                     {
                         OnVerbosityToggled(ELogVerbosity::Error, State);
                     })
@@ -276,11 +278,22 @@ TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEv
 void SDeveloperConsole::AddEvents(const TArray<FDevConsoleLogEvent>& NewEvents)
 {
     if (NewEvents.IsEmpty()) return;
+    const bool wasNearBottom = ListView->GetScrollDistanceRemaining().Y <= 0.01f;
     for (const FDevConsoleLogEvent& Event : NewEvents)
     {
         Events.Add(MakeShared<FDevConsoleLogEvent>(Event));
     }
     RefreshVisibleEvents();
+    if (bAfterInitialization)
+    {
+        if (wasNearBottom) ListView->ScrollToBottom();
+    }
+    else
+    {
+        if (ScrollOffset >= 0.0f) ListView->SetScrollOffset(ScrollOffset);
+        else ListView->ScrollToBottom();
+    }
+    bAfterInitialization = true;
 }
 
 // Event Selection
@@ -429,6 +442,7 @@ FDevConsoleUIState SDeveloperConsole::GetUIState() const
     FDevConsoleUIState State;
     State.EnabledVerbosity = EnabledVerbosity;
     State.UIScale = UIScale;
+    State.ScrollOffset = ListView->GetScrollDistanceRemaining().Y <= 0.01f ? -1.0f : ListView->GetScrollOffset();
     return State;
 }
 #undef LOCTEXT_NAMESPACE

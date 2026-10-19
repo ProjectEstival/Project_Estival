@@ -67,7 +67,7 @@ struct FStat : public FStatDefinition
 		return FMath::Clamp(Result, Min, Max);
 	}
 	
-	void SetupFromDef(const FStatDefinition StatDef)
+	void SetupFromDef(const FStatDefinition& StatDef)
 	{
 		Max = StatDef.Max;
 		Min = StatDef.Min;

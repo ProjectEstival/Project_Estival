@@ -20,7 +20,7 @@ public:
     void DrainEvents(TArray<FDevConsoleLogEvent>& OutEvents);
     
 private:
-    void CaptureStack(TArray<FDevConsoleStackFrame>& OutStack) const;
+    static void CaptureStack(TArray<FDevConsoleStackFrame>& OutStack);
     
     FCriticalSection QueueMutex;
     

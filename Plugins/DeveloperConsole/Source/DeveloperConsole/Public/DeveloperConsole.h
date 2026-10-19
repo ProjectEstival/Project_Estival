@@ -1,5 +1,6 @@
 #pragma once
 
+#include "CoreMinimal.h"
 #include "DevConsoleLogEvent.h"
 #include "SDeveloperConsole.h"
 #include "Modules/ModuleManager.h"
@@ -39,4 +40,12 @@ private:
     bool bConsoleVisible = false;
     
     FDevConsoleUIState SavedUIState;
+    
+#if WITH_EDITOR
+    // Callback function when PIE ends
+    void OnPIESessionEnded(bool bIsSimulating);
+    
+    // Handle to safely unbind the delegate later
+    FDelegateHandle EndPIEDelegateHandle;
+#endif
 };

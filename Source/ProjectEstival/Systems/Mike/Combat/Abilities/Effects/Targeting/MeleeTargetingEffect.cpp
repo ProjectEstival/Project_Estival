@@ -8,9 +8,9 @@ TSet<AActor*> UMeleeTargetingEffect::GetTargets_Implementation(const FAbilityCon
 {
 	TSet<AActor*> Targets;
 	const AActor* Instigator = Context.Instigator;
-	const UWorld* World = GetWorld();
+	const UWorld* World = IsValid(Context.Instigator) ? Context.Instigator->GetWorld() : nullptr;
 
-	if (!IsValid(Instigator) || !World) return Targets;
+	if (!World) return Targets;
 	
 	const FVector Center = Instigator->GetActorLocation() + Instigator->GetActorForwardVector() * (RangeReach * 0.5f);
 	const FVector HalfExtent(RangeReach * 0.5f, HitboxWidth * 0.5f, 100.f);

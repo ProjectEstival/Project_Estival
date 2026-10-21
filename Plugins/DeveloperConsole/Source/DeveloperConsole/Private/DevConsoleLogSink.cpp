@@ -15,28 +15,14 @@ namespace
     }
 }
 
-FDevConsoleLogSink::FDevConsoleLogSink()
-{
-}
+FDevConsoleLogSink::FDevConsoleLogSink() { }
+FDevConsoleLogSink::~FDevConsoleLogSink() { }
 
-FDevConsoleLogSink::~FDevConsoleLogSink()
-{
-}
-
-bool FDevConsoleLogSink::CanBeUsedOnAnyThread() const
-{
-    return true;
-}
-
-bool FDevConsoleLogSink::CanBeUsedOnMultipleThreads() const
-{
-    return true;
-}
+bool FDevConsoleLogSink::CanBeUsedOnAnyThread() const { return true; }
+bool FDevConsoleLogSink::CanBeUsedOnMultipleThreads() const { return true; }
 
 void FDevConsoleLogSink::SerializeRecord(const UE::FLogRecord& Record)
 {
-    // Must be thread safe and also don't call GLog to avoid infinite loops
-    
     FDevConsoleLogEvent Event;
     
     Event.Id = NextEventId.fetch_add(1, std::memory_order_relaxed);
@@ -46,7 +32,6 @@ void FDevConsoleLogSink::SerializeRecord(const UE::FLogRecord& Record)
     Event.SourceLine = Record.GetLine();
     
     if (const ANSICHAR* File = Record.GetFile()) Event.SourceFile = UTF8_TO_TCHAR(File);
-    
     Event.ThreadId = FPlatformTLS::GetCurrentThreadId();
     
     // FLogRecord stores the original format plus its structured arguments.
@@ -66,7 +51,6 @@ void FDevConsoleLogSink::SerializeRecord(const UE::FLogRecord& Record)
         PendingEvents.Add(MoveTemp(Event));
     }
 }
-
 void FDevConsoleLogSink::Serialize(const TCHAR* Message, ELogVerbosity::Type Verbosity, const FName& Category)
 {
     FDevConsoleLogEvent Event;
@@ -86,8 +70,7 @@ void FDevConsoleLogSink::Serialize(const TCHAR* Message, ELogVerbosity::Type Ver
     }
 }
 
-
-void FDevConsoleLogSink::CaptureStack(TArray<FDevConsoleStackFrame>& OutStack) const
+void FDevConsoleLogSink::CaptureStack(TArray<FDevConsoleStackFrame>& OutStack)
 {
     constexpr uint32 MaxDepth = 64;
     uint64 BackTrace[MaxDepth] = {};
@@ -120,7 +103,6 @@ void FDevConsoleLogSink::CaptureStack(TArray<FDevConsoleStackFrame>& OutStack) c
         else  Frame.Symbol = FString::Printf(TEXT("%s + 0x%llX"), *DisplayModule, static_cast<unsigned long long>(BackTrace[Index]));
     }
 }
-
 
 void FDevConsoleLogSink::DrainEvents(TArray<FDevConsoleLogEvent>& OutEvents)
 {

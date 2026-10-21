@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "Perception/AIPerceptionTypes.h"
 #include "EnemyAIController.generated.h"
 
 class UStateTreeAIComponent;
@@ -27,13 +28,7 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
 	TObjectPtr<AEstivalBaseCharacter> PlayerRef;
-	
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
-	TArray<TObjectPtr<AEstivalBaseCharacter>> SensedPlayerRef;
-	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Targets")
-	int32 PatrolIndex = 0;
-	
+
 protected:
 	
 	virtual void BeginPlay() override;
@@ -42,8 +37,5 @@ private:
 
 	UFUNCTION()
 	void OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimulus);
-	
-	UFUNCTION()
-	void UpdatePlayerRef();
 	
 };

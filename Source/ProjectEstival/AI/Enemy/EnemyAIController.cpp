@@ -33,46 +33,6 @@ void AEnemyAIController::OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimul
 
 	if (Stimulus.WasSuccessfullySensed())
 	{
-		SensedPlayerRef.AddUnique(SensePlayer);
-		UpdatePlayerRef();
+		PlayerRef = SensePlayer;
 	}
-	else
-	{
-		SensedPlayerRef.Remove(SensePlayer);
-		UpdatePlayerRef();
-	}
-}
-
-void AEnemyAIController::UpdatePlayerRef()
-{
-	SensedPlayerRef.RemoveAll([](const TObjectPtr<AEstivalBaseCharacter>& Player)
-	{
-		return !IsValid(Player);
-	});
-	
-	APawn* ControlledPawn = GetPawn();
-	
-	if (!ControlledPawn || SensedPlayerRef.IsEmpty())
-	{
-		PlayerRef = nullptr;
-		return;
-	}
-	
-	AEstivalBaseCharacter* ClosestPlayer = nullptr;
-	float MinDistance = FLT_MAX;
-	FVector SelfLocation = ControlledPawn->GetActorLocation();
-
-	for (AEstivalBaseCharacter* Player : SensedPlayerRef)
-	{
-		if (!IsValid(Player)) continue;
-
-		float Dist = FVector::DistSquared(SelfLocation, Player->GetActorLocation());
-		if (Dist < MinDistance)
-		{
-			MinDistance = Dist;
-			ClosestPlayer = Player;
-		}
-	}
-
-	PlayerRef = ClosestPlayer;
 }

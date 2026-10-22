@@ -146,6 +146,8 @@ FAbilityContext ULoadoutComponent::BuildContext(UAbilityDefinition* Ability)
 	Context.Resources = ResolveResources();
 	Context.Loadout = this;
 	Context.Ability = Ability;
+	Context.World = GetWorld();
+	Context.Origin = Context.Instigator->GetActorTransform().GetLocation();
 	return Context;
 }
 void ULoadoutComponent::ExecuteEffects(const FAbilityContext& Context)

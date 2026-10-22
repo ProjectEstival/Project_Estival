@@ -116,6 +116,7 @@ bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
 		if (!PreviousController->GetPawn()) PreviousController->Possess(this);
 	}
 	
+	bIsDead = false;
 	Resources->SetActive(true);
 	OnRevived.Broadcast();
 	return true;

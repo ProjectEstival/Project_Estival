@@ -5,4 +5,4 @@
 
 
 // Interface defaults are intentionally empty.
-// Implementations live in the classes that inherit IReviveInterface.
+// Implementations live in the classes that inherit IRevivable.

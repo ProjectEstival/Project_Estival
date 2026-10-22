@@ -4,10 +4,10 @@
 
 bool UKnockbackPayload::TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const
 {
-	const ACharacter* Character = Cast<ACharacter>(Target);
-	if (!Character) return false;
+	const ACharacter* TargetCharacter = Cast<ACharacter>(Target);
+	if (!TargetCharacter) return false;
 
-	const FVector Dir = Context.Origin - Character->GetActorLocation();
-	Character->GetCharacterMovement()->Launch(Dir * KnockbackDistance);
+	const FVector Dir = Context.Origin - TargetCharacter->GetActorLocation();
+	TargetCharacter->GetCharacterMovement()->Launch(Dir * KnockbackDistance);
 	return true;
 }

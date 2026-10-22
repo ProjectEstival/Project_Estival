@@ -28,9 +28,7 @@ struct FDevConsoleUIState
 class SDeveloperConsole : public SCompoundWidget
 {
 public:
-    SLATE_BEGIN_ARGS(SDeveloperConsole) : _LogSink(nullptr)
-    {
-    }
+    SLATE_BEGIN_ARGS(SDeveloperConsole) : _LogSink(nullptr) { }
         SLATE_ARGUMENT(FDevConsoleLogSink*, LogSink)
         SLATE_ARGUMENT(FDevConsoleUIState, InitialUIState)
         SLATE_EVENT(FSimpleDelegate, OnClearLogs)
@@ -54,8 +52,8 @@ private:
     TSharedPtr<SMultiLineEditableTextBox> DetailsText;
     TSharedPtr<FDevConsoleLogEvent> SelectedEvent;
     FText GetSelectedDetails() const;
-    void UpdateDetails();
-    TSharedRef<ITableRow> GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable);
+    void UpdateDetails() const;
+    TSharedRef<ITableRow> GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable) const;
     void OnEventSelected(TSharedPtr<FDevConsoleLogEvent> Event, ESelectInfo::Type SelectInfo);
     
     FSimpleDelegate OnClearLogs;

@@ -17,6 +17,17 @@ public:
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
+class PROJECTESTIVAL_API UAbilityEffectPayload : public UObject
+{
+	GENERATED_BODY()
+ 
+public:
+	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
+	bool TryApply(const FAbilityContext& Context, AActor* Target) const;
+	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const { return true;}
+};
+
+UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class PROJECTESTIVAL_API UAbilityPredicate : public UObject
 {
 	GENERATED_BODY()

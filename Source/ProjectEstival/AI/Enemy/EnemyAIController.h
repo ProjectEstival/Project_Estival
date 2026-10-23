@@ -28,14 +28,28 @@ public:
 	
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
 	TObjectPtr<AEstivalBaseCharacter> PlayerRef;
-
+	
+	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Timers")
+	float CheckDistTimer = 2.0f;
+	
+	UPROPERTY()
+	TArray<AEstivalBaseCharacter*> Players;
+	
 protected:
 	
 	virtual void BeginPlay() override;
 	
+	FTimerHandle CheckDistanceTimerHandle;
+	
 private:
-
+	
 	UFUNCTION()
 	void OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimulus);
+	
+	UFUNCTION()
+	void OnTargetSensorForgot(AActor* Actor);
+	
+	UFUNCTION()
+	void DistCheck();
 	
 };

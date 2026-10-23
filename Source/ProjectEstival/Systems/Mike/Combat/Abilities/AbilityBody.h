@@ -53,11 +53,8 @@ public:
 		
 		for (const auto ChainPayload : SuccessChain)
 		{
-			if (ChainPayload)
-			{
-				if (ChainPayload->TryApply(Context, Target))
-				SuccessfulChains++;
-			}
+			if (!ChainPayload) continue;
+			if (ChainPayload->TryApply(Context, Target)) SuccessfulChains++;
 		}
 		
 		switch (SuccessRequirement)

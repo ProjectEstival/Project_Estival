@@ -8,6 +8,6 @@ bool UKnockbackPayload::TryApplySelf_Implementation(const FAbilityContext& Conte
 	if (!TargetCharacter) return false;
 
 	const FVector Dir = Context.Origin - TargetCharacter->GetActorLocation();
-	TargetCharacter->GetCharacterMovement()->Launch(Dir.GetSafeNormal() * KnockbackDistance);
+	TargetCharacter->GetCharacterMovement()->Launch(-Dir.GetSafeNormal() * KnockbackDistance);
 	return true;
 }

@@ -2,7 +2,7 @@
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
-bool UKnockbackPayload::TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const
+bool UKnockbackPayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const
 {
 	const ACharacter* TargetCharacter = Cast<ACharacter>(Target);
 	if (!TargetCharacter) return false;

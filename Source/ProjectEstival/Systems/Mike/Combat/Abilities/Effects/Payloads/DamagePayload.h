@@ -23,6 +23,5 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
 	TSubclassOf<UDamageType> DamageType = UDamageType::StaticClass();
 	
-public:
-	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const override;
+	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

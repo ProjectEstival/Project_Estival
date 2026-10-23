@@ -4,7 +4,7 @@
 #include "Systems/Mike/MikeUtils.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
-bool UDamagePayload::TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const
+bool UDamagePayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const
 {
 	if (!Target || Target == Context.Instigator) return false;
 	

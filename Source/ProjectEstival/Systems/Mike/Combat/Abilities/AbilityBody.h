@@ -21,10 +21,28 @@ class PROJECTESTIVAL_API UAbilityEffectPayload : public UObject
 {
 	GENERATED_BODY()
  
-public:
+protected:
+	
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
-	bool TryApply(const FAbilityContext& Context, AActor* Target) const;
-	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const { return true;}
+	bool TryApplySelf(const FAbilityContext& Context, AActor* Target) const;
+	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const { return true;}
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
+	TArray<UAbilityEffectPayload*> SuccessChain;
+	
+public:
+	
+	UFUNCTION(BlueprintCallable, Category = "Ability")
+	bool TryApply(const FAbilityContext& Context, AActor* Target)
+	{
+		if (!TryApplySelf(Context, Target)) return false;
+		
+		for (const auto ChainPayload : SuccessChain)
+		{
+			if (ChainPayload) ChainPayload->TryApply(Context, Target);
+		}
+		return true;
+	}
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)

@@ -14,7 +14,7 @@ protected:
 	UPROPERTY(BlueprintReadWrite)
 	bool bAllowTargetLimit = true;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowTargetLimit", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowTargetLimit"))
 	int TargetLimit = 0;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")

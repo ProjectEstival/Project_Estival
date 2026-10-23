@@ -15,6 +15,5 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Knockback", meta = (Units = "cm"))
 	float KnockbackDistance = 1000;
 	
-public:
-	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const override;
+	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

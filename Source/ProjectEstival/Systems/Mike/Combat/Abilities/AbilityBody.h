@@ -16,12 +16,23 @@ public:
 	virtual void Execute_Implementation(const FAbilityContext& Context) const {}
 };
 
+UENUM()
+enum EPayloadSuccess : uint8
+{
+	SelfOnly,
+	CompleteChain,
+	ChainPartial
+};
+
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class PROJECTESTIVAL_API UAbilityEffectPayload : public UObject
 {
 	GENERATED_BODY()
  
 protected:
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
+	TEnumAsByte<EPayloadSuccess> SuccessRequirement = ChainPartial;
 	
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
 	bool TryApplySelf(const FAbilityContext& Context, AActor* Target) const;
@@ -37,11 +48,25 @@ public:
 	{
 		if (!TryApplySelf(Context, Target)) return false;
 		
+		int SuccessfulChains = 0;
+		const int TotalChains = SuccessChain.Num();
+		
 		for (const auto ChainPayload : SuccessChain)
 		{
-			if (ChainPayload) ChainPayload->TryApply(Context, Target);
+			if (ChainPayload)
+			{
+				if (ChainPayload->TryApply(Context, Target))
+				SuccessfulChains++;
+			}
 		}
-		return true;
+		
+		switch (SuccessRequirement)
+		{
+			case SelfOnly: return true;
+			case CompleteChain: return SuccessfulChains == TotalChains;
+			case ChainPartial: return TotalChains == 0 || SuccessfulChains > 0;
+			default: return false;
+		}
 	}
 };
 

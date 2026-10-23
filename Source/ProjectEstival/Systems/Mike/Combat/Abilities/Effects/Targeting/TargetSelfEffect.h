@@ -12,6 +12,6 @@ class PROJECTESTIVAL_API UTargetSelfEffect : public UTargetingEffect
 	GENERATED_BODY()
 	
 public:
-	UTargetSelfEffect() { bAllowTargetLimit = false; }
+	UTargetSelfEffect() { bAllowsTargetLimits = false; }
 	virtual TSet<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const override;
 };

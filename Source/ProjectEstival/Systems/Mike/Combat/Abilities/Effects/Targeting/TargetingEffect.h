@@ -3,19 +3,21 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GenericTeamAgentInterface.h"
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "TargetingEffect.generated.h"
+
 UCLASS(Abstract, NotBlueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class PROJECTESTIVAL_API UTargetingEffect : public UAbilityEffect
 {
 	GENERATED_BODY()
 	
 protected:
-	UPROPERTY(BlueprintReadWrite)
-	bool bAllowTargetLimit = true;
+	UPROPERTY()
+	bool bAllowsTargetLimits = true;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowTargetLimit"))
-	int TargetLimit = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowsTargetLimits", EditConditionHides, HideEditConditionToggle))
+	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> TargetLimits;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
 	TArray<TObjectPtr<UAbilityEffectPayload>> EffectPayloads;

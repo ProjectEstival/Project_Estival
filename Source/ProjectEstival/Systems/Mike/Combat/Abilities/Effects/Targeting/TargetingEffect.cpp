@@ -1,28 +1,29 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "TargetingEffect.h"
+﻿#include "TargetingEffect.h"
 
 void UTargetingEffect::Execute_Implementation(const FAbilityContext& Context) const
 {
+	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> HitCounts;
 	TSet<AActor*> AlreadyHit;
-	int SuccessCounter = 0;
- 
+
 	for (AActor* Target : GetTargets_Implementation(Context))
 	{
-		if (TargetLimit > 0 && SuccessCounter >= TargetLimit) break;
-		
-		if (!Target || AlreadyHit.Contains(Target)) continue;
- 
-		AlreadyHit.Add(Target);
-		
-		bool PayloadApplied = false;
-		
-		for (const auto& Payload : EffectPayloads)
+		if (!IsValid(Target) || AlreadyHit.Contains(Target)) continue;
+
+		const ETeamAttitude::Type Attitude = FGenericTeamId::GetAttitude(Context.Instigator, Target);
+
+		if (const int32 Limit = TargetLimits.FindRef(Attitude) && bAllowsTargetLimits)
 		{
-			if (Payload->TryApply(Context, Target)) PayloadApplied = true;
+			if (const int32 CurrentCount = HitCounts.FindRef(Attitude); Limit > 0 && CurrentCount >= Limit) continue;
 		}
-		
-		if (PayloadApplied) SuccessCounter++;
+
+		AlreadyHit.Add(Target);
+		bool bPayloadApplied = false;
+
+		for (UAbilityEffectPayload* Payload : EffectPayloads)
+		{
+			if (IsValid(Payload) && Payload->TryApply(Context, Target)) bPayloadApplied = true;
+		}
+
+		if (bPayloadApplied) HitCounts.FindOrAdd(Attitude)++;
 	}
 }

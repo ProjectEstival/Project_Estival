@@ -1,27 +1,20 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
 #include "Revivable.generated.h"
 
-// This class does not need to be modified.
-UINTERFACE()
+UINTERFACE(BlueprintType)
 class URevivable : public UInterface
 {
 	GENERATED_BODY()
 };
 
-class PROJECTESTIVAL_API IRevivable
+class IRevivable
 {
 	GENERATED_BODY()
 
-	
 public:
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Resurrection")
-	bool CanBeRevived() const;
-	
-	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Resurrection")
-	bool ReviveCharacter(float HealthPercent);
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
+	bool TryRevive(float HealthPercent);
 };

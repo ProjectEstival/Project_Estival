@@ -2,104 +2,92 @@
 
 
 #include "PlayerBase.h"
+#include "Engine/OverlapResult.h"
+#include "EnhancedInputComponent.h"
 #include "Engine/World.h"
-#include "TimerManager.h"
 
 APlayerBase::APlayerBase()
 {
 	PrimaryActorTick.bCanEverTick = true;
-}
-
-// Called when the game starts or when spawned
-void APlayerBase::BeginPlay()
-{
-	Super::BeginPlay();
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	
-	RemainingRevives = FMath::Max(0, MaxRevives);
-	OnReviveCountChanged.Broadcast(RemainingRevives);
+	ResurrectionComponent = CreateDefaultSubobject<UReviveComponent>(TEXT("Resurrection"));
 }
 
 void APlayerBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	CancelResurrection();
+	StopRevive();
 	Super::EndPlay(EndPlayReason);
 }
 
-bool APlayerBase::BeginResurrection()
+void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
-	return BeginResurrectionWithSettings(
-		DefaultResurrectionDuration,
-		DefaultResurrectionHealthPercent);
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	
+	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
+	if (!Input || !ReviveAction) return;
+	
+	Input->BindAction(ReviveAction, ETriggerEvent::Started, this, &APlayerBase::StartRevive);
+	Input->BindAction(ReviveAction, ETriggerEvent::Completed, this, &APlayerBase::StopRevive);
+	Input->BindAction(ReviveAction,ETriggerEvent::Canceled,this, &APlayerBase::StopRevive);
 }
 
-bool APlayerBase::BeginResurrectionWithSettings(const float DurationSeconds, const float HealthPercent)
+void APlayerBase::Tick(float DeltaSeconds)
 {
-	if (bIsResurrectionInProgress || !CanBeRevived_Implementation() || !GetWorld()) return false;
+	Super::Tick(DeltaSeconds);
 	
-	PendingHealthPercent = FMath::Clamp(HealthPercent,0.0f, 1.0f);
-	bIsResurrectionInProgress = true;
-	OnResurrectionStarted.Broadcast();
+	const UReviveComponent* Target = ReviveTarget.Get();
+	const bool bValid = IsAlive() && Target && Target->IsInProgress()
+	&& FVector::DistSquared(GetActorLocation(), Target->GetOwner()->GetActorLocation()) <= FMath::Square(ReviveRange);
 	
-	if (DurationSeconds <= 0.0f)
+	if (!bValid) StopRevive();
+}
+
+void APlayerBase::StartRevive()
+{
+	if (!IsAlive() || ReviveTarget.IsValid()) return;
+	
+	UReviveComponent* Target = FindReviveTarget();
+	if (!Target || !Target->BeginResurrection(this)) return;
+	
+	ReviveTarget = Target;
+	SetActorTickEnabled(true);
+}
+
+void APlayerBase::StopRevive()
+{
+	if (UReviveComponent* Target = ReviveTarget.Get()) Target->CancelResurrection();
+	
+	ReviveTarget.Reset();
+	SetActorTickEnabled(false);
+}
+
+UReviveComponent* APlayerBase::FindReviveTarget() const
+{
+	if (!GetWorld()) return nullptr;
+	
+	TArray<FOverlapResult> Overlaps;
+	GetWorld()->OverlapMultiByChannel(
+		Overlaps, GetActorLocation(), FQuat::Identity, ECC_Pawn,
+		FCollisionShape::MakeSphere(ReviveRange),
+		FCollisionQueryParams(SCENE_QUERY_STAT(FindReviveTarget), false, this));
+	
+	UReviveComponent* Best = nullptr;
+	float BestDistSq = TNumericLimits<float>::Max();
+	
+	for (const FOverlapResult& Overlap : Overlaps)
 	{
-		CompleteResurrection();
-		return true;
+		AActor* Actor = Overlap.GetActor();
+		UReviveComponent* Candidate = Actor ? Actor->FindComponentByClass<UReviveComponent>() : nullptr;
+		if (!Candidate || !Candidate->CanBeRevived()) continue;
+		
+		const float DistSq = FVector::DistSquared(GetActorLocation(), Actor->GetActorLocation());
+		
+		if (DistSq < BestDistSq)
+		{
+			BestDistSq = DistSq;
+			Best = Candidate;
+		}
 	}
-	
-	GetWorld()->GetTimerManager().SetTimer(
-		ResurrectionTimerHandle,
-		this,
-		&APlayerBase::CompleteResurrection,
-		DurationSeconds,
-		false);
-	
-	return true;
-}
-
-void APlayerBase::CancelResurrection()
-{
-	if (!bIsResurrectionInProgress) return;
-	
-	if (GetWorld())
-	{
-		GetWorld()->GetTimerManager().ClearTimer(ResurrectionTimerHandle);
-	}
-	
-	bIsResurrectionInProgress = false;
-	OnResurrectionCancelled.Broadcast();
-}
-
-float APlayerBase::GetResurrectionTimeRemaining() const
-{
-	if (!bIsResurrectionInProgress || !GetWorld()) return 0.0f;
-	
-	return GetWorld()->GetTimerManager().GetTimerRemaining(ResurrectionTimerHandle);
-}
-
-bool APlayerBase::CanBeRevived_Implementation() const
-{
-	return !IsAlive() && RemainingRevives > 0;
-}
-
-bool APlayerBase::ReviveCharacter_Implementation(const float HealthPercent)
-{
-	if (!CanBeRevived_Implementation()) return false;
-	
-	// The base class owns the actual character recovery and controller resurrection.
-	// Only spend a revival if its revive operation reports success.
-	if (!TryRevive(FMath::Clamp(HealthPercent,0.0f, 1.0f))) return false;
-	
-	RemainingRevives = FMath::Max(0, RemainingRevives - 1);
-	OnReviveCountChanged.Broadcast(RemainingRevives);
-	return true;
-}
- void APlayerBase::CompleteResurrection()
-{
-	if (!bIsResurrectionInProgress) return;
-	
-	bIsResurrectionInProgress = false;
-	ResurrectionTimerHandle.Invalidate();
-	
-	if (ReviveCharacter_Implementation(PendingHealthPercent)) OnResurrectionCompleted.Broadcast();
-	else OnResurrectionCancelled.Broadcast(); // ← A failed attempt never consumes a revival
+	return Best;
 }

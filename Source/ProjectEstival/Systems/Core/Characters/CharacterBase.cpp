@@ -102,7 +102,7 @@ void AEstivalBaseCharacter::Die()
 	Resources->SetActive(false);
 	OnDeath.Broadcast();
 }
-bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
+bool AEstivalBaseCharacter::TryRevive_Implementation(const float HealthPercent)
 {
 	if (IsAlive()) return false;
  

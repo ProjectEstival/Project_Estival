@@ -11,6 +11,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Systems/Core/Camera/EstivalOffscreenBlipsWidget.h"
 
 // adding this to be able to filter the logs
 DEFINE_LOG_CATEGORY_STATIC(LogEstivalCamera, Log, All);
@@ -61,6 +62,14 @@ void AEstivalSharedCamera::BeginPlay()
 	
 	// starting camera already framed.
 	UpdateCamera(0.f, true);
+	
+	// one BLIP WIDGET for the shared screen owned by player 1 
+	APlayerController* FirstPlayer = UGameplayStatics::GetPlayerController(this, 0);
+	if (OffscreenBlipsWidgetClass && FirstPlayer)
+	{
+		UEstivalOffscreenBlipsWidget* BlipsWidget = CreateWidget<UEstivalOffscreenBlipsWidget>(FirstPlayer, OffscreenBlipsWidgetClass);
+		BlipsWidget->AddToViewport();
+	}
 }
 
 // Called every frame
@@ -109,7 +118,7 @@ void AEstivalSharedCamera::GatherFramedActors(TArray<AActor*>& OutActors) const
 {
 	OutActors.Reset();
 	
-	// filtering through controllers to make sure only human characters are framed
+	// filtering through controllers to make sure only humanoid characters are framed (and not enemies)
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		const APlayerController* PlayerController = It->Get();
@@ -202,7 +211,7 @@ void AEstivalSharedCamera::UpdateCamera(float DeltaSeconds, bool bSnap)
 	const float ZoomSpeed = TargetDistance > CurrentDistance ? ZoomOutSpeed : ZoomInSpeed;
 	CameraBoom->TargetArmLength = bSnap ? TargetDistance : FMath::FInterpTo(CurrentDistance, TargetDistance, DeltaSeconds, ZoomSpeed);
 
-	// --- DEBUGGING - TODELETE ---
+	// --- DEBUGGING ---
 	if (bDrawDebug)
 	{
 		// yellow = where the camera looks, green = fits at Max Distance, red = doesn't

@@ -10,6 +10,7 @@ class AGameModeBase;
 class APlayerController;
 class UCameraComponent;
 class USpringArmComponent;
+class UEstivalOffscreenBlipsWidget;
 
 UCLASS()
 class PROJECTESTIVAL_API AEstivalSharedCamera : public AActor
@@ -26,12 +27,7 @@ public:
 	// To center back to the party, entel null
 	UFUNCTION(BlueprintCallable, Category = "Shared Camera")
 	void SetFocusOnTarget(AActor* NewFocusTarget);
-	
-	// True if the location would still be on screen with the camera at Max Distance. 
-	// Movement can use this to keep players inside the frame.
-	UFUNCTION(BlueprintPure, Category = "Shared Camera")
-	bool CanFrameLocation(const FVector& WorldLocation) const;
-	
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -70,11 +66,16 @@ protected:
 	/** Draws the focus point and each framed character (green = fits at max distance, red = doesn't). */
 	UPROPERTY(EditAnywhere, Category = "Shared Camera|Debug")
 	bool bDrawDebug = false;
+	
+	//Widget that shows blips for off-screen players. Empty = no blips.
+	// todo: when main HUD is ready these line should be deleted (I think)
+	UPROPERTY(EditAnywhere, Category = "Shared Camera|UI")
+	TSubclassOf<UEstivalOffscreenBlipsWidget> OffscreenBlipsWidgetClass;
 
 private:
 	void UpdateCamera(float DeltaSeconds, bool bSnap);
 	void GatherFramedActors(TArray<AActor*>& OutActors) const;
-	FVector ComputeFocusLocation(const TArray<AActor*>& OutActors) const;
+	FVector ComputeFocusLocation(const TArray<AActor*>& Actors) const;
 	float ComputeRequiredDistance(const FVector& FocusLocation, const TArray<AActor*>& Actors) const;
 	float DistanceToFit(const FVector& FocusLocation, const FVector& WorldLocation) const;
 	float GetViewportAspectRatio() const;
@@ -83,4 +84,9 @@ private:
 	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
 
 	FDelegateHandle PostLoginHandle;
+	
+	// True if the location would still be on screen with the camera at Max Distance. 
+	// Movement can use this to keep players inside the frame.
+	bool CanFrameLocation(const FVector& WorldLocation) const;
+	
 };

@@ -11,7 +11,7 @@ UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, A
 	UWorld* World = GetWorld();
 	if (!World) return nullptr;
     
-	UObject* owner = !PC ? Cast<UObject>(this) : Cast<UObject>(PC);
+	APlayerController* owner = !PC ? GetGameInstance()->GetFirstLocalPlayerController() : PC;
 	UUserWidget* Widget = CreateWidget<UUserWidget>(owner, WidgetClass);
 	if (!Widget) return nullptr;
 	return Widget;
@@ -19,6 +19,10 @@ UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, A
 UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder, EManagedUIInputMode InputMode, bool bShowMouseCursor, APlayerController* PC)
 {
 	if (!WidgetClass) return nullptr;
+	
+	// Remove stale entries of the same class.
+	ModalStack.RemoveAll([WidgetClass](const FWidgetContext& Entry) { return Entry.WidgetClass == WidgetClass && !IsValid(Entry.Widget); });
+	
 	// If it already exists in the stack, return nullptr
 	if (ModalStack.FindByPredicate([WidgetClass](const FWidgetContext& Entry) { return Entry.WidgetClass == WidgetClass; })) return nullptr;
     
@@ -38,13 +42,13 @@ UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZO
 	ApplyInputMode(Widget, InputMode, bShowMouseCursor, PC);
 	return Widget;
 }
-void AHUDBase::PopWidget()
+UUserWidget* AHUDBase::PopWidget()
 {
-	if (ModalStack.IsEmpty()) return;
+	if (ModalStack.IsEmpty()) return nullptr;
     
 	// Remove the top modal.
 	FWidgetContext ClosedModal = ModalStack.Pop();
-	if (IsValid(ClosedModal.Widget)) ClosedModal.Widget->SetVisibility(ESlateVisibility::Hidden);
+	if (IsValid(ClosedModal.Widget)) ClosedModal.Widget->RemoveFromParent();
     
 	// Restore the previous modal and its input settings.
 	while (!ModalStack.IsEmpty())
@@ -54,7 +58,7 @@ void AHUDBase::PopWidget()
 		{
 			Top.Widget->SetVisibility(ESlateVisibility::Visible);
 			ApplyInputMode(Top.Widget, Top.InputMode, Top.bShowMouseCursor, Top.PC);
-			return;
+			return Top.Widget;
 		}
         
 		// Discard stale entries if a widget was destroyed.
@@ -63,9 +67,10 @@ void AHUDBase::PopWidget()
     
 	// No modals remain: return to normal gameplay input.
 	ApplyInputMode(nullptr, EManagedUIInputMode::GameOnly, false);
+	return nullptr;
 }
 
-UUserWidget* AHUDBase::PeakModal()
+UUserWidget* AHUDBase::PeekWidget()
 {
 	while (!ModalStack.IsEmpty())
 	{
@@ -103,14 +108,14 @@ void AHUDBase::ApplyInputMode(UUserWidget* Widget, const EManagedUIInputMode Inp
 			Controller->DisableInput(Controller);
 		}	
 	}
-	PC->EnableInput(PC);
 	
 	// If no controller is given, apply input mode one by one, without disabling the others
-	if (!PC)
+	if (PC) PC->EnableInput(PC);
+	else
 	{
 		for (int i = 0; i < GetGameInstance()->GetNumLocalPlayers(); i++)
 		{
-			ApplyInputMode(Widget, InputMode, bShowMouseCursor, PC, false);
+			ApplyInputMode(Widget, InputMode, bShowMouseCursor, UGameplayStatics::GetPlayerController(GetWorld(), i), false);
 		}
 		return;
 	}

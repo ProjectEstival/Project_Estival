@@ -38,14 +38,20 @@ class PROJECTESTIVAL_API AHUDBase : public AHUD
 {
 	GENERATED_BODY()
 	
-public:	
+public:
+	UFUNCTION(BlueprintCallable, Category = "UI Manager")
+	UUserWidget* PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder = 100, EManagedUIInputMode InputMode = EManagedUIInputMode::GameAndUI, bool bShowMouseCursor = true, APlayerController* PC = nullptr);
+	
+	UFUNCTION(BlueprintCallable, Category = "UI Manager")
+	UUserWidget* PopWidget();
+	
+	// Retrieve the top widget.
+	UFUNCTION(BlueprintPure, Category = "UI Manager")
+	UUserWidget* PeekWidget();
+	
 	// Retrieve only an existing widget.
 	UFUNCTION(BlueprintPure, Category = "UI Manager")
 	UUserWidget* GetWidget(TSubclassOf<UUserWidget> WidgetClass) const;
-
-	// Retrieve the top widget.
-	UFUNCTION(BlueprintPure, Category = "UI Manager")
-	UUserWidget* PeakModal();
 	
 	// Retrieve the top widget's input mode
 	UFUNCTION(BlueprintPure, Category = "UI Manager")
@@ -54,12 +60,6 @@ public:
 protected:	
 	UPROPERTY(Transient)
 	TArray<FWidgetContext> ModalStack;
-	
-	UFUNCTION(BlueprintCallable, Category = "UI Manager")
-	UUserWidget* PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder = 100, EManagedUIInputMode InputMode = EManagedUIInputMode::GameAndUI, bool bShowMouseCursor = true, APlayerController* PC = nullptr);
-	
-	UFUNCTION(BlueprintCallable, Category = "UI Manager")
-	void PopWidget();
 	
 	UUserWidget* CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC);
 	void ApplyInputMode(UUserWidget* Widget, const EManagedUIInputMode InputMode, const bool bShowMouseCursor, APlayerController* PC = nullptr, const bool bDisableOthers = true);

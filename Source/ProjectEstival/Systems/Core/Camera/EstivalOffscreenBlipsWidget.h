@@ -8,7 +8,9 @@
 
 class UCanvasPanel;
 class UImage;
-class UTextrure2D;
+class UTexture2D;
+class AEstivalBaseCharacter;
+class ULoadout;
 
 /**
 * Shows a colored blip on the edge of the screen for every human player who is currently off screen.
@@ -38,14 +40,17 @@ protected:
 	UPROPERTY(EditAnywhere, Category="Blips", meta = (ClampMin = "0"))
 	float EdgeMargin = 40.f;
 	
-	UPROPERTY(EditAnywhere, Category="Blips")
-	TArray<FLinearColor> PlayerColors;
+	UPROPERTY(EditAnywhere, Category = "Blips")
+	TMap<TObjectPtr<ULoadout>, FLinearColor> HeroColors;
 
 	
 private:
 	UImage* GetOrCreateBlip(int32 Index);
+	void UpdateBlip(UImage* Blip, const APawn* Pawn, const FLinearColor& Color, APlayerController* ViewingPlayer, const FVector2D& ScreenSize);
 	
 	UPROPERTY()
 	TArray<TObjectPtr<UImage>> Blips;
+	
+	
 	
 };

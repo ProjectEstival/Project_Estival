@@ -3,9 +3,23 @@
 #include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
 
-UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC)
+void AHUDBase::BeginPlay()
 {
-	if (!WidgetClass) return nullptr;
+	Super::BeginPlay();
+	
+	if (!BaseWidgetClass) return;
+	
+	APlayerController* PC = GetGameInstance()->GetFirstLocalPlayerController();
+	BaseWidget = CreateWidget<UUserWidget>(PC, BaseWidgetClass);
+	if (!BaseWidget) return;
+	
+	BaseWidget->AddToViewport();
+	BaseWidget->SetVisibility(ESlateVisibility::Visible);
+	ApplyInputMode(BaseWidget, BaseInputMode, bBaseShowCursor, PC);
+}
+UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC) const
+{
+	if (!WidgetClass || WidgetClass == BaseWidgetClass) return nullptr;
 	if (UUserWidget* PresentWidget = GetWidget(WidgetClass)) return PresentWidget;
     
 	UWorld* World = GetWorld();
@@ -16,6 +30,7 @@ UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, A
 	if (!Widget) return nullptr;
 	return Widget;
 }
+
 UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder, EManagedUIInputMode InputMode, bool bShowMouseCursor, APlayerController* PC)
 {
 	if (!WidgetClass) return nullptr;

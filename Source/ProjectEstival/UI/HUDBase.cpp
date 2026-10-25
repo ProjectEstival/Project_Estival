@@ -1,22 +1,28 @@
 #include "HUDBase.h"
 
-#include "Blueprint/UserWidget.h"
 #include "Kismet/GameplayStatics.h"
+#include "Blueprint/UserWidget.h"
 
 void AHUDBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (!BaseWidgetClass) return;
+	UGameInstance* GI = GetGameInstance();
+	if (!GI || !BaseWidgetClass) return;
 	
-	APlayerController* PC = GetGameInstance()->GetFirstLocalPlayerController();
-	BaseWidget = CreateWidget<UUserWidget>(PC, BaseWidgetClass);
+	// This HUD manages global UI only for local player 0.
+	APlayerController* OwningPC = GetOwningPlayerController();
+	ULocalPlayer* FirstLocalPlayer = GI->GetLocalPlayerByIndex(0);
+	if (!OwningPC || OwningPC->GetLocalPlayer() != FirstLocalPlayer) return;
+	
+	BaseWidget = CreateWidget<UUserWidget>(OwningPC, BaseWidgetClass);
 	if (!BaseWidget) return;
 	
 	BaseWidget->AddToViewport();
 	BaseWidget->SetVisibility(ESlateVisibility::Visible);
-	ApplyInputMode(BaseWidget, BaseInputMode, bBaseShowCursor, PC);
+	ApplyInputMode(BaseWidget, BaseInputMode, bBaseShowCursor, OwningPC);
 }
+
 UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC) const
 {
 	if (!WidgetClass || WidgetClass == BaseWidgetClass) return nullptr;
@@ -30,7 +36,6 @@ UUserWidget* AHUDBase::CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, A
 	if (!Widget) return nullptr;
 	return Widget;
 }
-
 UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZOrder, EManagedUIInputMode InputMode, bool bShowMouseCursor, APlayerController* PC)
 {
 	if (!WidgetClass) return nullptr;
@@ -81,7 +86,7 @@ UUserWidget* AHUDBase::PopWidget()
 	}
     
 	// No modals remain: return to normal gameplay input.
-	ApplyInputMode(nullptr, EManagedUIInputMode::GameOnly, false);
+	ApplyInputMode(BaseWidget, BaseInputMode, bBaseShowCursor);
 	return nullptr;
 }
 
@@ -148,7 +153,7 @@ void AHUDBase::ApplyInputMode(UUserWidget* Widget, const EManagedUIInputMode Inp
 		case EManagedUIInputMode::GameAndUI:
 		{
 			FInputModeGameAndUI Mode;
-			if (IsValid(Widget)) Mode.SetWidgetToFocus(Widget->TakeWidget());
+			if (IsValid(Widget) && Widget->IsFocusable()) Mode.SetWidgetToFocus(Widget->TakeWidget());
 			PC->SetInputMode(Mode);
 			break;
 		}
@@ -156,7 +161,7 @@ void AHUDBase::ApplyInputMode(UUserWidget* Widget, const EManagedUIInputMode Inp
 		case EManagedUIInputMode::UIOnly:
 		{
 			FInputModeUIOnly Mode;
-			if (IsValid(Widget)) Mode.SetWidgetToFocus(Widget->TakeWidget());
+			if (IsValid(Widget) && Widget->IsFocusable()) Mode.SetWidgetToFocus(Widget->TakeWidget());
 			PC->SetInputMode(Mode);
 			break;
 		}

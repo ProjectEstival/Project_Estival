@@ -11,10 +11,8 @@ void UTargetingEffectBase::ApplyOnTargets(const FAbilityContext& Context, TSet<A
 
 		const ETeamAttitude::Type Attitude = FGenericTeamId::GetAttitude(Context.Instigator, Target);
 
-		if (const int32 Limit = TargetLimits.FindRef(Attitude) && bAllowsTargetLimits)
-		{
-			if (const int32 CurrentCount = HitCounts.FindRef(Attitude); Limit > 0 && CurrentCount >= Limit) continue;
-		}
+		const int32 Limit = bAllowsTargetLimits ? TargetLimits.FindRef(Attitude) : 0;
+		if (Limit > 0 && HitCounts.FindRef(Attitude) >= Limit) continue;
 
 		AlreadyHit.Add(Target);
 		bool bPayloadApplied = false;

@@ -36,6 +36,8 @@ private:
     // Toggling
     void ShowConsole();
     void HideConsole();
+    void SetCursorVisible(bool Visible);
+    bool bWasCursorVisible = false;
     TSharedPtr<IInputProcessor> InputProcessor;
     bool bConsoleVisible = false;
     

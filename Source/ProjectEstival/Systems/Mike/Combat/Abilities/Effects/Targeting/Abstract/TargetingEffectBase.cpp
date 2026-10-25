@@ -1,11 +1,11 @@
-﻿#include "TargetingEffect.h"
+﻿#include "TargetingEffectBase.h"
 
-void UTargetingEffect::Execute_Implementation(const FAbilityContext& Context) const
+void UTargetingEffectBase::ApplyOnTargets(const FAbilityContext& Context, TSet<AActor*> Targets) const
 {
 	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> HitCounts;
 	TSet<AActor*> AlreadyHit;
 
-	for (AActor* Target : GetTargets_Implementation(Context))
+	for (AActor* Target : Targets)
 	{
 		if (!IsValid(Target) || AlreadyHit.Contains(Target)) continue;
 

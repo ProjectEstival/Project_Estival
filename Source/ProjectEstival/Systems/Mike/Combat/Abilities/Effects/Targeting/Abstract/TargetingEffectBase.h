@@ -5,10 +5,10 @@
 #include "CoreMinimal.h"
 #include "GenericTeamAgentInterface.h"
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
-#include "TargetingEffect.generated.h"
+#include "TargetingEffectBase.generated.h"
 
 UCLASS(Abstract, NotBlueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
-class PROJECTESTIVAL_API UTargetingEffect : public UAbilityEffect
+class PROJECTESTIVAL_API UTargetingEffectBase : public UAbilityEffect
 {
 	GENERATED_BODY()
 	
@@ -23,8 +23,6 @@ protected:
 	TArray<TObjectPtr<UAbilityEffectPayload>> EffectPayloads;
 	
 public:
-	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
-	TSet<AActor*> GetTargets(const FAbilityContext& Context) const;
-	virtual TSet<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const { return TSet<AActor*>(); }
-	virtual void Execute_Implementation(const FAbilityContext& Context) const override final;
+	UFUNCTION(BlueprintCallable, Category = "Ability")
+	void ApplyOnTargets(const FAbilityContext& Context, TSet<AActor*> Targets) const;
 };

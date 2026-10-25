@@ -2,9 +2,7 @@
 
 
 #include "AI/Companion/CompanionStateTreeTasks.h"
-#include "Engine/World.h"
 #include "GameFramework/Pawn.h"
-#include "GameFramework/PlayerController.h"
 #include "NavigationSystem.h"
 #include "StateTreeExecutionContext.h"
 

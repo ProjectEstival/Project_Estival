@@ -32,17 +32,26 @@ void UEstivalOffscreenBlipsWidget::NativeTick(const FGeometry& MyGeometry, float
 	{
 		const AEstivalBaseCharacter* Character = *It;
 
-		// no color = not a hero (e.g. enemy), if Dead = no blip.
-		const ULoadoutComponent* LoadoutComponent = Character->FindComponentByClass<ULoadoutComponent>();
-		ULoadout* Hero = LoadoutComponent ? LoadoutComponent->GetLoadout() : nullptr;
-		const FLinearColor* HeroColor = HeroColors.Find(Hero);
-		
-		if (!HeroColor || !Character->IsAlive())
+		// enemies are on another team and dead heroes get no blip
+		if (Character->GetGenericTeamId() != FGenericTeamId(0) || !Character->IsAlive())
 		{
 			continue;
 		}
 
-		UpdateBlip(GetOrCreateBlip(BlipIndex), Character, *HeroColor, ViewingPlayer, ScreenSize);
+		// the hero's loadout picks the color. Currently no loadout or no color means no blip
+		const ULoadoutComponent* LoadoutComponent = Character->FindComponentByClass<ULoadoutComponent>();
+		ULoadout* Hero = LoadoutComponent ? LoadoutComponent->GetLoadout() : nullptr;
+		const FLinearColor* HeroColor = Hero ? HeroColors.Find(Hero) : nullptr;
+		if (!HeroColor)
+		{
+			continue;
+		}
+
+		// a new Hero Colors entry starts see through (alpha = 0) so forcing to draw blips always solid
+		FLinearColor Color = *HeroColor;
+		Color.A = 1.f;
+
+		UpdateBlip(GetOrCreateBlip(BlipIndex), Character, Color, ViewingPlayer, ScreenSize);
 		BlipIndex++;
 	}
 
@@ -56,19 +65,16 @@ void UEstivalOffscreenBlipsWidget::NativeTick(const FGeometry& MyGeometry, float
 
 UImage* UEstivalOffscreenBlipsWidget::GetOrCreateBlip(int32 Index)
 {
-	// only make a new blip the first time a player needs one and  then reuse it
-	while (Blips.Num() <= Index)
+	// make a blip the first time a hero needs one then reuse it
+	if (!Blips.IsValidIndex(Index))
 	{
-
-		UImage* NewBlip = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
-		if (BlipTexture)
-		{
-			NewBlip->SetBrushFromTexture(BlipTexture);
-		}
+		UImage* NewBlip = WidgetTree->ConstructWidget<UImage>();
+		NewBlip->SetBrushFromTexture(BlipTexture); 
 
 		UCanvasPanelSlot* BlipSlot = BlipCanvas->AddChildToCanvas(NewBlip);
 		BlipSlot->SetSize(BlipSize);
-		// the position is the middle of the blip, not its top-left corner
+		
+		// the position shoule be the middle of the blip, not its top left corner
 		BlipSlot->SetAlignment(FVector2D(0.5f, 0.5f));
 
 		Blips.Add(NewBlip);
@@ -81,7 +87,8 @@ void UEstivalOffscreenBlipsWidget::UpdateBlip(UImage* Blip, const APawn* Pawn, c
 	FVector2D ScreenPosition;
 	const bool bInFrontOfCamera = UWidgetLayoutLibrary::ProjectWorldLocationToWidgetPosition(ViewingPlayer, Pawn->GetActorLocation(), ScreenPosition, false);
 
-	// if the player is behind the camera = below the screen
+	// behind the camera the projection fails. Our camera looks down and never turns, 
+	// so "behind" means below the bottom edge
 	if (!bInFrontOfCamera)
 	{
 		ScreenPosition = FVector2D(ScreenSize.X * 0.5f, ScreenSize.Y + 1.f);
@@ -99,10 +106,7 @@ void UEstivalOffscreenBlipsWidget::UpdateBlip(UImage* Blip, const APawn* Pawn, c
 		FMath::Clamp(ScreenPosition.X, EdgeMargin, ScreenSize.X - EdgeMargin),
 		FMath::Clamp(ScreenPosition.Y, EdgeMargin, ScreenSize.Y - EdgeMargin));
 
-	if (UCanvasPanelSlot* BlipSlot = Cast<UCanvasPanelSlot>(Blip->Slot))
-	{
-		BlipSlot->SetPosition(BlipPosition);
-	}
+	CastChecked<UCanvasPanelSlot>(Blip->Slot)->SetPosition(BlipPosition);
 
 	Blip->SetColorAndOpacity(Color);
 	Blip->SetVisibility(ESlateVisibility::HitTestInvisible);

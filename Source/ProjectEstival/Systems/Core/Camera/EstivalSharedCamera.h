@@ -24,7 +24,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 	
 	// Pick an actor so the camera centers on it (eg Baldr's Light)
-	// To center back to the party, entel null
+	// To center back to the party pass nullptr
 	UFUNCTION(BlueprintCallable, Category = "Shared Camera")
 	void SetFocusOnTarget(AActor* NewFocusTarget);
 
@@ -68,7 +68,7 @@ protected:
 	bool bDrawDebug = false;
 	
 	//Widget that shows blips for off-screen players. Empty = no blips.
-	// todo: when main HUD is ready these line should be deleted (I think)
+	// todo: when the main HUD is ready the blips can move there and this can be deleted (I think)
 	UPROPERTY(EditAnywhere, Category = "Shared Camera|UI")
 	TSubclassOf<UEstivalOffscreenBlipsWidget> OffscreenBlipsWidgetClass;
 
@@ -84,6 +84,10 @@ private:
 	void HandlePostLogin(AGameModeBase* GameMode, APlayerController* NewPlayer);
 
 	FDelegateHandle PostLoginHandle;
+	
+	// the blips widget this camera created, so EndPlay can remove it
+	UPROPERTY()
+	TObjectPtr<UEstivalOffscreenBlipsWidget> BlipsWidget;
 	
 	// True if the location would still be on screen with the camera at Max Distance. 
 	// Movement can use this to keep players inside the frame.

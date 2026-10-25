@@ -9,19 +9,17 @@
 class UCanvasPanel;
 class UImage;
 class UTexture2D;
-class AEstivalBaseCharacter;
 class ULoadout;
 
 /**
-* Shows a colored blip on the edge of the screen for every human player who is currently off screen.
-* Adds it to the screen once (not once per player).
+* Shows a colored blip on the edge of the screen for every hero(both players and companions) who is currently off screen.
+* The Shared Camera adds it to the screen once (not once per player).
 */
 UCLASS()
 class PROJECTESTIVAL_API UEstivalOffscreenBlipsWidget : public UUserWidget
 {
 	GENERATED_BODY()
-	
-public:
+
 protected:
 	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	

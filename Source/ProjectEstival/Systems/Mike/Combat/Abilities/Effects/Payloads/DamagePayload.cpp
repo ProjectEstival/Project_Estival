@@ -7,6 +7,7 @@
 bool UDamagePayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const
 {
 	if (!Target || Target == Context.Instigator) return false;
+	if (!Target->CanBeDamaged()) return false;
 	
 	const float Damage = UMikeUtils::RandomizeFloat(Context.Stats->GetFloat(DamageTag), DamageRandomization) * DamageMultiplier;
 	if (Damage <= 0.f) return false;

@@ -7,7 +7,11 @@ bool UKnockbackPayload::TryApplySelf_Implementation(const FAbilityContext& Conte
 	const ACharacter* TargetCharacter = Cast<ACharacter>(Target);
 	if (!TargetCharacter) return false;
 
-	const FVector Dir = Context.Origin - TargetCharacter->GetActorLocation();
-	TargetCharacter->GetCharacterMovement()->Launch(-Dir.GetSafeNormal() * KnockbackDistance);
+	const auto Movement = TargetCharacter->GetCharacterMovement();
+	FVector Dir = Context.Origin - TargetCharacter->GetActorLocation();    
+	Dir.Z = 0.f;
+	
+	Movement->StopMovementImmediately();
+	Movement->Launch(-Dir.GetSafeNormal() * KnockbackDistance);
 	return true;
 }

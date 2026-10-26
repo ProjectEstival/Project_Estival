@@ -15,6 +15,8 @@ class PROJECTESTIVAL_API UReviveComponent : public UActorComponent
 public:
 	UReviveComponent();
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	/** Target side: this character is the one being revived. */
 	UFUNCTION(BlueprintPure)
@@ -48,8 +50,6 @@ public:
 	UPROPERTY(BlueprintAssignable) FOnLivesChanged OnLivesChanged;
 
 protected:
-	virtual void BeginPlay() override;
-	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 	UPROPERTY(EditAnywhere, Category = "Resurrection", meta = (ClampMin = "0"))
 	int32 MaxLives = 3;

@@ -68,6 +68,8 @@ void AEnemyAIController::OnTargetSensorForgot(AActor* Actor)
 
 void AEnemyAIController::DistCheck()
 {
+	if (Players.IsEmpty()) return;
+
 	float MinDist = FLT_MAX;
 	AEstivalBaseCharacter* PlayerToTarget = nullptr;
 	

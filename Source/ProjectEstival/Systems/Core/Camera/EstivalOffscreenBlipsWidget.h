@@ -9,7 +9,6 @@
 class UCanvasPanel;
 class UImage;
 class UTexture2D;
-class ULoadout;
 
 /**
 * Shows a colored blip on the edge of the screen for every hero(both players and companions) who is currently off screen.
@@ -37,10 +36,6 @@ protected:
 	// Gap between a blip and the screen edge.
 	UPROPERTY(EditAnywhere, Category="Blips", meta = (ClampMin = "0"))
 	float EdgeMargin = 40.f;
-	
-	UPROPERTY(EditAnywhere, Category = "Blips")
-	TMap<TObjectPtr<ULoadout>, FLinearColor> HeroColors;
-
 	
 private:
 	UImage* GetOrCreateBlip(int32 Index);

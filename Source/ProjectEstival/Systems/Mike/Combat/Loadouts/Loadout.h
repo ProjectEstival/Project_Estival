@@ -28,7 +28,7 @@ public:
 	TObjectPtr<UTexture2D> Icon;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Info")
-	FLinearColor LoadoutColor;
+	FLinearColor LoadoutColor = FLinearColor::Green;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Loadout")
 	TObjectPtr<UStatDefinitionSet> BaseStats;

@@ -102,6 +102,7 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 		{
 			const float AnimDuration = Character->PlayAnimMontage(Ability->Montage);
 			RecoveryTime = FMath::Max(RecoveryTime, AnimDuration + Timestamp);
+			ActiveMontage = Ability->Montage;
 		}
 	}
 	
@@ -134,6 +135,18 @@ bool ULoadoutComponent::CancelPendingExecution()
 	World->GetTimerManager().ClearTimer(PendingExecution);
 	RecoveryTime = 0;
 	return true;
+}
+
+void ULoadoutComponent::Interrupt()
+{
+	CancelPendingExecution();
+	RecoveryTime = 0;
+
+	if (ActiveMontage)
+	{
+		if (ACharacter* Character = Cast<ACharacter>(GetOwner())) Character->StopAnimMontage(ActiveMontage);
+		ActiveMontage = nullptr;
+	}
 }
 
 UStatisticsComponent* ULoadoutComponent::ResolveStats()

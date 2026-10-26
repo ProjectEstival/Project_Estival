@@ -54,6 +54,9 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Loadout")
 	bool CancelPendingExecution();
+
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+	void Interrupt();
 	
 	virtual void BeginPlay() override;
 	
@@ -75,6 +78,9 @@ private:
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UResourceComponent> ResourceComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimMontage> ActiveMontage;
  
 	// world time in seconds for when a slot becomes usable again.
 	TMap<FGameplayTag, float> CooldownEnds;

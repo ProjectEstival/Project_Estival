@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
 #include "Perception/AIPerceptionTypes.h"
 #include "EnemyAIController.generated.h"
 
@@ -29,11 +30,14 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
 	TObjectPtr<AEstivalBaseCharacter> PlayerRef;
 	
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Timers")
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Timers")
 	float CheckDistTimer = 2.0f;
 	
 	UPROPERTY()
 	TArray<AEstivalBaseCharacter*> Players;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ForceChange"))
+	FGameplayTag ForceStateChangeTag;
 	
 protected:
 	

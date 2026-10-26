@@ -84,5 +84,14 @@ void AEnemyAIController::DistCheck()
 		}
 	}
 	
-	PlayerRef = PlayerToTarget;
+	if (PlayerToTarget != PlayerRef)
+	{
+		PlayerRef = PlayerToTarget;
+		
+		if (PlayerRef && StateTree && ForceStateChangeTag.IsValid())
+		{
+			StopMovement();
+			StateTree->SendStateTreeEvent(ForceStateChangeTag);
+		}
+	}
 }

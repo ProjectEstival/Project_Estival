@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputAction.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
 AEstivalBaseCharacter::AEstivalBaseCharacter()
@@ -136,7 +137,7 @@ void AEstivalBaseCharacter::Die()
 	Resources->SetActive(false);
 	OnDeath.Broadcast();
 }
-bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
+bool AEstivalBaseCharacter::TryRevive_Implementation(const float HealthPercent)
 {
 	if (IsAlive()) return false;
  
@@ -151,6 +152,7 @@ bool AEstivalBaseCharacter::TryRevive(const float HealthPercent)
 		if (!PreviousController->GetPawn()) PreviousController->Possess(this);
 	}
 	
+	bIsDead = false;
 	Resources->SetActive(true);
 	OnRevived.Broadcast();
 	return true;

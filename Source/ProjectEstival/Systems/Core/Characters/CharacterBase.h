@@ -8,6 +8,7 @@
 #include "GameFramework/Character.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "CharacterBase.generated.h"
 
 class UInputAction;
@@ -34,10 +35,10 @@ protected:
 	TObjectPtr<UStatisticsComponent> Statistics;
 	
 	UPROPERTY(EditDefaultsOnly, Category= "Resources", meta = (Categories = "Stats.Resources."))
-	FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
+	FGameplayTag HealthTag = TagDefinitions::Stats_Resources_Health;
 	
-	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status.."))
-	FGameplayTag InvincibilityTag = FGameplayTag::RequestGameplayTag(FName("Status.Invincible"));
+	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status."))
+	FGameplayTag InvincibilityTag = TagDefinitions::Status_Invincible;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;

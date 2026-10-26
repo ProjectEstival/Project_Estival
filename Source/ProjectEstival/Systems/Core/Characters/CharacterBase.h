@@ -9,6 +9,7 @@
 #include "Systems/Maria/Revivable.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "CharacterBase.generated.h"
 
 class UInputAction;
@@ -34,11 +35,11 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UStatisticsComponent> Statistics;
 	
-	UPROPERTY(EditDefaultsOnly, Category= "Resources", meta = (Categories = "Stats.Resources."))
-	FGameplayTag HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
-	
-	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status.."))
-	FGameplayTag InvincibilityTag = FGameplayTag::RequestGameplayTag(FName("Status.Invincible"));
+	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status."))
+	FGameplayTagContainer MovementBlockingTags;
+
+	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status."))
+	FGameplayTagContainer AbilityBlockingTags;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;
@@ -66,10 +67,18 @@ public:
 	AEstivalBaseCharacter();
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
-	/** Moves relative to the control rotation.*/
+	
 	UFUNCTION(BlueprintCallable, Category="Movement")
 	void DoMove(float AxisX, float AxisY);
+	
+	UFUNCTION(BlueprintCallable, Category= "Combat", meta = (Categories = "Ability."))
+	bool TryActivateAbility(FGameplayTag Slot);
+
+	UFUNCTION(BlueprintPure, Category= "Character")
+	bool CanMove() const;
+
+	UFUNCTION(BlueprintPure, Category= "Character")
+	bool CanUseAbilities() const;
 	
 	UFUNCTION(BlueprintCallable, Category= "Character")
 	UStatisticsComponent* GetStatistics() const
@@ -108,6 +117,8 @@ public:
 private:
 	UFUNCTION()
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue);
+	UFUNCTION()
+	void OnStatusEffectChanged(FGameplayTag Tag);
 	UFUNCTION()
 	void BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag);
 	void Die();

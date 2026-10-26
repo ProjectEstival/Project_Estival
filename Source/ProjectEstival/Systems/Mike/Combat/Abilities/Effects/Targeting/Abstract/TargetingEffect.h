@@ -3,22 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "TargetingEffectBase.h"
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "TargetingEffect.generated.h"
+
 UCLASS(Abstract, NotBlueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
-class PROJECTESTIVAL_API UTargetingEffect : public UAbilityEffect
+class PROJECTESTIVAL_API UTargetingEffect : public UTargetingEffectBase
 {
 	GENERATED_BODY()
-	
-protected:
-	UPROPERTY(BlueprintReadWrite)
-	bool bAllowTargetLimit = true;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowTargetLimit", EditConditionHides))
-	int TargetLimit = 0;
-	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
-	TArray<TObjectPtr<UAbilityEffectPayload>> EffectPayloads;
 	
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")

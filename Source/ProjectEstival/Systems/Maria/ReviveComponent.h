@@ -52,7 +52,6 @@ public:
 	void StopReviveNearby();
 #pragma endregion
 
-
 #pragma region Events
 	UPROPERTY(BlueprintAssignable) FOnResurrectionEvent OnStarted;
 	UPROPERTY(BlueprintAssignable) FOnResurrectionEvent OnCancelled;

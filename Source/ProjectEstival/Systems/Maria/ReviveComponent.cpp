@@ -11,7 +11,7 @@ UReviveComponent::UReviveComponent()
 {
 	// only ticks while holding a revive
 	PrimaryComponentTick.bCanEverTick = true;
-	PrimaryComponentTick.bStartWithTickEnabled = true;
+	PrimaryComponentTick.bStartWithTickEnabled = false;
 }
 
 void UReviveComponent::BeginPlay()

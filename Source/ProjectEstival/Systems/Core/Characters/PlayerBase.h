@@ -21,10 +21,10 @@ public:
 protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Resurrection")
-	TObjectPtr<UReviveComponent>ResurrectionComponent;
+	TObjectPtr<UReviveComponent> ResurrectionComponent;
 	
-	UPROPERTY(EditDefaultsOnly, Category = "Resurrection | Reviving")
-	TObjectPtr<UInputAction>ReviveAction;
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	TObjectPtr<UInputAction> ReviveAction;
 
 private:
 	void StartRevive();

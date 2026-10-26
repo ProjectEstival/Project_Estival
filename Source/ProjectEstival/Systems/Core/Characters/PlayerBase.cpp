@@ -15,11 +15,14 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 	
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
-	if (!Input || !ReviveAction) return;
+	if (!Input) return;
 	
-	Input->BindAction(ReviveAction, ETriggerEvent::Started, this, &APlayerBase::StartRevive);
-	Input->BindAction(ReviveAction, ETriggerEvent::Completed, this, &APlayerBase::StopRevive);
-	Input->BindAction(ReviveAction,ETriggerEvent::Canceled,this, &APlayerBase::StopRevive);
+	if (ReviveAction)
+	{
+		Input->BindAction(ReviveAction, ETriggerEvent::Started, this, &APlayerBase::StartRevive);
+		Input->BindAction(ReviveAction, ETriggerEvent::Completed, this, &APlayerBase::StopRevive);
+		Input->BindAction(ReviveAction,ETriggerEvent::Canceled,this, &APlayerBase::StopRevive);
+	}
 }
 
 void APlayerBase::StartRevive()

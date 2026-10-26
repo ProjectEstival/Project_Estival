@@ -1,6 +1,6 @@
 ﻿#include "TargetingEffectBase.h"
 
-void UTargetingEffectBase::ApplyOnTargets(const FAbilityContext& Context, TSet<AActor*> Targets) const
+void UTargetingEffectBase::ApplyOnTargets(const FAbilityContext& Context, const TSet<AActor*>& Targets) const
 {
 	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> HitCounts;
 	TSet<AActor*> AlreadyHit;

@@ -74,6 +74,6 @@ class PROJECTESTIVAL_API UAbilityPredicate : public UObject
 	
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
-	bool IsSatisfied(const FAbilityContext Context) const;
+	bool IsSatisfied(const FAbilityContext& Context) const;
 	virtual bool IsSatisfied_Implementation(const FAbilityContext& Context) const { return true;}
 };

@@ -29,6 +29,7 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
 		if (NewLoadout && NewLoadout->BaseStats) Stats->SetStatCollection(NewLoadout->BaseStats);
 	}
  
+	CancelPendingExecution();
 	CurrentLoadout = NewLoadout;
 	CooldownEnds.Reset();
  
@@ -110,9 +111,8 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	}
 	else
 	{
-		FTimerHandle Handle;
 		World->GetTimerManager().SetTimer(
-			Handle,
+			PendingExecution,
 			FTimerDelegate::CreateWeakLambda(this,
 				[this, Ctx = Context]()
 				{
@@ -126,6 +126,16 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	return true;
 }
  
+bool ULoadoutComponent::CancelPendingExecution()
+{
+	const UWorld* World = GetWorld();
+	if (!World || !World->GetTimerManager().IsTimerActive(PendingExecution)) return false;
+	
+	World->GetTimerManager().ClearTimer(PendingExecution);
+	RecoveryTime = 0;
+	return true;
+}
+
 UStatisticsComponent* ULoadoutComponent::ResolveStats()
 {
 	if (!StatisticsComponent) StatisticsComponent = GetOwner()->FindComponentByClass<UStatisticsComponent>();

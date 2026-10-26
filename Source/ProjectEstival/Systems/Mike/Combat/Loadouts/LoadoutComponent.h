@@ -52,6 +52,9 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	float GetCooldownRemaining(FGameplayTag Slot) const;
 	
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+	bool CancelPendingExecution();
+	
 	virtual void BeginPlay() override;
 	
 protected:
@@ -75,5 +78,6 @@ private:
  
 	// world time in seconds for when a slot becomes usable again.
 	TMap<FGameplayTag, float> CooldownEnds;
-	double RecoveryTime = 0;
+	float RecoveryTime = 0;
+	FTimerHandle PendingExecution;
 };

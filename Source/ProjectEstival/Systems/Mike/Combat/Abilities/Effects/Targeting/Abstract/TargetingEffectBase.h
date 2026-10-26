@@ -24,5 +24,5 @@ protected:
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Ability")
-	void ApplyOnTargets(const FAbilityContext& Context, TSet<AActor*> Targets) const;
+	void ApplyOnTargets(const FAbilityContext& Context, const TSet<AActor*>& Targets) const;
 };

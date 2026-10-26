@@ -1,4 +1,4 @@
-﻿#include "HitstopPayload.h"
+﻿#include "HitStopPayload.h"
 
 bool UHitStopPayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const
 {

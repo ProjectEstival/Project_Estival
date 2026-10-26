@@ -4,7 +4,9 @@
 
 #include "CoreMinimal.h"
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "DamagePayload.generated.h"
+
 UCLASS()
 class PROJECTESTIVAL_API UDamagePayload : public UAbilityEffectPayload
 {
@@ -12,7 +14,7 @@ class PROJECTESTIVAL_API UDamagePayload : public UAbilityEffectPayload
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (Categories = "Stats."))
-	FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Stats.Damage"));
+	FGameplayTag DamageTag = TagDefinitions::Stats_Damage;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0, ClampMax = 1, UIMin = 0, UIMax = 1))
 	float DamageRandomization = 0.25f;

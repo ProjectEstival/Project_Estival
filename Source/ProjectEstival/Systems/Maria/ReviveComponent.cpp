@@ -5,6 +5,8 @@
 #include "Engine/OverlapResult.h"
 #include "TimerManager.h"
 
+#pragma region Public Methods
+
 UReviveComponent::UReviveComponent()
 {
 	// only ticks while holding a revive
@@ -38,7 +40,9 @@ void UReviveComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActo
 
 	if (!bValid) StopReviveNearby();
 }
+#pragma endregion
 
+#pragma region Target Side
 bool UReviveComponent::CanBeRevived() const
 {
 	const AEstivalBaseCharacter* Owner = Cast<AEstivalBaseCharacter>(GetOwner());
@@ -89,26 +93,9 @@ float UReviveComponent::GetProgress() const
 	const float Remaining = FMath::Max(0.f, GetWorld()->GetTimerManager().GetTimerRemaining(TimerHandle));
 	return FMath::Clamp(1.f - Remaining / Duration, 0.f, 1.f);
 }
+#pragma endregion
 
-void UReviveComponent::Complete()
-{
-	bIsInProgress = false;
-	TimerHandle.Invalidate();
-	CurrentReviver.Reset();
-
-	AActor* Owner = GetOwner();
-	if (Owner && Owner->Implements<URevivable>() && IRevivable::Execute_TryRevive(Owner, HealthPercent))
-	{
-		RemainingLives--;
-		OnLivesChanged.Broadcast(RemainingLives);
-		OnCompleted.Broadcast();
-		return;
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("Revive failed on %s: TryRevive returned false or interface missing"), *GetNameSafe(Owner));
-	OnCancelled.Broadcast();
-}
-
+#pragma region Reviver Side
 bool UReviveComponent::StartReviveNearby()
 {
 	const AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(GetOwner());
@@ -128,6 +115,27 @@ void UReviveComponent::StopReviveNearby()
 
 	ReviveTarget.Reset();
 	SetComponentTickEnabled(false);
+}
+#pragma endregion
+
+#pragma region Private Methods
+void UReviveComponent::Complete()
+{
+	bIsInProgress = false;
+	TimerHandle.Invalidate();
+	CurrentReviver.Reset();
+
+	AActor* Owner = GetOwner();
+	if (Owner && Owner->Implements<URevivable>() && IRevivable::Execute_TryRevive(Owner, HealthPercent))
+	{
+		RemainingLives--;
+		OnLivesChanged.Broadcast(RemainingLives);
+		OnCompleted.Broadcast();
+		return;
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Revive failed on %s: TryRevive returned false or interface missing"), *GetNameSafe(Owner));
+	OnCancelled.Broadcast();
 }
 
 UReviveComponent* UReviveComponent::FindReviveTarget() const
@@ -160,3 +168,4 @@ UReviveComponent* UReviveComponent::FindReviveTarget() const
 	}
 	return Best;
 }
+#pragma endregion

@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputAction.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
 AEstivalBaseCharacter::AEstivalBaseCharacter()

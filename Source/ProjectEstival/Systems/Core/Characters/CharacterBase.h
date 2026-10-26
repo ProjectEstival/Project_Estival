@@ -9,7 +9,6 @@
 #include "Systems/Maria/Revivable.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
-#include "Systems/Core/TagDefinitions.h"
 #include "CharacterBase.generated.h"
 
 class UInputAction;

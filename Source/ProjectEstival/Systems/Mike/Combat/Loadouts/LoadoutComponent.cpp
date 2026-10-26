@@ -29,6 +29,7 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
 		if (NewLoadout && NewLoadout->BaseStats) Stats->SetStatCollection(NewLoadout->BaseStats);
 	}
  
+	CancelPendingExecution();
 	CurrentLoadout = NewLoadout;
 	CooldownEnds.Reset();
  
@@ -101,6 +102,7 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 		{
 			const float AnimDuration = Character->PlayAnimMontage(Ability->Montage);
 			RecoveryTime = FMath::Max(RecoveryTime, AnimDuration + Timestamp);
+			ActiveMontage = Ability->Montage;
 		}
 	}
 	
@@ -110,9 +112,8 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	}
 	else
 	{
-		FTimerHandle Handle;
 		World->GetTimerManager().SetTimer(
-			Handle,
+			PendingExecution,
 			FTimerDelegate::CreateWeakLambda(this,
 				[this, Ctx = Context]()
 				{
@@ -126,6 +127,28 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	return true;
 }
  
+bool ULoadoutComponent::CancelPendingExecution()
+{
+	const UWorld* World = GetWorld();
+	if (!World || !World->GetTimerManager().IsTimerActive(PendingExecution)) return false;
+	
+	World->GetTimerManager().ClearTimer(PendingExecution);
+	RecoveryTime = 0;
+	return true;
+}
+
+void ULoadoutComponent::Interrupt()
+{
+	CancelPendingExecution();
+	RecoveryTime = 0;
+
+	if (ActiveMontage)
+	{
+		if (ACharacter* Character = Cast<ACharacter>(GetOwner())) Character->StopAnimMontage(ActiveMontage);
+		ActiveMontage = nullptr;
+	}
+}
+
 UStatisticsComponent* ULoadoutComponent::ResolveStats()
 {
 	if (!StatisticsComponent) StatisticsComponent = GetOwner()->FindComponentByClass<UStatisticsComponent>();
@@ -146,6 +169,8 @@ FAbilityContext ULoadoutComponent::BuildContext(UAbilityDefinition* Ability)
 	Context.Resources = ResolveResources();
 	Context.Loadout = this;
 	Context.Ability = Ability;
+	Context.World = GetWorld();
+	Context.Origin = Context.Instigator->GetActorTransform().GetLocation();
 	return Context;
 }
 void ULoadoutComponent::ExecuteEffects(const FAbilityContext& Context)

@@ -17,4 +17,5 @@ class IRevivable
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool TryRevive(float HealthPercent);
+	virtual bool TryRevive_Implementation(float HealthPercent) { return true; }
 };

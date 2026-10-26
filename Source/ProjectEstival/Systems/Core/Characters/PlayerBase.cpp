@@ -2,22 +2,12 @@
 
 
 #include "PlayerBase.h"
-#include "Engine/OverlapResult.h"
 #include "EnhancedInputComponent.h"
 #include "Engine/World.h"
 
 APlayerBase::APlayerBase()
 {
-	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = false;
-	
 	ResurrectionComponent = CreateDefaultSubobject<UReviveComponent>(TEXT("Resurrection"));
-}
-
-void APlayerBase::EndPlay(const EEndPlayReason::Type EndPlayReason)
-{
-	StopRevive();
-	Super::EndPlay(EndPlayReason);
 }
 
 void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -32,62 +22,12 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	Input->BindAction(ReviveAction,ETriggerEvent::Canceled,this, &APlayerBase::StopRevive);
 }
 
-void APlayerBase::Tick(float DeltaSeconds)
-{
-	Super::Tick(DeltaSeconds);
-	
-	const UReviveComponent* Target = ReviveTarget.Get();
-	const bool bValid = IsAlive() && Target && Target->IsInProgress()
-	&& FVector::DistSquared(GetActorLocation(), Target->GetOwner()->GetActorLocation()) <= FMath::Square(ReviveRange);
-	
-	if (!bValid) StopRevive();
-}
-
 void APlayerBase::StartRevive()
 {
-	if (!IsAlive() || ReviveTarget.IsValid()) return;
-	
-	UReviveComponent* Target = FindReviveTarget();
-	if (!Target || !Target->BeginResurrection(this)) return;
-	
-	ReviveTarget = Target;
-	SetActorTickEnabled(true);
+	ResurrectionComponent->StartReviveNearby();
 }
 
 void APlayerBase::StopRevive()
 {
-	if (UReviveComponent* Target = ReviveTarget.Get()) Target->CancelResurrection();
-	
-	ReviveTarget.Reset();
-	SetActorTickEnabled(false);
-}
-
-UReviveComponent* APlayerBase::FindReviveTarget() const
-{
-	if (!GetWorld()) return nullptr;
-	
-	TArray<FOverlapResult> Overlaps;
-	GetWorld()->OverlapMultiByChannel(
-		Overlaps, GetActorLocation(), FQuat::Identity, ECC_Pawn,
-		FCollisionShape::MakeSphere(ReviveRange),
-		FCollisionQueryParams(SCENE_QUERY_STAT(FindReviveTarget), false, this));
-	
-	UReviveComponent* Best = nullptr;
-	float BestDistSq = TNumericLimits<float>::Max();
-	
-	for (const FOverlapResult& Overlap : Overlaps)
-	{
-		AActor* Actor = Overlap.GetActor();
-		UReviveComponent* Candidate = Actor ? Actor->FindComponentByClass<UReviveComponent>() : nullptr;
-		if (!Candidate || !Candidate->CanBeRevived()) continue;
-		
-		const float DistSq = FVector::DistSquared(GetActorLocation(), Actor->GetActorLocation());
-		
-		if (DistSq < BestDistSq)
-		{
-			BestDistSq = DistSq;
-			Best = Candidate;
-		}
-	}
-	return Best;
+	ResurrectionComponent->StopReviveNearby();
 }

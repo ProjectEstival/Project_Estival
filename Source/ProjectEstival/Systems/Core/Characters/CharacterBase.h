@@ -100,7 +100,6 @@ public:
 	
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
-	UFUNCTION(BlueprintCallable, Category = "Health")
 	virtual bool TryRevive_Implementation(const float HealthPercent) override;
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")

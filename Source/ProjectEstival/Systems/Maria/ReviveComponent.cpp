@@ -1,18 +1,15 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-
-#include "ReviveComponent.h"
+﻿#include "ReviveComponent.h"
 #include "Revivable.h"
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Engine/World.h"
-#include "Kismet/GameplayStatics.h"
-#include "GameFramework/PlayerController.h"
+#include "Engine/OverlapResult.h"
 #include "TimerManager.h"
-
 
 UReviveComponent::UReviveComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
+	// only ticks while holding a revive
+	PrimaryComponentTick.bCanEverTick = true;
+	PrimaryComponentTick.bStartWithTickEnabled = true;
 }
 
 void UReviveComponent::BeginPlay()
@@ -20,42 +17,48 @@ void UReviveComponent::BeginPlay()
 	Super::BeginPlay();
 	RemainingLives = FMath::Max(0, MaxLives);
 	OnLivesChanged.Broadcast(RemainingLives);
-	
-	if (AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(GetOwner()))
-	{
-		Character->OnDeath.AddDynamic(this, &UReviveComponent::HandleOwnerDeath);
-		Character->OnRevived.AddDynamic(this, &UReviveComponent::HandleOwnerRevived);
-	}
 }
 
 void UReviveComponent::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	CancelResurrection();
-	if (UWorld* World = GetWorld())World->GetTimerManager().ClearTimer(OffscreenTimer);
-	
+	StopReviveNearby();
 	Super::EndPlay(EndPlayReason);
+}
+
+void UReviveComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+{
+	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
+
+	const AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(GetOwner());
+	const UReviveComponent* Target = ReviveTarget.Get();
+
+	const bool bValid = Character && Character->IsAlive() && Target && Target->IsInProgress()
+		&& FVector::DistSquared(Character->GetActorLocation(), Target->GetOwner()->GetActorLocation()) <= FMath::Square(ReviveRange);
+
+	if (!bValid) StopReviveNearby();
 }
 
 bool UReviveComponent::CanBeRevived() const
 {
 	const AEstivalBaseCharacter* Owner = Cast<AEstivalBaseCharacter>(GetOwner());
-	return Owner && !Owner-> IsAlive() && RemainingLives > 0 && !bIsInProgress;
+	return Owner && !Owner->IsAlive() && RemainingLives > 0 && !bIsInProgress;
 }
 
 bool UReviveComponent::BeginResurrection(AActor* Reviver)
 {
 	if (!CanBeRevived() || !GetWorld()) return false;
-	
+
 	CurrentReviver = Reviver;
 	bIsInProgress = true;
 	OnStarted.Broadcast();
-	
+
 	if (Duration <= 0.f)
 	{
 		Complete();
 		return true;
 	}
-	
+
 	GetWorld()->GetTimerManager().SetTimer(
 		TimerHandle,
 		this,
@@ -68,12 +71,12 @@ bool UReviveComponent::BeginResurrection(AActor* Reviver)
 void UReviveComponent::CancelResurrection()
 {
 	if (!bIsInProgress) return;
-	
+
 	if (UWorld* World = GetWorld())
 	{
 		World->GetTimerManager().ClearTimer(TimerHandle);
 	}
-	
+
 	bIsInProgress = false;
 	CurrentReviver.Reset();
 	OnCancelled.Broadcast();
@@ -82,7 +85,7 @@ void UReviveComponent::CancelResurrection()
 float UReviveComponent::GetProgress() const
 {
 	if (!bIsInProgress || Duration <= 0.f || !GetWorld()) return 0.f;
-	
+
 	const float Remaining = FMath::Max(0.f, GetWorld()->GetTimerManager().GetTimerRemaining(TimerHandle));
 	return FMath::Clamp(1.f - Remaining / Duration, 0.f, 1.f);
 }
@@ -92,94 +95,68 @@ void UReviveComponent::Complete()
 	bIsInProgress = false;
 	TimerHandle.Invalidate();
 	CurrentReviver.Reset();
-	
+
 	AActor* Owner = GetOwner();
-	if (Owner && Owner->Implements<UReviveComponent>() && IRevivable::Execute_TryRevive(Owner, HealthPercent))
+	if (Owner && Owner->Implements<URevivable>() && IRevivable::Execute_TryRevive(Owner, HealthPercent))
 	{
 		RemainingLives--;
 		OnLivesChanged.Broadcast(RemainingLives);
 		OnCompleted.Broadcast();
 		return;
 	}
-	
+
+	UE_LOG(LogTemp, Warning, TEXT("Revive failed on %s: TryRevive returned false or interface missing"), *GetNameSafe(Owner));
 	OnCancelled.Broadcast();
 }
 
-void UReviveComponent::HandleOwnerDeath()
+bool UReviveComponent::StartReviveNearby()
 {
-	OffscreenTime = 0.f;
-	GetWorld()->GetTimerManager().SetTimer(
-		OffscreenTimer,
-		this,
-		&UReviveComponent::CheckOffScreen,
-		OffscreenCheckInterval,
-		true);
+	const AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(GetOwner());
+	if (!Character || !Character->IsAlive() || ReviveTarget.IsValid()) return false;
+
+	UReviveComponent* Target = FindReviveTarget();
+	if (!Target || !Target->BeginResurrection(GetOwner())) return false;
+
+	ReviveTarget = Target;
+	SetComponentTickEnabled(true);
+	return true;
 }
 
-void UReviveComponent::HandleOwnerRevived()
+void UReviveComponent::StopReviveNearby()
 {
-	GetWorld()->GetTimerManager().ClearTimer(OffscreenTimer);
+	if (UReviveComponent* Target = ReviveTarget.Get()) Target->CancelResurrection();
+
+	ReviveTarget.Reset();
+	SetComponentTickEnabled(false);
 }
 
-void UReviveComponent::CheckOffScreen()
+UReviveComponent* UReviveComponent::FindReviveTarget() const
 {
-	if (!bIsInProgress || RemainingLives <= 0 || IsOwnerOnScreen())
-	{
-		OffscreenTime = 0.f;
-		return;
-	}
-	
-	OffscreenTime += OffscreenCheckInterval;
-	if (OffscreenTime < OffScreenDelay) return;
-	
-	OffscreenTime = 0.f;
-	FVector Location;
-	if (FindPartyLocation(Location)) ReviveAtLocation(Location);
-}
+	if (!GetWorld()) return nullptr;
 
-void UReviveComponent::ReviveAtLocation(const FVector& Location)
-{
-	if (!CanBeRevived()) return;
-	
-	GetOwner()->SetActorLocation(Location,
-		false,
-		nullptr,
-		ETeleportType::TeleportPhysics);
-	Complete();
-}
+	const FVector Origin = GetOwner()->GetActorLocation();
 
-bool UReviveComponent::IsOwnerOnScreen() const
-{
-	const APlayerController* PC = UGameplayStatics::GetPlayerController(this,0);
-	if (!PC) return true;
-	
-	int32 SizeX, SizeY;
-	PC->GetViewportSize(SizeX, SizeY);
-	
-	FVector2D ScreenPos;
-	if (!PC->ProjectWorldLocationToScreen(GetOwner()->GetActorLocation(),ScreenPos)) return false;
-	
-	return ScreenPos.X >= 0.f && ScreenPos.X <= SizeX && ScreenPos.Y >= 0.f && ScreenPos.Y <= SizeY;
-}
+	TArray<FOverlapResult> Overlaps;
+	GetWorld()->OverlapMultiByChannel(
+		Overlaps, Origin, FQuat::Identity, ECC_Pawn,
+		FCollisionShape::MakeSphere(ReviveRange),
+		FCollisionQueryParams(SCENE_QUERY_STAT(FindReviveTarget), false, GetOwner()));
 
-bool UReviveComponent::FindPartyLocation(FVector& OutLocation) const
-{
+	UReviveComponent* Best = nullptr;
 	float BestDistSq = TNumericLimits<float>::Max();
-	bool bFound = false;
-	
-	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+
+	for (const FOverlapResult& Overlap : Overlaps)
 	{
-		const APlayerController* PC = It->Get();
-		const AEstivalBaseCharacter* Teammate = PC ? Cast<AEstivalBaseCharacter>(PC->GetPawn()) : nullptr;
-		if (!Teammate || !Teammate->IsAlive() || Teammate == GetOwner()) continue;
-		
-		const float DistSq = FVector::DistSquared(Teammate->GetActorLocation(), GetOwner()->GetActorLocation());
+		AActor* Actor = Overlap.GetActor();
+		UReviveComponent* Candidate = Actor ? Actor->FindComponentByClass<UReviveComponent>() : nullptr;
+		if (!Candidate || !Candidate->CanBeRevived()) continue;
+
+		const float DistSq = FVector::DistSquared(Origin, Actor->GetActorLocation());
 		if (DistSq < BestDistSq)
 		{
 			BestDistSq = DistSq;
-			OutLocation = Teammate->GetActorLocation();
-			bFound = true;
+			Best = Candidate;
 		}
 	}
-	return bFound;
+	return Best;
 }

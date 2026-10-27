@@ -10,7 +10,7 @@
     "Modules": [
         {
             "Name": "DeveloperConsole",
-            "Type": "Runtime",
+            "Type": "DeveloperTool",
             "LoadingPhase": "PostEngineInit"
         }
     ]

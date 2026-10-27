@@ -4,8 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
+#include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
+#include "Systems/Maria/Revivable.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
+#include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 #include "CharacterBase.generated.h"
 
 class UInputAction;
@@ -17,7 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRevived);
 
 /**Base class for every Estival character*/
 UCLASS(Abstract)
-class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter
+class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter, public IGenericTeamAgentInterface, public IRevivable
 {
 	GENERATED_BODY()
 
@@ -31,14 +34,26 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<UStatisticsComponent> Statistics;
 	
-	UPROPERTY(EditDefaultsOnly, Category= "Resources", meta = (Categories = "Stats.Resources."))
-	FGameplayTag HealthTag;
+	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status."))
+	FGameplayTagContainer MovementBlockingTags;
+
+	UPROPERTY(EditDefaultsOnly, Category= "Status", meta = (Categories = "Status."))
+	FGameplayTagContainer AbilityBlockingTags;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<UResourceComponent> Resources;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
+	TObjectPtr<ULoadoutComponent> Loadout;
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MoveAction;
+	
+	UPROPERTY(EditDefaultsOnly, Category= "Input")
+	TMap<TObjectPtr<UInputAction>, FGameplayTag> AbilityInputMap;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Combat")
+	FGenericTeamId DefaultTeam = FGenericTeamId(0);
 
 public:
 	
@@ -51,10 +66,18 @@ public:
 	AEstivalBaseCharacter();
 	virtual void BeginPlay() override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
-	/** Moves relative to the control rotation.*/
+	
 	UFUNCTION(BlueprintCallable, Category="Movement")
 	void DoMove(float AxisX, float AxisY);
+	
+	UFUNCTION(BlueprintCallable, Category= "Combat", meta = (Categories = "Ability."))
+	bool TryActivateAbility(FGameplayTag Slot);
+
+	UFUNCTION(BlueprintPure, Category= "Character")
+	bool CanMove() const;
+
+	UFUNCTION(BlueprintPure, Category= "Character")
+	bool CanUseAbilities() const;
 	
 	UFUNCTION(BlueprintCallable, Category= "Character")
 	UStatisticsComponent* GetStatistics() const
@@ -63,22 +86,41 @@ public:
 	}
 	
 	UFUNCTION(BlueprintCallable, Category= "Character")
+	UAC_StatusEffectComponent* GetStatusEffects() const
+	{
+		return StatusEffects.Get();
+	}
+	
+	UFUNCTION(BlueprintCallable, Category= "Character")
 	UResourceComponent* GetResources() const
 	{
 		return Resources.Get();
 	}
 	
+	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override
+	{
+		this->TeamId = TeamID;
+	}
+	virtual FGenericTeamId GetGenericTeamId() const override
+	{
+		return this->TeamId;
+	}
+	
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
-	UFUNCTION(BlueprintCallable, Category = "Health")
-	bool TryRevive(float HealthPercent);
+	virtual bool TryRevive_Implementation(const float HealthPercent) override;
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")
-	bool IsDead() const;
+	bool IsAlive() const;
 	
 private:
 	UFUNCTION()
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue);
+	UFUNCTION()
+	void OnStatusEffectChanged(FGameplayTag Tag);
+	UFUNCTION()
+	void BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag);
 	void Die();
 	bool bIsDead = false;
+	FGenericTeamId TeamId = FGenericTeamId::NoTeam;
 };

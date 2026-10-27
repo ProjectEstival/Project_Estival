@@ -29,6 +29,7 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
 		if (NewLoadout && NewLoadout->BaseStats) Stats->SetStatCollection(NewLoadout->BaseStats);
 	}
  
+	CancelPendingExecution();
 	CurrentLoadout = NewLoadout;
 	CooldownEnds.Reset();
  
@@ -55,7 +56,13 @@ bool ULoadoutComponent::IsOnCooldown(const FGameplayTag Slot) const
 {
 	return GetCooldownRemaining(Slot) > 0.f;
 }
- 
+
+bool ULoadoutComponent::IsBusy() const
+{
+	if (const UWorld* World = GetWorld()) return RecoveryTime > World->GetTimeSeconds();
+	return false;
+}
+
 bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 {
 	UAbilityDefinition* Ability = GetAbility(Slot);
@@ -63,7 +70,7 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	const UWorld* World = GetWorld();
  
 	if (!Ability || !Owner || !World) return false;
-	if (IsOnCooldown(Slot)) return false;
+	if (IsOnCooldown(Slot) || IsBusy()) return false;
  
 	const FAbilityContext Context = BuildContext(Ability);
 	
@@ -85,14 +92,17 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 			Context.Resources->TrySpend(Cost.Key, Cost.Value);
 		}
 	}
- 
-	CooldownEnds.Add(Slot, World->GetTimeSeconds() + Ability->Cooldown);
+	const double Timestamp = World->GetTimeSeconds();
+	CooldownEnds.Add(Slot, Timestamp + Ability->Cooldown);
+	RecoveryTime = Timestamp + Ability->ExecuteDelay;
  
 	if (Ability->Montage)
 	{
 		if (ACharacter* Character = Cast<ACharacter>(Owner))
 		{
-			Character->PlayAnimMontage(Ability->Montage);
+			const float AnimDuration = Character->PlayAnimMontage(Ability->Montage);
+			RecoveryTime = FMath::Max(RecoveryTime, AnimDuration + Timestamp);
+			ActiveMontage = Ability->Montage;
 		}
 	}
 	
@@ -102,9 +112,8 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	}
 	else
 	{
-		FTimerHandle Handle;
 		World->GetTimerManager().SetTimer(
-			Handle,
+			PendingExecution,
 			FTimerDelegate::CreateWeakLambda(this,
 				[this, Ctx = Context]()
 				{
@@ -118,6 +127,28 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	return true;
 }
  
+bool ULoadoutComponent::CancelPendingExecution()
+{
+	const UWorld* World = GetWorld();
+	if (!World || !World->GetTimerManager().IsTimerActive(PendingExecution)) return false;
+	
+	World->GetTimerManager().ClearTimer(PendingExecution);
+	RecoveryTime = 0;
+	return true;
+}
+
+void ULoadoutComponent::Interrupt()
+{
+	CancelPendingExecution();
+	RecoveryTime = 0;
+
+	if (ActiveMontage)
+	{
+		if (ACharacter* Character = Cast<ACharacter>(GetOwner())) Character->StopAnimMontage(ActiveMontage);
+		ActiveMontage = nullptr;
+	}
+}
+
 UStatisticsComponent* ULoadoutComponent::ResolveStats()
 {
 	if (!StatisticsComponent) StatisticsComponent = GetOwner()->FindComponentByClass<UStatisticsComponent>();
@@ -138,6 +169,8 @@ FAbilityContext ULoadoutComponent::BuildContext(UAbilityDefinition* Ability)
 	Context.Resources = ResolveResources();
 	Context.Loadout = this;
 	Context.Ability = Ability;
+	Context.World = GetWorld();
+	Context.Origin = Context.Instigator->GetActorTransform().GetLocation();
 	return Context;
 }
 void ULoadoutComponent::ExecuteEffects(const FAbilityContext& Context)

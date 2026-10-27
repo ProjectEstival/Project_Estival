@@ -9,6 +9,7 @@
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
 
 #if WITH_EDITOR
 #include "Editor.h"
@@ -19,14 +20,8 @@ namespace
     class FDevConsoleInputProcessor final : public IInputProcessor
     {
     public:
-        explicit FDevConsoleInputProcessor(TFunction<void()> InToggle) : Toggle(MoveTemp(InToggle))
-        {
-        }
-    
-        virtual void Tick(const float DeltaTime, FSlateApplication& SlateApp, TSharedRef<ICursor> Cursor) override
-        {
-        }
-
+        explicit FDevConsoleInputProcessor(TFunction<void()> InToggle) : Toggle(MoveTemp(InToggle)) { }
+        virtual void Tick(const float DeltaTime, FSlateApplication& SlateApp, TSharedRef<ICursor> Cursor) override { }
         virtual bool HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyEvent& Event) override
         {
             if (Event.GetKey() == EKeys::F10 && !Event.IsRepeat())
@@ -34,10 +29,10 @@ namespace
                 if (Toggle) Toggle();
                 return true;
             }
-        
+            
             return false;
         }
-    
+        
         virtual const TCHAR* GetDebugName() const override
         {
             return TEXT("DevConsoleInputProcessor");
@@ -53,7 +48,6 @@ namespace
 void FDeveloperConsoleModule::StartupModule()
 {
 #if WITH_DEVELOPER_CONSOLE
-    
     FPlatformStackWalk::InitStackWalking();
     
     LogSink = MakeUnique<FDevConsoleLogSink>();
@@ -75,7 +69,6 @@ void FDeveloperConsoleModule::StartupModule()
 void FDeveloperConsoleModule::ShutdownModule()
 {
 #if WITH_DEVELOPER_CONSOLE
-    
     if (TickHandle.IsValid())
     {
         FTSTicker::RemoveTicker(TickHandle);
@@ -91,13 +84,12 @@ void FDeveloperConsoleModule::ShutdownModule()
     InputProcessor.Reset();
 #endif
 #if WITH_EDITOR
-        if (GIsEditor && EndPIEDelegateHandle.IsValid()) FEditorDelegates::EndPIE.Remove(EndPIEDelegateHandle);
+    if (GIsEditor && EndPIEDelegateHandle.IsValid()) FEditorDelegates::EndPIE.Remove(EndPIEDelegateHandle);
 #endif
 }
 bool FDeveloperConsoleModule::Tick(float DeltaTime)
 {
 #if WITH_DEVELOPER_CONSOLE
-    
     if (LogSink)
     {
         TArray<FDevConsoleLogEvent> NewEvents;
@@ -117,9 +109,7 @@ bool FDeveloperConsoleModule::Tick(float DeltaTime)
         const int32 MaxEvents = MaxEventsVariable ? FMath::Max(1, MaxEventsVariable->GetInt()) : MaxEventsFallback;
         if (RetainedEvents.Num() > MaxEvents) RetainedEvents.RemoveAt(0, RetainedEvents.Num() - MaxEvents, EAllowShrinking::No);
     }
-    
 #endif
-    
     return true;
 }
 #if WITH_EDITOR
@@ -132,15 +122,8 @@ void FDeveloperConsoleModule::OnPIESessionEnded(bool bIsSimulating)
 void FDeveloperConsoleModule::RegisterConsoleCommands()
 {
 #if WITH_DEVELOPER_CONSOLE
-    
     IConsoleManager& ConsoleManager = IConsoleManager::Get();
-    MaxEventsVariable = ConsoleManager.RegisterConsoleVariable(
-        TEXT("devconsole.MaxEvents"),
-        MaxEventsFallback,
-        TEXT("Maximum number of log events retained by the developer console."),
-        ECVF_Default
-    );
-    
+    MaxEventsVariable = ConsoleManager.RegisterConsoleVariable(TEXT("devconsole.MaxEvents"), MaxEventsFallback, TEXT("Maximum number of log events retained by the developer console."), ECVF_Default);
 #endif
 }
 void FDeveloperConsoleModule::UnregisterConsoleCommands()
@@ -157,17 +140,35 @@ void FDeveloperConsoleModule::UnregisterConsoleCommands()
 void FDeveloperConsoleModule::ToggleConsole()
 {
 #if WITH_DEVELOPER_CONSOLE
-    
     if (bConsoleVisible) HideConsole();
     else ShowConsole();
+    SetCursorVisible(bConsoleVisible);
 #endif
+}
+void FDeveloperConsoleModule::SetCursorVisible(bool bVisibility)
+{
+    if (!GEngine) return;
+    // Iterate through all active worlds managed by the engine
+    UWorld* GameWorld = nullptr;
+    for (const FWorldContext& Context : GEngine->GetWorldContexts())
+    {
+        if (Context.WorldType == EWorldType::Game || Context.WorldType == EWorldType::PIE)
+        {
+            GameWorld = Context.World();
+            if (GameWorld) break;
+        }
+    }
+    // Change cursor of the first local player controller from this world
+    if (GameWorld)
+    {
+        if (bVisibility) bWasCursorVisible = GameWorld->GetFirstPlayerController()->bShowMouseCursor;
+        GameWorld->GetFirstPlayerController()->bShowMouseCursor = bVisibility ? true : bWasCursorVisible;
+    }
 }
 void FDeveloperConsoleModule::ShowConsole()
 {
 #if WITH_DEVELOPER_CONSOLE
-    
     if (bConsoleVisible) return;
-    
     if (!GEngine || !GEngine->GameViewport)
     {
         UE_LOG(LogTemp, Warning, TEXT("Developer console could not find a game viewport."));
@@ -181,7 +182,6 @@ void FDeveloperConsoleModule::ShowConsole()
     
     GEngine->GameViewport->AddViewportWidgetContent(ConsoleWidget.ToSharedRef(), 10000);
     bConsoleVisible = true;
-
 #endif
 }
 void FDeveloperConsoleModule::HideConsole()
@@ -195,7 +195,6 @@ void FDeveloperConsoleModule::HideConsole()
         ConsoleWidget.Reset();
     }
     bConsoleVisible = false;
-    
 #endif
 }
 

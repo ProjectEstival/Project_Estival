@@ -45,9 +45,18 @@ public:
  
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	bool IsOnCooldown(FGameplayTag Slot) const;
+	
+	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
+	bool IsBusy() const;
  
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	float GetCooldownRemaining(FGameplayTag Slot) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+	bool CancelPendingExecution();
+
+	UFUNCTION(BlueprintCallable, Category = "Loadout")
+	void Interrupt();
 	
 	virtual void BeginPlay() override;
 	
@@ -69,7 +78,12 @@ private:
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UResourceComponent> ResourceComponent;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UAnimMontage> ActiveMontage;
  
 	// world time in seconds for when a slot becomes usable again.
 	TMap<FGameplayTag, float> CooldownEnds;
+	float RecoveryTime = 0;
+	FTimerHandle PendingExecution;
 };

@@ -55,7 +55,13 @@ bool ULoadoutComponent::IsOnCooldown(const FGameplayTag Slot) const
 {
 	return GetCooldownRemaining(Slot) > 0.f;
 }
- 
+
+bool ULoadoutComponent::IsBusy() const
+{
+	if (const UWorld* World = GetWorld()) return RecoveryTime > World->GetTimeSeconds();
+	return false;
+}
+
 bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 {
 	UAbilityDefinition* Ability = GetAbility(Slot);
@@ -63,7 +69,7 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	const UWorld* World = GetWorld();
  
 	if (!Ability || !Owner || !World) return false;
-	if (IsOnCooldown(Slot)) return false;
+	if (IsOnCooldown(Slot) || IsBusy()) return false;
  
 	const FAbilityContext Context = BuildContext(Ability);
 	
@@ -85,14 +91,16 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 			Context.Resources->TrySpend(Cost.Key, Cost.Value);
 		}
 	}
- 
-	CooldownEnds.Add(Slot, World->GetTimeSeconds() + Ability->Cooldown);
+	const double Timestamp = World->GetTimeSeconds();
+	CooldownEnds.Add(Slot, Timestamp + Ability->Cooldown);
+	RecoveryTime = Timestamp + Ability->ExecuteDelay;
  
 	if (Ability->Montage)
 	{
 		if (ACharacter* Character = Cast<ACharacter>(Owner))
 		{
-			Character->PlayAnimMontage(Ability->Montage);
+			const float AnimDuration = Character->PlayAnimMontage(Ability->Montage);
+			RecoveryTime = FMath::Max(RecoveryTime, AnimDuration + Timestamp);
 		}
 	}
 	

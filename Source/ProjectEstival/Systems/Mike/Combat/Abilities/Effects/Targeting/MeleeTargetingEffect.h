@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "TargetingEffect.h"
+#include "Abstract/TargetingEffect.h"
 #include "MeleeTargetingEffect.generated.h"
 
 UCLASS()

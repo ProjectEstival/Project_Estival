@@ -7,6 +7,21 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "TargetingEffectBase.generated.h"
 
+USTRUCT()
+struct FTargetHitTracker
+{
+	GENERATED_BODY()
+	
+	UPROPERTY()
+	TSet<TObjectPtr<AActor>> AlreadyHit;
+	
+	UPROPERTY()
+	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> HitCounts;
+	
+	UPROPERTY()
+	int32 TotalHits = 0;
+};
+
 UCLASS(Abstract, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class PROJECTESTIVAL_API UTargetingEffectBase : public UAbilityEffect
 {
@@ -23,6 +38,8 @@ protected:
 	TArray<TObjectPtr<UAbilityEffectPayload>> EffectPayloads;
 	
 public:
+	bool TryApplyOnTarget(const FAbilityContext& Context, AActor* Target, FTargetHitTracker& Tracker) const;
+	
 	UFUNCTION(BlueprintCallable, Category = "Ability")
 	void ApplyOnTargets(const FAbilityContext& Context, const TArray<AActor*>& Targets) const;
 };

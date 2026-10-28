@@ -22,6 +22,7 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
 {
 	if (NewLoadout == CurrentLoadout) return;
  
+	Interrupt();
 	ULoadout* OldLoadout = CurrentLoadout;
  
 	if (UStatisticsComponent* Stats = ResolveStats())
@@ -29,7 +30,6 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
 		if (NewLoadout && NewLoadout->BaseStats) Stats->SetStatCollection(NewLoadout->BaseStats);
 	}
  
-	CancelPendingExecution();
 	CurrentLoadout = NewLoadout;
 	CooldownEnds.Reset();
  
@@ -57,10 +57,15 @@ bool ULoadoutComponent::IsOnCooldown(const FGameplayTag Slot) const
 	return GetCooldownRemaining(Slot) > 0.f;
 }
 
-bool ULoadoutComponent::IsBusy() const
+float ULoadoutComponent::GetCastProgress01() const
 {
-	if (const UWorld* World = GetWorld()) return RecoveryTime > World->GetTimeSeconds();
-	return false;
+	if (Active.Phase != EAbilityPhase::Windup || !Active.Ability) return 0.f;
+	
+	const UWorld* World = GetWorld();
+	if (!World || Active.Ability->CastTime <= 0.f) return 1.f;
+	
+	const float Elapsed = World->GetTimeSeconds() - Active.PhaseStartTime;
+	return FMath::Clamp(Elapsed / Active.Ability->CastTime, 0.f, 1.f);
 }
 
 bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
@@ -79,76 +84,134 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 		if (Pred && !Pred->IsSatisfied(Context)) return false;
 	}
 	
-	if (bConsumesResources && Context.Resources)
-	{
-		for (const auto Cost : Ability->ResourceCosts)
-		{
-			if (!Cost.Key.IsValid()) continue;
-			if (!Context.Resources->CanAfford(Cost.Key, Cost.Value)) return false;
-		}
-		for (const auto Cost : Ability->ResourceCosts)
-		{
-			if (!Cost.Key.IsValid()) continue;
-			Context.Resources->TrySpend(Cost.Key, Cost.Value);
-		}
-	}
-	const double Timestamp = World->GetTimeSeconds();
-	CooldownEnds.Add(Slot, Timestamp + Ability->Cooldown);
-	RecoveryTime = Timestamp + Ability->ExecuteDelay;
+	if (!CanAffordCosts(Ability)) return false;
+	
+	Active.Slot = Slot;
+	Active.Ability = Ability;
+	Active.Phase = EAbilityPhase::Windup;
+	Active.PhaseStartTime = World->GetTimeSeconds();
+	Active.MontageEndTime = Active.PhaseStartTime;
  
 	if (Ability->Montage)
 	{
 		if (ACharacter* Character = Cast<ACharacter>(Owner))
 		{
-			const float AnimDuration = Character->PlayAnimMontage(Ability->Montage);
-			RecoveryTime = FMath::Max(RecoveryTime, AnimDuration + Timestamp);
-			ActiveMontage = Ability->Montage;
+			if (const float AnimDuration = Character->PlayAnimMontage(Ability->Montage); AnimDuration > 0.f)
+			{
+				Active.MontageEndTime += AnimDuration;
+			}
 		}
 	}
 	
-	if (FMath::IsNearlyZero(Ability->ExecuteDelay))
-	{
-		ExecuteEffects(Context);
-	}
-	else
-	{
-		World->GetTimerManager().SetTimer(
-			PendingExecution,
-			FTimerDelegate::CreateWeakLambda(this,
-				[this, Ctx = Context]()
-				{
-					ExecuteEffects(Ctx);
-				}),
-			Ability->ExecuteDelay,
-			false);
-	}
- 
+	if (UStatisticsComponent* Stats = ResolveStats()) Stats->AddModifierSet(Ability->CastModifiers, Ability);
+	
+	if (FMath::IsNearlyZero(Ability->CastTime)) Commit();
+	else World->GetTimerManager().SetTimer(Active.PhaseTimer, this, &ULoadoutComponent::Commit, Ability->CastTime, false);
+	
 	OnAbilityActivated.Broadcast(Slot, Ability);
 	return true;
 }
- 
-bool ULoadoutComponent::CancelPendingExecution()
+
+void ULoadoutComponent::Commit()
 {
-	const UWorld* World = GetWorld();
-	if (!World || !World->GetTimerManager().IsTimerActive(PendingExecution)) return false;
+	if (Active.Phase != EAbilityPhase::Windup || !Active.Ability) return;
 	
-	World->GetTimerManager().ClearTimer(PendingExecution);
-	RecoveryTime = 0;
+	UAbilityDefinition* Ability = Active.Ability;
+	const FGameplayTag Slot = Active.Slot;
+	const UWorld* World = GetWorld();
+	
+	if (!CanAffordCosts(Ability))
+	{
+		Interrupt();
+		return;
+	}
+	
+	RemoveCastingModifiers();
+	SpendCosts(Ability);
+	
+	const float Now = World->GetTimeSeconds();
+	CooldownEnds.Add(Slot, Now + Ability->Cooldown);
+	Active.Phase = EAbilityPhase::Recovery;
+	Active.PhaseStartTime = Now;
+	
+	ExecuteEffects(BuildContext(Ability));
+	
+	const float Remaining = Active.MontageEndTime - Now;
+	
+	if (Remaining <= UE_KINDA_SMALL_NUMBER)
+	{
+		EndActive(false);
+		return;
+	}
+	
+	World->GetTimerManager().SetTimer(
+		Active.PhaseTimer,
+		FTimerDelegate::CreateUObject(this, &ULoadoutComponent::EndActive, false),
+		Remaining,
+		false);
+	
+	OnAbilityCommitted.Broadcast(Slot, Ability);
+}
+
+bool ULoadoutComponent::Interrupt()
+{
+	if (Active.Phase == EAbilityPhase::Idle) return false;
+	
+	const bool bWasCasting = Active.Phase == EAbilityPhase::Windup;
+	
+	if (Active.Ability->Montage)
+	{
+		if (ACharacter* Character = Cast<ACharacter>(GetOwner())) Character->StopAnimMontage(Active.Ability->Montage);
+	}
+	
+	EndActive(bWasCasting);
 	return true;
 }
 
-void ULoadoutComponent::Interrupt()
+void ULoadoutComponent::EndActive(const bool bInterrupted)
 {
-	CancelPendingExecution();
-	RecoveryTime = 0;
-
-	if (ActiveMontage)
-	{
-		if (ACharacter* Character = Cast<ACharacter>(GetOwner())) Character->StopAnimMontage(ActiveMontage);
-		ActiveMontage = nullptr;
-	}
+	if (Active.Phase == EAbilityPhase::Idle) return;
+	
+	if (const UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(Active.PhaseTimer);
+	RemoveCastingModifiers();
+	
+	const FGameplayTag Slot = Active.Slot;
+	UAbilityDefinition* Ability = Active.Ability;
+	Active = FActiveAbility();
+	
+	if (bInterrupted) OnAbilityInterrupted.Broadcast(Slot, Ability);
+	OnAbilityEnded.Broadcast(Slot, Ability);
 }
 
+void ULoadoutComponent::RemoveCastingModifiers()
+{
+	if (!Active.Ability) return;
+	if (UStatisticsComponent* Stats = ResolveStats()) Stats->RemoveAllFromSource(Active.Ability);
+}
+
+bool ULoadoutComponent::CanAffordCosts(const UAbilityDefinition* Ability)
+{
+	const UResourceComponent* Resources = ResolveResources();
+	if (!bConsumesResources || !Resources) return true;
+	
+	for (const auto& Cost : Ability->ResourceCosts)
+	{
+		if (Cost.Key.IsValid() && !Resources->CanAfford(Cost.Key, Cost.Value)) return false;
+	}
+	return true;
+}
+
+void ULoadoutComponent::SpendCosts(const UAbilityDefinition* Ability)
+{
+	UResourceComponent* Resources = ResolveResources();
+	if (!bConsumesResources || !Resources) return;
+	
+	for (const auto& Cost : Ability->ResourceCosts)
+	{
+		if (Cost.Key.IsValid()) Resources->ModifyResource(Cost.Key, -Cost.Value);
+	}
+}
+ 
 UStatisticsComponent* ULoadoutComponent::ResolveStats()
 {
 	if (!StatisticsComponent) StatisticsComponent = GetOwner()->FindComponentByClass<UStatisticsComponent>();

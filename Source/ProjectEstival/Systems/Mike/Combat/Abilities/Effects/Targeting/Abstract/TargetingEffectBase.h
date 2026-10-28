@@ -16,7 +16,7 @@ protected:
 	UPROPERTY()
 	bool bAllowsTargetLimits = true;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, meta = (ClampMin = 0, EditCondition = "bAllowsTargetLimits", EditConditionHides, HideEditConditionToggle))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Targeting", meta = (ClampMin = 0, EditCondition = "bAllowsTargetLimits", EditConditionHides, HideEditConditionToggle))
 	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> TargetLimits;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
@@ -24,5 +24,5 @@ protected:
 	
 public:
 	UFUNCTION(BlueprintCallable, Category = "Ability")
-	void ApplyOnTargets(const FAbilityContext& Context, const TSet<AActor*>& Targets) const;
+	void ApplyOnTargets(const FAbilityContext& Context, const TArray<AActor*>& Targets) const;
 };

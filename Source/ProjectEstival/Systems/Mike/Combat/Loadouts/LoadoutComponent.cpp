@@ -234,6 +234,7 @@ FAbilityContext ULoadoutComponent::BuildContext(UAbilityDefinition* Ability)
 	Context.Ability = Ability;
 	Context.World = GetWorld();
 	Context.Origin = Context.Instigator->GetActorTransform().GetLocation();
+	Context.Direction = Context.Instigator->GetActorForwardVector().GetSafeNormal();
 	return Context;
 }
 void ULoadoutComponent::ExecuteEffects(const FAbilityContext& Context)

@@ -26,5 +26,5 @@ protected:
 	TEnumAsByte<ECollisionChannel> CollisionChannel = ECC_Pawn;
 	
 public:
-	virtual TSet<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const override;
+	virtual TArray<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const override;
 };

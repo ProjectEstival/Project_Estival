@@ -4,9 +4,9 @@
 #include "MeleeTargetingEffect.h"
 #include "Engine/OverlapResult.h"
 
-TSet<AActor*> UMeleeTargetingEffect::GetTargets_Implementation(const FAbilityContext& Context) const
+TArray<AActor*> UMeleeTargetingEffect::GetTargets_Implementation(const FAbilityContext& Context) const
 {
-	TSet<AActor*> Targets;
+	TArray<AActor*> Targets;
 	const AActor* Instigator = Context.Instigator;
 	const UWorld* World = IsValid(Context.Instigator) ? Context.Instigator->GetWorld() : nullptr;
 
@@ -39,7 +39,7 @@ TSet<AActor*> UMeleeTargetingEffect::GetTargets_Implementation(const FAbilityCon
 	{
 		AActor* Target = Overlap.GetActor();
 		if (!IsValid(Target) || Target == Instigator) continue;
-		Targets.Add(Target);
+		Targets.AddUnique(Target);
 	}
 
 	return Targets;

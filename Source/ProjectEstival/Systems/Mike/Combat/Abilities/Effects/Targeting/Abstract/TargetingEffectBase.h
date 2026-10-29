@@ -17,9 +17,6 @@ struct FTargetHitTracker
 	
 	UPROPERTY()
 	TMap<TEnumAsByte<ETeamAttitude::Type>, int32> HitCounts;
-	
-	UPROPERTY()
-	int32 TotalHits = 0;
 };
 
 UCLASS(Abstract, EditInlineNew, DefaultToInstanced, CollapseCategories)
@@ -39,6 +36,7 @@ protected:
 	
 public:
 	bool TryApplyOnTarget(const FAbilityContext& Context, AActor* Target, FTargetHitTracker& Tracker) const;
+	bool IsExhausted(const FTargetHitTracker& Tracker) const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Ability")
 	void ApplyOnTargets(const FAbilityContext& Context, const TArray<AActor*>& Targets) const;

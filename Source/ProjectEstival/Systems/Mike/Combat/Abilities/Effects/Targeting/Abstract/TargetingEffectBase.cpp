@@ -20,8 +20,23 @@ bool UTargetingEffectBase::TryApplyOnTarget(const FAbilityContext& Context, AAct
 	if (!bPayloadApplied) return false;
 	
 	Tracker.HitCounts.FindOrAdd(Attitude)++;
-	Tracker.TotalHits++;
 	return true;
+}
+
+bool UTargetingEffectBase::IsExhausted(const FTargetHitTracker& Tracker) const
+{
+	if (!bAllowsTargetLimits) return false;
+	
+	bool bHasLimit = false;
+	for (const auto& Limit : TargetLimits)
+	{
+		if (Limit.Value <= 0) continue;
+		
+		bHasLimit = true;
+		if (Tracker.HitCounts.FindRef(Limit.Key) < Limit.Value) return false;
+	}
+	
+	return bHasLimit;
 }
 
 void UTargetingEffectBase::ApplyOnTargets(const FAbilityContext& Context, const TArray<AActor*>& Targets) const
@@ -30,6 +45,7 @@ void UTargetingEffectBase::ApplyOnTargets(const FAbilityContext& Context, const 
 
 	for (AActor* Target : Targets)
 	{
+		if (IsExhausted(Tracker)) break;
 		TryApplyOnTarget(Context, Target, Tracker);
 	}
 }

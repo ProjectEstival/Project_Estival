@@ -31,25 +31,59 @@ void ULoadoutComponent::SetLoadout(ULoadout* NewLoadout)
 	}
  
 	CurrentLoadout = NewLoadout;
-	CooldownEnds.Reset();
+	Slots.Reset();
+	
+	if (NewLoadout)
+	{
+		for (const auto& Pair : NewLoadout->Abilities) EquipAbility(Pair.Key, Pair.Value);
+	}
  
 	OnLoadoutChanged.Broadcast(OldLoadout, NewLoadout);
 }
  
 UAbilityDefinition* ULoadoutComponent::GetAbility(const FGameplayTag Slot) const
 {
-	if (!CurrentLoadout) return nullptr;
-	const TObjectPtr<UAbilityDefinition>* Ability = CurrentLoadout->Abilities.Find(Slot);
-	return Ability ? Ability->Get() : nullptr;
+	const FAbilitySlot* SlotData = Slots.Find(Slot);
+	return SlotData ? SlotData->Ability.Get() : nullptr;
 }
  
 float ULoadoutComponent::GetCooldownRemaining(const FGameplayTag Slot) const
 {
-	const float* ReadyAt = CooldownEnds.Find(Slot);
+	const FAbilitySlot* SlotData = Slots.Find(Slot);
 	const UWorld* World = GetWorld();
-	if (!ReadyAt || !World) return 0;
- 
-	return FMath::Max(0.f, *ReadyAt - World->GetTimeSeconds());
+	if (!SlotData || !World) return 0.f;
+	
+	return FMath::Max(0.f, SlotData->CooldownEnd - World->GetTimeSeconds());
+}
+
+float ULoadoutComponent::GetCooldownRemaining01(const FGameplayTag Slot) const
+{
+	const FAbilitySlot* SlotData = Slots.Find(Slot);
+	if (!SlotData) return 0.f;
+	
+	const float Duration = SlotData->CooldownEnd - SlotData->CooldownStart;
+	return Duration > 0.f ? FMath::Clamp(GetCooldownRemaining(Slot) / Duration, 0.f, 1.f) : 0.f;
+}
+
+void ULoadoutComponent::ReduceCooldown(const FGameplayTag Slot, const float Seconds)
+{
+	FAbilitySlot* SlotData = Slots.Find(Slot);
+	if (!SlotData || Seconds <= 0.f) return;
+	
+	SlotData->CooldownEnd -= Seconds;
+}
+
+void ULoadoutComponent::EquipAbility(const FGameplayTag Slot, UAbilityDefinition* Ability)
+{
+	if (!Slot.IsValid()) return;
+	
+	FAbilitySlot& SlotData = Slots.FindOrAdd(Slot);
+	
+	SlotData.Ability = Ability;
+	SlotData.CooldownStart = 0.f;
+	SlotData.CooldownEnd = 0.f;
+	
+	OnSlotChanged.Broadcast(Slot, Ability);
 }
  
 bool ULoadoutComponent::IsOnCooldown(const FGameplayTag Slot) const
@@ -105,10 +139,11 @@ bool ULoadoutComponent::TryActivate(const FGameplayTag Slot)
 	
 	if (UStatisticsComponent* Stats = ResolveStats()) Stats->AddModifierSet(Ability->CastModifiers, Ability);
 	
+	OnAbilityActivated.Broadcast(Slot, Ability);
+	
 	if (FMath::IsNearlyZero(Ability->CastTime)) Commit();
 	else World->GetTimerManager().SetTimer(Active.PhaseTimer, this, &ULoadoutComponent::Commit, Ability->CastTime, false);
 	
-	OnAbilityActivated.Broadcast(Slot, Ability);
 	return true;
 }
 
@@ -130,9 +165,18 @@ void ULoadoutComponent::Commit()
 	SpendCosts(Ability);
 	
 	const float Now = World->GetTimeSeconds();
-	CooldownEnds.Add(Slot, Now + Ability->Cooldown);
+	FAbilitySlot* SlotData = Slots.Find(Slot);
+	
+	if (SlotData && SlotData->Ability == Ability)
+	{
+		SlotData->CooldownStart = Now;
+		SlotData->CooldownEnd = Now + Ability->Cooldown;
+	}
+	
 	Active.Phase = EAbilityPhase::Recovery;
 	Active.PhaseStartTime = Now;
+	
+	OnAbilityCommitted.Broadcast(Slot, Ability);
 	
 	ExecuteEffects(BuildContext(Ability));
 	
@@ -149,8 +193,6 @@ void ULoadoutComponent::Commit()
 		FTimerDelegate::CreateUObject(this, &ULoadoutComponent::EndActive, false),
 		Remaining,
 		false);
-	
-	OnAbilityCommitted.Broadcast(Slot, Ability);
 }
 
 bool ULoadoutComponent::Interrupt()

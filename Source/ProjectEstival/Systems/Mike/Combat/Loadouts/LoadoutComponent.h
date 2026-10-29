@@ -4,6 +4,7 @@
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
 #include "Systems/Mike/Combat/Abilities/AbilityDefinition.h"
+#include "RuntimeAbilities.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "LoadoutComponent.generated.h"
  
@@ -11,30 +12,6 @@ class ULoadout;
 class UStatisticsComponent;
 struct FAbilityContext;
 
-UENUM(BlueprintType)
-enum class EAbilityPhase : uint8
-{
-	Idle,
-	Windup,
-	Recovery
-};
-
-USTRUCT()
-struct FActiveAbility
-{
-	GENERATED_BODY()
-	
-	UPROPERTY()
-	FGameplayTag Slot;
-	
-	UPROPERTY()
-	TObjectPtr<UAbilityDefinition> Ability;
-	
-	EAbilityPhase Phase = EAbilityPhase::Idle;
-	float PhaseStartTime = 0;
-	float MontageEndTime = 0;
-	FTimerHandle PhaseTimer;
-};
  
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLoadoutChanged, ULoadout*, OldLoadout, ULoadout*, NewLoadout);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAbilityEvent, FGameplayTag, Slot, UAbilityDefinition*, Ability);
@@ -65,6 +42,9 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Loadout|Events")
 	FOnAbilityEvent OnAbilityEnded;
 	
+	UPROPERTY(BlueprintAssignable, Category = "Loadout|Events")
+	FOnAbilityEvent OnSlotChanged;
+	
 	UFUNCTION(BlueprintCallable, Category = "Loadout")
 	void SetLoadout(ULoadout* NewLoadout);
  
@@ -79,12 +59,21 @@ public:
  
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	UAbilityDefinition* GetAbility(FGameplayTag Slot) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Loadout|Slots", meta = (Categories = "Ability."))
+	void EquipAbility(FGameplayTag Slot, UAbilityDefinition* Ability);
  
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	bool IsOnCooldown(FGameplayTag Slot) const;
  
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	float GetCooldownRemaining(FGameplayTag Slot) const;
+	
+	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
+	float GetCooldownRemaining01(FGameplayTag Slot) const;
+	
+	UFUNCTION(BlueprintCallable, Category = "Loadout|Slots", meta = (Categories = "Ability."))
+	void ReduceCooldown(FGameplayTag Slot, float Seconds);
 	
 	UFUNCTION(BlueprintPure, Category = "Loadout")
 	bool IsBusy() const { return Active.Phase != EAbilityPhase::Idle; }
@@ -129,6 +118,6 @@ private:
 	UPROPERTY(Transient)
 	FActiveAbility Active;
  
-	// world time in seconds for when a slot becomes usable again.
-	TMap<FGameplayTag, float> CooldownEnds;
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Loadout|Debug")
+	TMap<FGameplayTag, FAbilitySlot> Slots;
 };

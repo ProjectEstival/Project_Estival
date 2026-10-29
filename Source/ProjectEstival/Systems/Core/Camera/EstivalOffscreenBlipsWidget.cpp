@@ -40,18 +40,13 @@ void UEstivalOffscreenBlipsWidget::NativeTick(const FGeometry& MyGeometry, float
 
 		// the hero's loadout picks the color. Currently no loadout or no color means no blip
 		const ULoadoutComponent* LoadoutComponent = Character->FindComponentByClass<ULoadoutComponent>();
-		ULoadout* Hero = LoadoutComponent ? LoadoutComponent->GetLoadout() : nullptr;
-		const FLinearColor* HeroColor = Hero ? HeroColors.Find(Hero) : nullptr;
-		if (!HeroColor)
+		const ULoadout* Hero = LoadoutComponent ? LoadoutComponent->GetLoadout() : nullptr;
+		if (!Hero)
 		{
 			continue;
 		}
 
-		// a new Hero Colors entry starts see through (alpha = 0) so forcing to draw blips always solid
-		FLinearColor Color = *HeroColor;
-		Color.A = 1.f;
-
-		UpdateBlip(GetOrCreateBlip(BlipIndex), Character, Color, ViewingPlayer, ScreenSize);
+		UpdateBlip(GetOrCreateBlip(BlipIndex), Character, Hero->LoadoutColor, ViewingPlayer, ScreenSize);
 		BlipIndex++;
 	}
 

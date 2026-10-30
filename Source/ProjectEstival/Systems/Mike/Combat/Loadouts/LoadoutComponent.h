@@ -56,6 +56,8 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Loadout")
 	bool Interrupt();
+	
+	void AddInterruptibleTimer(const FTimerHandle& Handle);
  
 	UFUNCTION(BlueprintPure, Category = "Loadout", meta = (Categories = "Ability."))
 	UAbilityDefinition* GetAbility(FGameplayTag Slot) const;

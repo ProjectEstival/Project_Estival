@@ -27,6 +27,7 @@ struct FActiveAbility
 	float PhaseStartTime = 0;
 	float MontageEndTime = 0;
 	FTimerHandle PhaseTimer;
+	TArray<FTimerHandle> InterruptibleTimers;
 };
 
 USTRUCT()

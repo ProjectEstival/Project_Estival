@@ -195,11 +195,21 @@ void ULoadoutComponent::Commit()
 		false);
 }
 
+void ULoadoutComponent::AddInterruptibleTimer(const FTimerHandle& Handle)
+{
+	if (Active.Phase != EAbilityPhase::Idle) Active.InterruptibleTimers.Add(Handle);
+}
+
 bool ULoadoutComponent::Interrupt()
 {
 	if (Active.Phase == EAbilityPhase::Idle) return false;
 	
 	const bool bWasCasting = Active.Phase == EAbilityPhase::Windup;
+	
+	if (const UWorld* World = GetWorld())
+	{
+		for (FTimerHandle& Handle : Active.InterruptibleTimers) World->GetTimerManager().ClearTimer(Handle);
+	}
 	
 	if (Active.Ability->Montage)
 	{

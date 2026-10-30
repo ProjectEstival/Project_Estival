@@ -1,6 +1,6 @@
 #pragma once
 
-#include "PlayerProfileSubsystem.h"
+#include "Systems/Core/SaveSystem/PlayerProfileSubsystem.h"
 #include "CoreMinimal.h"
 #include "HUDBase.h"
 #include "MainMenuHUD.generated.h"
@@ -28,10 +28,8 @@ private:
 	
 	UFUNCTION()
 	void HandleOnboardingPlayerChanged(ULocalPlayer* LocalPlayer);
-	
 	UFUNCTION()
-	void HandleProfileSelected(ULocalPlayer* LocalPlayer, int32 ProfileIndex);
-	
+	void HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid ProfileId);
 	UFUNCTION()
 	void HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer);
 };

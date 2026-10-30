@@ -11,9 +11,9 @@ class FPlayerJoinInputProcessor;
 class APlayerController;
 class ULocalPlayer;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnOnboardingPlayerChanged, ULocalPlayer*, LocalPlayer);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnboardingEvent, ULocalPlayer*, LocalPlayer);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnProfileAssigned, ULocalPlayer*, LocalPlayer, FGuid, ProfileId);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnProfileSelectionCancelRequested, ULocalPlayer*, LocalPlayer);
+
 
 UCLASS()
 class PROJECTESTIVAL_API UPlayerProfileSubsystem  : public UGameInstanceSubsystem
@@ -23,35 +23,38 @@ class PROJECTESTIVAL_API UPlayerProfileSubsystem  : public UGameInstanceSubsyste
 public:
     virtual void Initialize(FSubsystemCollectionBase& Collection) override;
     virtual void Deinitialize() override;
-
-    UPROPERTY(BlueprintAssignable, Category = "Profiles")
-    FOnOnboardingPlayerChanged OnOnboardingPlayerChanged;
     
+    // Events
+    UPROPERTY(BlueprintAssignable, Category = "Profiles")
+    FOnboardingEvent OnOnboardingPlayerChanged;
+    UPROPERTY(BlueprintAssignable, Category = "Profiles")
+    FOnboardingEvent OnProfileSelectionCancelRequested;
     UPROPERTY(BlueprintAssignable, Category = "Profiles")
     FOnProfileAssigned OnProfileAssigned;
     
-    UPROPERTY(BlueprintAssignable, Category = "Profiles")
-    FOnProfileSelectionCancelRequested OnProfileSelectionCancelRequested;
-    
+    // Profiles
     FGuid CreateProfile(const FString& ProfileName);
-    TArray<FProfileSummary> GetAvailableProfiles() { return AvailableProfiles; }
-    bool IsPlayerRegistered(ULocalPlayer* LocalPlayer) const;
+    TArray<FProfileSummary> GetUnassignedProfiles() const;
     
+    // Onboarding
     UFUNCTION()
     void CancelProfileSelection(ULocalPlayer* LocalPlayer);
     bool ConfirmProfileSelection(ULocalPlayer* LocalPlayer, const FGuid& ProfileId);
-    
     void ContinueOnboarding();
+    bool IsPlayerRegistered(ULocalPlayer* LocalPlayer) const;
     
 private:
+    int32 MaxPlayers = 4;
+    FString SavePrefix = TEXT("Profile_");
+    
+    // Input
     friend class FPlayerJoinInputProcessor;
     TSharedPtr<FPlayerJoinInputProcessor> InputProcessor;
     bool HandlePreprocessorKeyDown(const FKeyEvent& KeyEvent);
     void HandleJoinInput(FInputDeviceId InputDeviceId);
-    bool HandleCancelInput(FInputDeviceId InputDeviceId);
+    bool HandleCancelInput(FInputDeviceId InputDeviceId) const;
     
-    int32 MaxPlayers = 4;
-    
+    // Onboarding
     UPROPERTY()
     TArray<TObjectPtr<ULocalPlayer>> PendingPlayers;
     UPROPERTY(Transient)
@@ -60,27 +63,26 @@ private:
     TObjectPtr<ULocalPlayer> CurrentOnboardingPlayer;
     void EnqueuePlayer(ULocalPlayer* LocalPlayer);
     void ShowNextOnboardingPlayer();
-       
-    UPROPERTY()
-    TMap<TObjectPtr<ULocalPlayer>, FGuid> SelectedProfiles;
     
-    UPROPERTY()
-    TMap<FGuid, TObjectPtr<UPlayerProfileSaveGame>> LoadedProfiles;
-    
+    // Save / load
     UPROPERTY(EditDefaultsOnly, Category = "Profiles")
     TSubclassOf<UPlayerProfileSaveGame> ProfileSaveGameClass = UPlayerProfileSaveGame::StaticClass();
-    
     UPROPERTY(Transient)
-    TArray<FProfileSummary> AvailableProfiles;
-    void RefreshAvailableProfiles();
+    TArray<FProfileSummary> SavedProfiles;
+    void RefreshSavedProfiles();
+    UPROPERTY()
+    TMap<FGuid, TObjectPtr<UPlayerProfileSaveGame>> LoadedProfiles;
+    bool LoadProfile(const FGuid& ProfileId);
+    bool SaveProfile(const FGuid& ProfileId) const;
+    UPlayerProfileSaveGame* GetLoadedProfile(const FGuid& ProfileId) const;
     
+    // Profile selection
+    UPROPERTY()
+    TMap<TObjectPtr<ULocalPlayer>, FGuid> SelectedProfiles;
     bool IsProfileTaken(const FGuid& ProfileId) const;
     bool AssignProfile(ULocalPlayer* LocalPlayer, const FGuid& ProfileId);
     void ReleaseProfile(ULocalPlayer* LocalPlayer);
     
-    bool LoadProfile(const FGuid& ProfileId);
-    bool SaveProfile(const FGuid& ProfileId) const;
-    
-    UPlayerProfileSaveGame* GetLoadedProfile(const FGuid& ProfileId) const;
-    static FString GetProfileSlotName(const FGuid& ProfileId);
+    // Helpers
+    FString GetProfileSlotName(const FGuid& ProfileId) const;
 };

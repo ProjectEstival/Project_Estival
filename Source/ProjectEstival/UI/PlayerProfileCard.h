@@ -17,61 +17,44 @@ class PROJECTESTIVAL_API UPlayerProfileCard : public UUserWidget
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(BlueprintAssignable, Category = "Profile Card")
+	// Events
 	FOnPlayerProfileCardClicked OnCardClicked;
-	
-	UPROPERTY(BlueprintAssignable, Category = "Profile Card")
 	FOnPlayerProfileNameCommitted OnNameCommitted;
 	
-	UFUNCTION(BlueprintCallable, Category = "Profile Card")
+	// Initialization
 	void SetProfile(const FGuid& InProfileId, const FString& InProfileName);
-	
-	UFUNCTION(BlueprintCallable, Category = "Profile Card")
-	void SetCreateCard();
-	
-	UFUNCTION(BlueprintCallable, Category = "Profile Card")
-	void BeginNameEntry();
-	
-	UFUNCTION(BlueprintCallable, Category = "Profile Card")
-	void RejectNameEntry();
-	
-	UFUNCTION(BlueprintPure, Category = "Profile Card")
-	bool IsNamingProfile() const { return bIsNamingProfile; }
-	
-	UFUNCTION(BlueprintCallable, Category = "Profile Card")
-	void FocusCard(APlayerController* PlayerController);
-	
-	UFUNCTION(BlueprintPure, Category = "Profile Card")
-	bool IsCreateCard() const { return bIsCreateCard; }
-	
-	UFUNCTION(BlueprintPure, Category = "Profile Card")
 	FGuid GetProfileId() const { return ProfileId; }
+	void SetCreateCard();
+	bool IsCreateCard() const { return bIsCreateCard; }
+	void FocusCard(APlayerController* PlayerController) const;
 	
-	UFUNCTION(BlueprintCallable, Category = "Profile Card")
-	void FocusNameEntry();
+	// Naming
+	void BeginNameEntry();
+	void RejectNameEntry() const;
+	bool IsNamingProfile() const { return bIsNamingProfile; }
+	void FocusNameEntry() const;
 	
 protected:
+	// Initialization
 	virtual void NativeOnInitialized() override;
+	UPROPERTY(Transient)
+	FGuid ProfileId;
+	UPROPERTY(Transient)
+	bool bIsCreateCard = false;
 	
+	// Object references
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UButton> CardButton;
-	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UEditableText> ProfileNameText;
 	
 private:
-	UPROPERTY(Transient)
-	FGuid ProfileId;
-	
-	UPROPERTY(Transient)
-	bool bIsCreateCard = false;
-	
-	UPROPERTY(Transient)
-	bool bIsNamingProfile = false;
-	
 	UFUNCTION()
 	void HandleCardClicked();
 	
+	// Naming
+	UPROPERTY(Transient)
+	bool bIsNamingProfile = false;
 	UFUNCTION()
 	void HandleNameCommitted(const FText& Text, ETextCommit::Type CommitMethod);
 };

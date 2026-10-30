@@ -13,21 +13,22 @@ void AMainMenuHUD::BeginPlay()
     const APlayerController* OwningPC = GetOwningPlayerController();
     if (!GI || !OwningPC) return;
     
-    // Only local player 0's HUD manages global onboarding UI.
+    // Only local player 0's HUD manages global onboarding UI
     if (OwningPC->GetLocalPlayer() != GI->GetLocalPlayerByIndex(0)) return;
     
-    PlayerSubsystem = GI->GetSubsystem<UPlayerProfileSubsystem>();
-    if (!PlayerSubsystem) return;
-    
-    PlayerSubsystem->OnOnboardingPlayerChanged.AddDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
-    PlayerSubsystem->OnProfileSelectionCancelRequested.AddDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
+    // Player profile setup
+    PlayerProfileSubsystem = GI->GetSubsystem<UPlayerProfileSubsystem>();
+    if (!PlayerProfileSubsystem) return;
+    PlayerProfileSubsystem->OnOnboardingPlayerChanged.AddDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
+    PlayerProfileSubsystem->OnProfileSelectionCancelRequested.AddDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
 }
 void AMainMenuHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-    if (PlayerSubsystem)
+    // Player profile cleanup
+    if (PlayerProfileSubsystem)
     {
-        PlayerSubsystem->OnOnboardingPlayerChanged.RemoveDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
-        PlayerSubsystem->OnProfileSelectionCancelRequested.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
+        PlayerProfileSubsystem->OnOnboardingPlayerChanged.RemoveDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
+        PlayerProfileSubsystem->OnProfileSelectionCancelRequested.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
     }
     if (IsValid(ActivePopup))
     {
@@ -35,14 +36,15 @@ void AMainMenuHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
         ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
     }
     ActivePopup = nullptr;
-    PlayerSubsystem = nullptr;
+    PlayerProfileSubsystem = nullptr;
     
     Super::EndPlay(EndPlayReason);
 }
 
+// Player profiles
 void AMainMenuHUD::HandleOnboardingPlayerChanged(ULocalPlayer* LocalPlayer)
 {
-    if (!IsValid(LocalPlayer) || !IsValid(PlayerSubsystem) || !ProfilePopupClass) return;
+    if (!IsValid(LocalPlayer) || !IsValid(PlayerProfileSubsystem) || !ProfilePopupClass) return;
     APlayerController* PC = LocalPlayer->GetPlayerController(GetWorld());
     if (!IsValid(PC) || IsValid(ActivePopup)) return; // Never replace an active popup
     
@@ -59,10 +61,10 @@ void AMainMenuHUD::HandleOnboardingPlayerChanged(ULocalPlayer* LocalPlayer)
 }
 void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid ProfileId)
 {
-    if (!IsValid(PlayerSubsystem) || !IsValid(ActivePopup) || ActivePopup->GetTargetLocalPlayer() != LocalPlayer) return;
+    if (!IsValid(PlayerProfileSubsystem) || !IsValid(ActivePopup) || ActivePopup->GetTargetLocalPlayer() != LocalPlayer) return;
     
-    // Keep the popup open if loading or assignment fails.
-    if (!PlayerSubsystem->ConfirmProfileSelection(LocalPlayer, ProfileId)) return;
+    // Keep the popup open if loading or assignment fails
+    if (!PlayerProfileSubsystem->ConfirmProfileSelection(LocalPlayer, ProfileId)) return;
     
     ActivePopup->CompleteSelection();
     ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
@@ -70,13 +72,13 @@ void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid Profil
     PopWidget();
     ActivePopup = nullptr;
     
-    PlayerSubsystem->ContinueOnboarding();
+    PlayerProfileSubsystem->ContinueOnboarding();
 }
 void AMainMenuHUD::HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer)
 {
-    if (!IsValid(PlayerSubsystem)) return;
+    if (!IsValid(PlayerProfileSubsystem)) return;
     
-    // Close the current popup before advancing the queue.
+    // Close the current popup before advancing the queue
     if (IsValid(ActivePopup) && ActivePopup->GetTargetLocalPlayer() == LocalPlayer)
     {
         ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
@@ -85,5 +87,5 @@ void AMainMenuHUD::HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer)
         PopWidget();
         ActivePopup = nullptr;
     }
-    PlayerSubsystem->CancelProfileSelection(LocalPlayer);
+    PlayerProfileSubsystem->CancelProfileSelection(LocalPlayer);
 }

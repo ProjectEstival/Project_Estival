@@ -7,14 +7,13 @@
 #include "GameFramework/SaveGame.h"
 #include "PlayerProfileSaveGame.h"
 #include "Kismet/GameplayStatics.h"
-#include "PlatformFeatures.h"
-#include "SaveGameSystem.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "PlatformFeatures.h"
+#include "SaveGameSystem.h"
 #include "InputCoreTypes.h"
 
-// Input handling & Popup Queue
-
+// Input handling
 class FPlayerJoinInputProcessor final : public IInputProcessor
 {
 public:
@@ -40,31 +39,6 @@ public:
 private:
     TWeakObjectPtr<UPlayerProfileSubsystem> Subsystem;
 };
-
-void UPlayerProfileSubsystem::Initialize(FSubsystemCollectionBase& Collection)
-{
-    Super::Initialize(Collection);
-    
-    RefreshAvailableProfiles();
-    
-    if (!FSlateApplication::IsInitialized()) return;
-    InputProcessor = MakeShared<FPlayerJoinInputProcessor>(this);
-    FSlateApplication::Get().RegisterInputPreProcessor(InputProcessor);
-}
-void UPlayerProfileSubsystem::Deinitialize()
-{
-    if (FSlateApplication::IsInitialized() && InputProcessor.IsValid()) FSlateApplication::Get().UnregisterInputPreProcessor(InputProcessor);
-    InputProcessor.Reset();
-    
-    PendingPlayers.Reset();
-    TemporaryPlayers.Reset();
-    SelectedProfiles.Reset();
-    LoadedProfiles.Reset();
-    AvailableProfiles.Reset();
-    CurrentOnboardingPlayer = nullptr;
-    
-    Super::Deinitialize();
-}
 bool UPlayerProfileSubsystem::HandlePreprocessorKeyDown(const FKeyEvent& KeyEvent)
 {
     const FInputDeviceId DeviceId = KeyEvent.GetInputDeviceId();
@@ -73,18 +47,17 @@ bool UPlayerProfileSubsystem::HandlePreprocessorKeyDown(const FKeyEvent& KeyEven
     UGameInstance* GI = GetGameInstance();
     if (!GI) return false;
     
-    // Let the active player's controller input operate its popup.
+    // Let the active player's controller input operate its popup
     if (IsValid(CurrentOnboardingPlayer))
     {
         ULocalPlayer* InputPlayer = GEngine ? GEngine->GetLocalPlayerFromInputDevice(GetWorld(), DeviceId) : nullptr;
         if (InputPlayer == CurrentOnboardingPlayer) return false;
     }
     
-    // This device is not controlling the active onboarding popup. Handle it as a join request.
+    // Device not controlling the active popup; handle it as a join request
     HandleJoinInput(DeviceId);
     return true;
 }
-
 void UPlayerProfileSubsystem::HandleJoinInput(FInputDeviceId InputDeviceId)
 {
     UGameInstance* GI = GetGameInstance();
@@ -140,7 +113,7 @@ void UPlayerProfileSubsystem::HandleJoinInput(FInputDeviceId InputDeviceId)
     TemporaryPlayers.Add(NewPlayer);
     EnqueuePlayer(NewPlayer);
 }
-bool UPlayerProfileSubsystem::HandleCancelInput(FInputDeviceId InputDeviceId)
+bool UPlayerProfileSubsystem::HandleCancelInput(FInputDeviceId InputDeviceId) const
 {
     if (!InputDeviceId.IsValid()) return false;
     if (!IsValid(CurrentOnboardingPlayer)) return false;
@@ -149,11 +122,38 @@ bool UPlayerProfileSubsystem::HandleCancelInput(FInputDeviceId InputDeviceId)
     ULocalPlayer* InputPlayer = GEngine ? GEngine->GetLocalPlayerFromInputDevice(GetWorld(), InputDeviceId) : nullptr;
     if (InputPlayer != CurrentOnboardingPlayer) return true;
     
-    // Ask the HUD to cancel through the popup's normal flow
+    // Ask the HUD to close the popup, canceling the onboarding for this player
     OnProfileSelectionCancelRequested.Broadcast(CurrentOnboardingPlayer);
     return true;
 }
 
+// Init / cleanup
+void UPlayerProfileSubsystem::Initialize(FSubsystemCollectionBase& Collection)
+{
+    Super::Initialize(Collection);
+    
+    RefreshSavedProfiles();
+    
+    if (!FSlateApplication::IsInitialized()) return;
+    InputProcessor = MakeShared<FPlayerJoinInputProcessor>(this);
+    FSlateApplication::Get().RegisterInputPreProcessor(InputProcessor);
+}
+void UPlayerProfileSubsystem::Deinitialize()
+{
+    if (FSlateApplication::IsInitialized() && InputProcessor.IsValid()) FSlateApplication::Get().UnregisterInputPreProcessor(InputProcessor);
+    InputProcessor.Reset();
+    
+    PendingPlayers.Reset();
+    TemporaryPlayers.Reset();
+    SelectedProfiles.Reset();
+    LoadedProfiles.Reset();
+    SavedProfiles.Reset();
+    CurrentOnboardingPlayer = nullptr;
+    
+    Super::Deinitialize();
+}
+
+// Selection queue
 void UPlayerProfileSubsystem::EnqueuePlayer(ULocalPlayer* LocalPlayer)
 {
     if (!IsValid(LocalPlayer)) return;
@@ -183,6 +183,7 @@ void UPlayerProfileSubsystem::ContinueOnboarding()
     ShowNextOnboardingPlayer();
 }
 
+// Selection logic
 bool UPlayerProfileSubsystem::ConfirmProfileSelection(ULocalPlayer* LocalPlayer, const FGuid& ProfileId)
 {
     if (!IsValid(LocalPlayer) || CurrentOnboardingPlayer != LocalPlayer || !IsPlayerRegistered(LocalPlayer)) return false;
@@ -205,13 +206,12 @@ bool UPlayerProfileSubsystem::ConfirmProfileSelection(ULocalPlayer* LocalPlayer,
         }
     }
     
+    // Broadcast assignment event
     if (!AssignProfile(LocalPlayer, ProfileId))
     {
         UE_LOG(LogTemp, Warning, TEXT("[Profiles] Could not assign profile %s"), *ProfileId.ToString());
         return false;
     }
-    
-    // Broadcast the stable profile ID, not an index into a changing list
     OnProfileAssigned.Broadcast(LocalPlayer, ProfileId);
     
     CurrentOnboardingPlayer = nullptr;
@@ -228,28 +228,17 @@ void UPlayerProfileSubsystem::CancelProfileSelection(ULocalPlayer* LocalPlayer)
     // Remove duplicate queue entries for this player
     PendingPlayers.RemoveAll([LocalPlayer](const TObjectPtr<ULocalPlayer>& Player) { return Player.Get() == LocalPlayer; });
     ReleaseProfile(LocalPlayer);
-    
-    // Clear the active player before possibly removing them
     CurrentOnboardingPlayer = nullptr;
     
-    // Only remove local players created provisionally by this subsystem's join flow. Existing players remain in the game
+    // Only remove local players created provisionally by this subsystem's join flow
     if (TemporaryPlayers.Remove(LocalPlayer) > 0 && IsPlayerRegistered(LocalPlayer)) GI->RemoveLocalPlayer(LocalPlayer);
-    
     ShowNextOnboardingPlayer();
 }
 
-bool UPlayerProfileSubsystem::IsPlayerRegistered(ULocalPlayer* LocalPlayer) const
+// Profile claiming
+void UPlayerProfileSubsystem::RefreshSavedProfiles()
 {
-    const UGameInstance* GI = GetGameInstance();
-    return IsValid(LocalPlayer) && GI && GI->GetLocalPlayers().Contains(LocalPlayer);
-}
-
-
-// Profiles & Storage
-
-void UPlayerProfileSubsystem::RefreshAvailableProfiles()
-{
-    AvailableProfiles.Reset();
+    SavedProfiles.Reset();
     
     ISaveGameSystem* SaveSystem = IPlatformFeaturesModule::Get().GetSaveGameSystem();
     if (!SaveSystem)
@@ -293,19 +282,91 @@ void UPlayerProfileSubsystem::RefreshAvailableProfiles()
         Summary.ProfileId = ProfileId;
         Summary.ProfileName = Save->Profile.ProfileName;
         
-        AvailableProfiles.Add(MoveTemp(Summary));
+        SavedProfiles.Add(MoveTemp(Summary));
     }
     
-    AvailableProfiles.Sort([](const FProfileSummary& A, const FProfileSummary& B) { return A.ProfileName.Compare(B.ProfileName, ESearchCase::IgnoreCase) < 0; });
+    SavedProfiles.Sort([](const FProfileSummary& A, const FProfileSummary& B) { return A.ProfileName.Compare(B.ProfileName, ESearchCase::IgnoreCase) < 0; });
+}
+TArray<FProfileSummary> UPlayerProfileSubsystem::GetUnassignedProfiles() const
+{
+    TArray<FProfileSummary> UnassignedProfiles = SavedProfiles;
+    UnassignedProfiles.RemoveAll([this](const FProfileSummary& Profile) { return IsProfileTaken(Profile.ProfileId); });
+    return UnassignedProfiles;
+}
+bool UPlayerProfileSubsystem::IsProfileTaken(const FGuid& ProfileId) const
+{
+    if (!ProfileId.IsValid()) return false;
+    
+    for (const auto& Pair : SelectedProfiles)
+    {
+        if (Pair.Value == ProfileId && IsValid(Pair.Key)) return true;
+    }
+    return false;
+}
+bool UPlayerProfileSubsystem::IsPlayerRegistered(ULocalPlayer* LocalPlayer) const
+{
+    const UGameInstance* GI = GetGameInstance();
+    return IsValid(LocalPlayer) && GI && GI->GetLocalPlayers().Contains(LocalPlayer);
 }
 
+// Profile management
+FGuid UPlayerProfileSubsystem::CreateProfile(const FString& ProfileName)
+{
+    const FString CleanName = ProfileName.TrimStartAndEnd();
+    if (CleanName.IsEmpty() || !ProfileSaveGameClass) return FGuid();
+    
+    RefreshSavedProfiles();
+    
+    // Name already exists
+    if (SavedProfiles.ContainsByPredicate([&CleanName](const FProfileSummary& Profile) { return Profile.ProfileName.Equals(CleanName, ESearchCase::IgnoreCase); })) return FGuid();
+    
+    const FGuid NewId = FGuid::NewGuid();
+    UPlayerProfileSaveGame* NewSave = Cast<UPlayerProfileSaveGame>(UGameplayStatics::CreateSaveGameObject(ProfileSaveGameClass));
+    if (!NewSave) return FGuid();
+    
+    NewSave->Profile.ProfileId = NewId;
+    NewSave->Profile.ProfileName = CleanName;
+    
+    const FString SlotName = GetProfileSlotName(NewId);
+    if (!UGameplayStatics::SaveGameToSlot(NewSave, SlotName, 0)) return FGuid();
+    
+    LoadedProfiles.Add(NewId, NewSave);
+    RefreshSavedProfiles();
+    return NewId;
+}
+bool UPlayerProfileSubsystem::AssignProfile(ULocalPlayer* LocalPlayer, const FGuid& ProfileId)
+{
+    if (!IsValid(LocalPlayer) || !IsPlayerRegistered(LocalPlayer) || !ProfileId.IsValid()) return false;
+    
+    const bool bProfileExists = SavedProfiles.ContainsByPredicate([&ProfileId](const FProfileSummary& Summary) { return Summary.ProfileId == ProfileId; });
+    if (!bProfileExists) return false;
+    
+    // A profile can belong to only one local player in this session
+    for (const auto& Pair : SelectedProfiles)
+    {
+        if (Pair.Key != LocalPlayer && IsValid(Pair.Key) && Pair.Value == ProfileId) return false;
+    }
+    
+    // Assignment requires the profile's save-data to be in memory
+    if (!GetLoadedProfile(ProfileId)) return false;
+    
+    SelectedProfiles.Add(LocalPlayer, ProfileId);
+    return true;
+}
+void UPlayerProfileSubsystem::ReleaseProfile( ULocalPlayer* LocalPlayer)
+{
+    if (!IsValid(LocalPlayer)) return;
+    SelectedProfiles.Remove(LocalPlayer);
+}
+
+// Saving / loading
 bool UPlayerProfileSubsystem::LoadProfile(const FGuid& ProfileId)
 {
     if (!ProfileId.IsValid()) return false;
     
-    RefreshAvailableProfiles();
+    RefreshSavedProfiles();
     
-    const bool bProfileExists = AvailableProfiles.ContainsByPredicate([&ProfileId](const FProfileSummary& Summary) { return Summary.ProfileId == ProfileId; });
+    const bool bProfileExists = SavedProfiles.ContainsByPredicate([&ProfileId](const FProfileSummary& Summary) { return Summary.ProfileId == ProfileId; });
     if (!bProfileExists) return false;
     
     const FString SlotName = GetProfileSlotName(ProfileId);
@@ -341,73 +402,12 @@ bool UPlayerProfileSubsystem::SaveProfile(const FGuid& ProfileId) const
     
     return true;
 }
-
-FGuid UPlayerProfileSubsystem::CreateProfile(const FString& ProfileName)
-{
-    const FString CleanName = ProfileName.TrimStartAndEnd();
-    if (CleanName.IsEmpty() || !ProfileSaveGameClass) return FGuid();
-    
-    RefreshAvailableProfiles();
-    
-    // Name already exists
-    if (AvailableProfiles.ContainsByPredicate([&CleanName](const FProfileSummary& Profile) { return Profile.ProfileName.Equals(CleanName, ESearchCase::IgnoreCase); })) return FGuid();
-    
-    const FGuid NewId = FGuid::NewGuid();
-    UPlayerProfileSaveGame* NewSave = Cast<UPlayerProfileSaveGame>(UGameplayStatics::CreateSaveGameObject(ProfileSaveGameClass));
-    if (!NewSave) return FGuid();
-    
-    NewSave->Profile.ProfileId = NewId;
-    NewSave->Profile.ProfileName = CleanName;
-    
-    const FString SlotName = GetProfileSlotName(NewId);
-    if (!UGameplayStatics::SaveGameToSlot(NewSave, SlotName, 0)) return FGuid();
-    
-    // The newly created save is already loaded; don't reload it.
-    LoadedProfiles.Add(NewId, NewSave);
-    RefreshAvailableProfiles();
-    return NewId;
-}
-bool UPlayerProfileSubsystem::AssignProfile(ULocalPlayer* LocalPlayer, const FGuid& ProfileId)
-{
-    if (!IsValid(LocalPlayer) || !IsPlayerRegistered(LocalPlayer) || !ProfileId.IsValid()) return false;
-    
-    const bool bProfileExists = AvailableProfiles.ContainsByPredicate([&ProfileId](const FProfileSummary& Summary) { return Summary.ProfileId == ProfileId; });
-    if (!bProfileExists) return false;
-    
-    // A profile can belong to only one local player in this session.
-    for (const auto& Pair : SelectedProfiles)
-    {
-        if (Pair.Key != LocalPlayer && IsValid(Pair.Key) && Pair.Value == ProfileId) return false;
-    }
-    
-    // Assignment requires the profile's save-data to be in memory.
-    if (!GetLoadedProfile(ProfileId)) return false;
-    
-    SelectedProfiles.Add(LocalPlayer, ProfileId);
-    return true;
-}
-void UPlayerProfileSubsystem::ReleaseProfile( ULocalPlayer* LocalPlayer)
-{
-    if (!IsValid(LocalPlayer)) return;
-    SelectedProfiles.Remove(LocalPlayer);
-}
-bool UPlayerProfileSubsystem::IsProfileTaken(const FGuid& ProfileId) const
-{
-    if (!ProfileId.IsValid()) return false;
-    
-    for (const auto& Pair : SelectedProfiles)
-    {
-        if (Pair.Value == ProfileId && IsValid(Pair.Key)) return true;
-    }
-    return false;
-}
-
 UPlayerProfileSaveGame* UPlayerProfileSubsystem::GetLoadedProfile(const FGuid& ProfileId) const
 {
     const TObjectPtr<UPlayerProfileSaveGame>* Found = LoadedProfiles.Find(ProfileId);
     return Found ? Found->Get() : nullptr;
 }
-FString UPlayerProfileSubsystem::GetProfileSlotName(const FGuid& ProfileId)
+FString UPlayerProfileSubsystem::GetProfileSlotName(const FGuid& ProfileId) const
 {
-    return FString::Printf(TEXT("Profile_%s"), *ProfileId.ToString(EGuidFormats::Digits));
+    return FString::Printf(TEXT("%s%s"), *SavePrefix, *ProfileId.ToString(EGuidFormats::Digits));
 }

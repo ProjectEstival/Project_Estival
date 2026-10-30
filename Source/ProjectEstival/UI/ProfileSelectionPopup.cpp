@@ -1,4 +1,3 @@
-
 #include "UI/ProfileSelectionPopup.h"
 
 #include "Systems/Core/SaveSystem/PlayerProfileSubsystem.h"
@@ -9,6 +8,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 
+// Initialization
 void UProfileSelectionPopup::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -63,7 +63,7 @@ void UProfileSelectionPopup::RebuildProfileCards()
 	if (!ProfileSubsystem) return;
 	
 	// Add all available profiles
-	const auto& Profiles = ProfileSubsystem->GetAvailableProfiles();
+	const auto& Profiles = ProfileSubsystem->GetUnassignedProfiles();
 	for (const auto& Profile : Profiles)
 	{
 		UPlayerProfileCard* Card = CreateWidget<UPlayerProfileCard>(this, ProfileCardClass);
@@ -95,10 +95,10 @@ bool UProfileSelectionPopup::FocusFirstCard()
 	UPlayerProfileCard* FirstCard = SpawnedCards[0];
 	if (!IsValid(FirstCard)) return false;
 
-	// Bring the initial selection into view.
+	// Bring the initial selection into view
 	ProfileScrollBox->ScrollWidgetIntoView(FirstCard, true);
 
-	// Focus through the controller belonging to this local player.
+	// Focus through the controller belonging to this local player
 	APlayerController* PlayerController = TargetLocalPlayer->GetPlayerController(GetWorld());
 	if (!IsValid(PlayerController)) return false;
 	
@@ -110,7 +110,7 @@ void UProfileSelectionPopup::HandleCardClicked(UPlayerProfileCard* Card)
 {
 	if (bSelectionCompleted || !IsValid(Card)) return;
 	
-	// Don't allow multiple unfinished profile names.
+	// Don't allow multiple unfinished profile names
 	if (IsValid(PendingNameCard))
 	{
 		if (PendingNameCard->IsNamingProfile()) bPendingNameFocus = true;
@@ -126,7 +126,7 @@ void UProfileSelectionPopup::HandleCardClicked(UPlayerProfileCard* Card)
 	const FGuid ProfileId = Card->GetProfileId();
 	if (!ProfileId.IsValid()) return;
 	
-	// Existing profile selection flow.
+	// Existing profile selection flow
 	ConfirmSelection(ProfileId);
 }
 
@@ -135,20 +135,12 @@ void UProfileSelectionPopup::ConfirmSelection(const FGuid& ProfileId)
 {
 	if (bSelectionCompleted || !ProfileId.IsValid()) return;
 	if (!IsValid(TargetLocalPlayer)) return;
-	
-	// This is a request. The subsystem may reject it, for example if the profile cannot be loaded or is already assigned.
-	// The HUD marks the selection complete only after success.
-	OnSelectionConfirmed(ProfileId);
-	
 	OnProfileSelected.Broadcast(TargetLocalPlayer, ProfileId);
 }
-// Optional flow for closing the popup. Now handled by the subsystem 
 void UProfileSelectionPopup::CancelSelection()
 {
 	if (bSelectionCompleted || !IsValid(TargetLocalPlayer)) return;
 	CompleteSelection();
-	
-	OnSelectionCancelled();
 	OnProfileSelectionCancelled.Broadcast(TargetLocalPlayer);
 }
 void UProfileSelectionPopup::CompleteSelection()

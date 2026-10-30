@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "PlayerProfileData.generated.h"
 
+// Summary for profile selection cards
 USTRUCT(BlueprintType)
 struct FProfileSummary
 {
@@ -15,6 +16,7 @@ struct FProfileSummary
 	FString ProfileName;
 };
 
+// Upgrade level
 USTRUCT(BlueprintType)
 struct FProfileUpgradeData
 {
@@ -30,6 +32,7 @@ struct FProfileUpgradeData
 	int32 UpgradeLevel = 0;
 };
 
+// Class level
 USTRUCT(BlueprintType)
 struct FClassProgressionData
 {
@@ -37,17 +40,12 @@ struct FClassProgressionData
 	
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite)
 	FName ClassId = NAME_None;
-	
-	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite)
-	int32 Level = 1;
-	
-	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite)
-	int64 Experience = 0;
-	
+		
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite)
 	TArray<FProfileUpgradeData> Upgrades;
 };
 
+// Profile level
 USTRUCT(BlueprintType)
 struct FPlayerProfileData
 {

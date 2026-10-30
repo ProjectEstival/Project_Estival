@@ -1,9 +1,10 @@
 #include "UI/PlayerProfileCard.h"
 
-#include "Components/Button.h"
-#include "Components/EditableText.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/EditableText.h"
+#include "Components/Button.h"
 
+// Initialization
 void UPlayerProfileCard::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
@@ -46,6 +47,17 @@ void UPlayerProfileCard::SetCreateCard()
 	
 	if (CardButton) CardButton->SetVisibility(ESlateVisibility::Visible);
 }
+
+void UPlayerProfileCard::FocusCard(APlayerController* PlayerController) const
+{
+	if (IsValid(PlayerController) && IsValid(CardButton) && !bIsNamingProfile) CardButton->SetUserFocus(PlayerController);
+}
+void UPlayerProfileCard::HandleCardClicked()
+{
+	if (!bIsNamingProfile) OnCardClicked.Broadcast(this);
+}
+
+// Naming
 void UPlayerProfileCard::BeginNameEntry()
 {
 	bIsCreateCard = false;
@@ -62,7 +74,12 @@ void UPlayerProfileCard::BeginNameEntry()
 		ProfileNameText->SetKeyboardFocus();
 	}
 }
-void UPlayerProfileCard::RejectNameEntry()
+void UPlayerProfileCard::HandleNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
+{
+	if (!bIsNamingProfile) return;
+	OnNameCommitted.Broadcast(this, Text);
+}
+void UPlayerProfileCard::RejectNameEntry() const
 {
 	if (!bIsNamingProfile || !ProfileNameText) return;
 	
@@ -71,22 +88,7 @@ void UPlayerProfileCard::RejectNameEntry()
 	ProfileNameText->SetVisibility(ESlateVisibility::Visible);
 	ProfileNameText->SetKeyboardFocus();
 }
-void UPlayerProfileCard::FocusCard(APlayerController* PlayerController)
-{
-	if (IsValid(PlayerController) && IsValid(CardButton) && !bIsNamingProfile) CardButton->SetUserFocus(PlayerController);
-}
-
-void UPlayerProfileCard::HandleCardClicked()
-{
-	if (!bIsNamingProfile) OnCardClicked.Broadcast(this);
-}
-void UPlayerProfileCard::HandleNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
-{
-	if (!bIsNamingProfile) return;
-	OnNameCommitted.Broadcast(this, Text);
-}
-
-void UPlayerProfileCard::FocusNameEntry()
+void UPlayerProfileCard::FocusNameEntry() const
 {
 	if (bIsNamingProfile && IsValid(ProfileNameText)) ProfileNameText->SetKeyboardFocus();
 }

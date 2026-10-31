@@ -5,6 +5,7 @@
 #include "Navigation/CrowdFollowingComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
+#include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "Components/StateTreeAIComponent.h"
 
 
@@ -43,6 +44,30 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT(
 	
 	// puts this component into Controllers perception slot
 	SetPerceptionComponent(*Perception);
+}
+
+void ACompanionAIController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+
+	// LookAt faces the walk direction instantly by default (0), and AI paths
+	// change direction a lot, so bots snap. Turn smoothly while we drive.
+	if (UAC_LookAtComponent* LookAt = InPawn ? InPawn->FindComponentByClass<UAC_LookAtComponent>() : nullptr)
+	{
+		PawnTurnSpeed = LookAt->InterpSpeed;
+		LookAt->InterpSpeed = TurnSpeed;
+	}
+}
+
+void ACompanionAIController::OnUnPossess()
+{
+	// give the "body" back as we found it for example when a human player drops in
+	if (UAC_LookAtComponent* LookAt = GetPawn() ? GetPawn()->FindComponentByClass<UAC_LookAtComponent>() : nullptr)
+	{
+		LookAt->InterpSpeed = PawnTurnSpeed;
+	}
+
+	Super::OnUnPossess();
 }
 
 

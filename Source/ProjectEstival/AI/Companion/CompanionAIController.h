@@ -33,6 +33,15 @@ public:
 	APawn* GetFollowTarget() const {return FollowTarget;}
 	
 	void SetFollowTarget(APawn* NewTarget) { FollowTarget = NewTarget; }
+	
+	// how fast the pawn turns to face when it walks. this is fix for the snapping issue on rotation. 
+	UPROPERTY(EditAnywhere, Category = "Companion", meta=(ClampMin=0))
+	float TurnSpeed = 10.f;
+	float PawnTurnSpeed = 0.f;
+	
+protected:
+	virtual void OnPossess(APawn* InPawn) override;
+	virtual void OnUnPossess() override;
 
 
 };

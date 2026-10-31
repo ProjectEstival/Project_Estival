@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "AIController.h"
+#include "GameplayTagContainer.h"
+#include "Perception/AIPerceptionTypes.h"
 #include "EnemyAIController.generated.h"
 
 class UStateTreeAIComponent;
@@ -28,22 +30,30 @@ public:
 	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
 	TObjectPtr<AEstivalBaseCharacter> PlayerRef;
 	
-	UPROPERTY(BlueprintReadWrite, VisibleAnywhere, Category = "Targets")
-	TArray<TObjectPtr<AEstivalBaseCharacter>> SensedPlayerRef;
+	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Timers")
+	float CheckDistTimer = 2.0f;
 	
-	UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Targets")
-	int32 PatrolIndex = 0;
+	UPROPERTY()
+	TArray<AEstivalBaseCharacter*> Players;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ForceChange"))
+	FGameplayTag ForceStateChangeTag;
 	
 protected:
 	
 	virtual void BeginPlay() override;
 	
+	FTimerHandle CheckDistanceTimerHandle;
+	
 private:
-
+	
 	UFUNCTION()
 	void OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimulus);
 	
 	UFUNCTION()
-	void UpdatePlayerRef();
+	void OnTargetSensorForgot(AActor* Actor);
+	
+	UFUNCTION()
+	void DistCheck();
 	
 };

@@ -20,59 +20,80 @@ void AEnemyAIController::BeginPlay()
 	if (AIPerceptionComp)
 	{
 		AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyAIController::OnTargetSensorUpdated);
+		AIPerceptionComp->OnTargetPerceptionForgotten.AddDynamic(this, &AEnemyAIController::OnTargetSensorForgot);
 	}
+	
+	GetWorld()->GetTimerManager().SetTimer(CheckDistanceTimerHandle, this, &AEnemyAIController::DistCheck, CheckDistTimer, true);
 }
+
 
 void AEnemyAIController::OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
 	if (!Actor) return;
-
-	AEstivalBaseCharacter* SensePlayer = Cast<AEstivalBaseCharacter>(Actor);
 	
-	if (!SensePlayer || !SensePlayer->IsPlayerControlled()) return;
-
-	if (Stimulus.WasSuccessfullySensed())
+	if (AEstivalBaseCharacter* PlayerCandidate = Cast<AEstivalBaseCharacter>(Actor))
 	{
-		SensedPlayerRef.AddUnique(SensePlayer);
-		UpdatePlayerRef();
-	}
-	else
-	{
-		SensedPlayerRef.Remove(SensePlayer);
-		UpdatePlayerRef();
+		if (PlayerCandidate->GetController<AEnemyAIController>()) return;
+		
+		if (Stimulus.WasSuccessfullySensed())
+		{
+			Players.AddUnique(PlayerCandidate);
+			
+			if (!PlayerRef)
+			{
+				PlayerRef = PlayerCandidate;
+			}
+		}
+		else
+		{
+			Players.Remove(PlayerCandidate);
+		}
 	}
 }
 
-void AEnemyAIController::UpdatePlayerRef()
+void AEnemyAIController::OnTargetSensorForgot(AActor* Actor)
 {
-	SensedPlayerRef.RemoveAll([](const TObjectPtr<AEstivalBaseCharacter>& Player)
-	{
-		return !IsValid(Player);
-	});
-	
-	APawn* ControlledPawn = GetPawn();
-	
-	if (!ControlledPawn || SensedPlayerRef.IsEmpty())
-	{
-		PlayerRef = nullptr;
-		return;
-	}
-	
-	AEstivalBaseCharacter* ClosestPlayer = nullptr;
-	float MinDistance = FLT_MAX;
-	FVector SelfLocation = ControlledPawn->GetActorLocation();
+	if (!Actor) return;
 
-	for (AEstivalBaseCharacter* Player : SensedPlayerRef)
+	if (AEstivalBaseCharacter* PlayerCandidate = Cast<AEstivalBaseCharacter>(Actor))
 	{
-		if (!IsValid(Player)) continue;
-
-		float Dist = FVector::DistSquared(SelfLocation, Player->GetActorLocation());
-		if (Dist < MinDistance)
+		if (PlayerRef == PlayerCandidate)
 		{
-			MinDistance = Dist;
-			ClosestPlayer = Player;
+			PlayerRef = nullptr;
+		}
+		
+		Players.Remove(PlayerCandidate);
+	}
+}
+
+void AEnemyAIController::DistCheck()
+{
+	if (Players.IsEmpty()) return;
+
+	float MinDist = FLT_MAX;
+	AEstivalBaseCharacter* PlayerToTarget = nullptr;
+	
+	for (AEstivalBaseCharacter* Player : Players)
+	{
+		if (!Player) continue;
+		
+		float Dist = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
+		
+		if (Dist < MinDist)
+		{
+			MinDist = Dist;
+			PlayerToTarget = Player;
 		}
 	}
-
-	PlayerRef = ClosestPlayer;
+	
+	if (PlayerToTarget != PlayerRef)
+	{
+		PlayerRef = PlayerToTarget;
+		
+		if (PlayerRef && StateTree && ForceStateChangeTag.IsValid())
+		{
+			StopMovement();
+			StateTree->SendStateTreeEvent(ForceStateChangeTag);
+		}
+	}
 }

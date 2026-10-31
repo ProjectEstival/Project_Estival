@@ -85,3 +85,39 @@ struct FCompanionFindWanderPointTask : public FStateTreeTaskCommonBase
 
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 };
+
+// instance data for the LookAt task
+USTRUCT()
+struct FCompanionLookAtInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	// who to face (enemy or companion)
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<AActor> Target;
+
+	/** Faced instead of Target while it is valid. Bind to SeenEnemy, or leave it unbound */
+	UPROPERTY(EditAnywhere, Category="Input", meta=(Optional))
+	TObjectPtr<AActor> PriorityTarget;
+};
+
+// turns the pawn to face a target while the state is active.
+// uses the character's LookAt component because SetFocus does not rotate Estival characters
+USTRUCT()
+struct FCompanionLookAtTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionLookAtInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+
+private:
+	static void UpdateLook(const FInstanceDataType& InstanceData);
+};

@@ -5,6 +5,7 @@
 #include "GameFramework/Pawn.h"
 #include "NavigationSystem.h"
 #include "AI/Companion/CompanionAIController.h"
+#include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "StateTreeExecutionContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
@@ -91,3 +92,43 @@ EStateTreeRunStatus FCompanionFindWanderPointTask::EnterState(FStateTreeExecutio
 	return EStateTreeRunStatus::Running;
 }
 
+// ---------- Look At ----------
+
+EStateTreeRunStatus FCompanionLookAtTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	UpdateLook(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FCompanionLookAtTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	// targets move so update this every tick
+	UpdateLook(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FCompanionLookAtTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	UAC_LookAtComponent* LookAt = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<UAC_LookAtComponent>() : nullptr;
+	if (LookAt)
+	{
+		// back to facing the movement direction
+		LookAt->ClearLookTarget();
+	}
+}
+
+void FCompanionLookAtTask::UpdateLook(const FInstanceDataType& InstanceData)
+{
+	UAC_LookAtComponent* LookAt = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<UAC_LookAtComponent>() : nullptr;
+	if (!LookAt)
+	{
+		return;
+	}
+
+	const AActor* LookTarget = IsValid(InstanceData.PriorityTarget) ? InstanceData.PriorityTarget.Get() : InstanceData.Target.Get();
+	if (LookTarget)
+	{
+		LookAt->SetLookAtLocation(LookTarget->GetActorLocation());
+	}
+}

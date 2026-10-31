@@ -4,10 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
+#include "GameplayTagContainer.h"
 #include "CompanionStateTreeTasks.generated.h"
 
 class AActor;
 class APawn;
+class AAIController;
 
 USTRUCT()
 struct FCompanionFindFollowTargetInstanceData
@@ -22,8 +24,6 @@ struct FCompanionFindFollowTargetInstanceData
 	
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	float DistanceToTarget = 0.f;
-	
-
 };
 
 /**
@@ -120,4 +120,72 @@ struct FCompanionLookAtTask : public FStateTreeTaskCommonBase
 
 private:
 	static void UpdateLook(const FInstanceDataType& InstanceData);
+};
+
+USTRUCT()
+struct FCompanionFindThreatInstanceData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+	
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<AAIController> AIController;
+	
+	// bind to Find Follow Target's FollowTarget
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<APawn> FollowTarget;
+	
+	// an enemy this close to the player or to me is "in the fight" (= close to the player or close to me)
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
+	float EngageRadius = 600.f;
+	
+	// nearest enemy I can see. Used for looking
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TObjectPtr<AActor> SeenEnemy;
+	
+	// Nearest enemy that is fighting the player or me. Used for attacking
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TObjectPtr<AActor> AttackTarget;
+};
+
+// global task: reads what the companion sees and picks enemies to look at and to attack.
+USTRUCT()
+struct FCompanionFindThreatTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionFindThreatInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+};
+
+// instance data for Use Ability
+USTRUCT()
+struct FCompanionUseAbilityInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	/** Which loadout slot to use. Ability.Base is the basic attack */
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
+	FGameplayTag Slot;
+};
+
+
+ //  Uses an ability through the character, the same function player input calls.
+ // Waits while the ability is busy or on cooldown, then succeeds once it fires.
+USTRUCT()
+struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionUseAbilityInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
 };

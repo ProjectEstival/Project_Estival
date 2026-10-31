@@ -6,6 +6,10 @@
 #include "NavigationSystem.h"
 #include "AI/Companion/CompanionAIController.h"
 #include "Systems/Thanos/Components/AC_LookAtComponent.h"
+#include "AIController.h"
+#include "Perception/AIPerceptionComponent.h"
+#include "Perception/AISense_Sight.h"
+#include "Systems/Core/Characters/CharacterBase.h"
 #include "StateTreeExecutionContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
@@ -131,4 +135,76 @@ void FCompanionLookAtTask::UpdateLook(const FInstanceDataType& InstanceData)
 	{
 		LookAt->SetLookAtLocation(LookTarget->GetActorLocation());
 	}
+}
+
+// ---------- Find Threat ----------
+EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	InstanceData.SeenEnemy = nullptr;
+	InstanceData.AttackTarget = nullptr;
+
+	const AEstivalBaseCharacter* Me = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
+	const UAIPerceptionComponent* Perception = InstanceData.AIController ? InstanceData.AIController->GetAIPerceptionComponent() : nullptr;
+	if (!Me || !Perception)
+	{
+		return EStateTreeRunStatus::Running;
+	}
+
+	TArray<AActor*> SeenActors;
+	Perception->GetCurrentlyPerceivedActors(UAISense_Sight::StaticClass(), SeenActors);
+
+	const double EngageRadiusSq = FMath::Square(InstanceData.EngageRadius);
+	double NearestSeenSq = TNumericLimits<double>::Max();
+	double NearestAttackSq = TNumericLimits<double>::Max();
+
+	for (AActor* Actor : SeenActors)
+	{
+		// only living characters on a hostile team (never players or other bots!!)
+		const AEstivalBaseCharacter* Enemy = Cast<AEstivalBaseCharacter>(Actor);
+		if (!Enemy || !Enemy->IsAlive() || Me->GetTeamAttitudeTowards(*Enemy) != ETeamAttitude::Hostile)
+		{
+			continue;
+		}
+
+		const double DistSq = FVector::DistSquared(Me->GetActorLocation(), Enemy->GetActorLocation());
+		if (DistSq < NearestSeenSq)
+		{
+			NearestSeenSq = DistSq;
+			InstanceData.SeenEnemy = Actor;
+		}
+
+		// "in the fight" = close to the player or close to me
+		const bool bNearMe = DistSq < EngageRadiusSq;
+		const bool bNearPlayer = InstanceData.FollowTarget
+			&& FVector::DistSquared(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
+
+		if ((bNearMe || bNearPlayer) && DistSq < NearestAttackSq)
+		{
+			NearestAttackSq = DistSq;
+			InstanceData.AttackTarget = Actor;
+		}
+	}
+
+	// global task: keeps running for the whole tree
+	return EStateTreeRunStatus::Running;
+}
+
+// ---------- Use Ability ----------
+EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
+	if (!Character || !InstanceData.Slot.IsValid())
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	
+	if (Character->TryActivateAbility(InstanceData.Slot))
+	{
+		return EStateTreeRunStatus::Succeeded;
+	}
+
+	// not ready yet: try again next tick
+	return EStateTreeRunStatus::Running;
 }

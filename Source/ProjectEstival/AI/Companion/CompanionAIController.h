@@ -3,11 +3,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Runtime/AIModule/Classes/AIController.h"
 #include "AIController.h"
 #include "CompanionAIController.generated.h"
 
 class UStateTreeAIComponent;
+class UAIPerceptionComponent;  
 
 UCLASS(Abstract)
 class PROJECTESTIVAL_API ACompanionAIController : public AAIController
@@ -16,10 +16,23 @@ class PROJECTESTIVAL_API ACompanionAIController : public AAIController
 	
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess=true))
 	TObjectPtr<UStateTreeAIComponent> StateTreeAI;
+	
+	// let's the companions see the enemies  
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components", meta=(AllowPrivateAccess=true))
+	TObjectPtr<UAIPerceptionComponent> Perception;
+	
+	// transient: so it starts as nullptr every time it loads
+	UPROPERTY(Transient)
+	TObjectPtr<APawn> FollowTarget;
+	
 
 public:
-	// Sets default values for this actor's properties
-	ACompanionAIController();
+	ACompanionAIController(const FObjectInitializer& ObjectInitializer);
+	
+	UFUNCTION(BlueprintPure, Category="Companion")
+	APawn* GetFollowTarget() const {return FollowTarget;}
+	
+	void SetFollowTarget(APawn* NewTarget) { FollowTarget = NewTarget; }
 
 
 };

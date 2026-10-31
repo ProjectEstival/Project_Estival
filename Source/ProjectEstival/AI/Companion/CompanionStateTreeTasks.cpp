@@ -4,6 +4,7 @@
 #include "AI/Companion/CompanionStateTreeTasks.h"
 #include "GameFramework/Pawn.h"
 #include "NavigationSystem.h"
+#include "AI/Companion/CompanionAIController.h"
 #include "StateTreeExecutionContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
@@ -57,6 +58,12 @@ void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceDat
 	if (InstanceData.FollowTarget)
 	{
 		InstanceData.DistanceToTarget = static_cast<float>(FMath::Sqrt(NearestDistSq));
+	}
+	
+	// EQS can't read StateTree data, so sharing the target through the controller
+	if (ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.Pawn->GetController()))
+	{
+		Companion->SetFollowTarget(InstanceData.FollowTarget);
 	}
 }
 

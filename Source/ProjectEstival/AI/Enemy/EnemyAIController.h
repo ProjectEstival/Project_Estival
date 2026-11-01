@@ -19,7 +19,7 @@ class PROJECTESTIVAL_API AEnemyAIController : public AAIController
 	
 public:
 
-	AEnemyAIController();
+	AEnemyAIController(const FObjectInitializer& ObjectInitializer);
 	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AI Senses")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComp;

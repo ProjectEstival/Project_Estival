@@ -54,7 +54,7 @@ public:
 	bool CanAfford(FGameplayTag StatTag, float Amount) const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Resources", meta = (Categories = "Stats.Resources."))
-	float Modify(FGameplayTag StatTag, float Amount);
+	float ModifyResource(FGameplayTag StatTag, float Amount);
 	
 	UFUNCTION(BlueprintCallable, Category = "Resources", meta = (Categories = "Stats.Resources."))
 	bool TrySpend(FGameplayTag StatTag, float Amount);

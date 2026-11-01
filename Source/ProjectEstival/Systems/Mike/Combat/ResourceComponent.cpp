@@ -102,7 +102,7 @@ bool UResourceComponent::CanAfford(const FGameplayTag StatTag, const float Amoun
 	return GetFloat(StatTag) >= Amount;
 }
 
-float UResourceComponent::Modify(const FGameplayTag StatTag, const float Amount)
+float UResourceComponent::ModifyResource(const FGameplayTag StatTag, const float Amount)
 {
 	if (!HasResource(StatTag)) return 0.f;
 	return Write(StatTag, GetFloat(StatTag) + Amount);
@@ -113,7 +113,7 @@ bool UResourceComponent::TrySpend(const FGameplayTag StatTag, const float Amount
 	if (Amount <= 0.f) return true;
 	if (!CanAfford(StatTag, Amount)) return false;
 
-	Modify(StatTag, -Amount);
+	ModifyResource(StatTag, -Amount);
 	return true;
 }
 

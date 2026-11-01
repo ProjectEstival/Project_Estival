@@ -24,4 +24,12 @@ void ASpawnerBase::TestSpawnEnemies()
 	}
 }
 
+void ASpawnerBase::ResetSpawnedEnemies()
+{
+	if (EnemySpawnerComponent)
+	{
+		EnemySpawnerComponent->ClearSpawnedEnemies();
+	}
+}
+
 

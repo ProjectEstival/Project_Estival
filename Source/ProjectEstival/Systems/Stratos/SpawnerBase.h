@@ -24,5 +24,7 @@ protected:
 public:	
 	UFUNCTION(CallInEditor, Category = "Spawning")
 	void TestSpawnEnemies();
+	UFUNCTION(CallInEditor, Category = "Spawning")
+	void ResetSpawnedEnemies();
 
 };

@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "EnemySpawner.generated.h"
 
+class AActor;
 
 USTRUCT(BlueprintType)
 struct FEnemySpawnPoint
@@ -17,6 +18,9 @@ struct FEnemySpawnPoint
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning", meta = (ClampMin = "0"))
 	int32 Amount = 1;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning", meta = (ClampMin = "0.0"))
+    float SpreadRadius = 150.0f;
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -35,6 +39,14 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
         void SpawnEnemies();
+	
+	UFUNCTION(BlueprintCallable, Category = "Spawning")
+	void ClearSpawnedEnemies();
+
+	private:
+    
+        UPROPERTY(Transient)
+        TArray<TObjectPtr<AActor>> SpawnedEnemies;
 
 protected:
 	// Called when the game starts
@@ -44,5 +56,6 @@ public:
 	// Called every frame
 	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
+	
 		
 };

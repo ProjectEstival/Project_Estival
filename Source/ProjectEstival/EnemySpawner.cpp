@@ -57,6 +57,12 @@ void UEnemySpawner::SpawnEnemies()
         {
             continue;
         }
+        
+        const float AngleStep =
+            (2.0f * PI) / SpawnPoint.Amount;
+        const float RandomAngleOffset =
+            FMath::FRandRange(0.0f, 2.0f * PI);
+        
 
         for (int32 i = 0; i < SpawnPoint.Amount; i++)
         {
@@ -71,18 +77,50 @@ void UEnemySpawner::SpawnEnemies()
                 continue;
             }
 
-            const FVector SpawnLocation =
-                SpawnPoint.SpawnTransform.GetLocation();
+            FVector SpawnLocation =
+                           SpawnPoint.SpawnTransform.GetLocation();
+
+            // Distribute enemies around the center
+            if (SpawnPoint.Amount > 1 &&
+                SpawnPoint.SpreadRadius > 0.0f)
+            {
+                const float Angle =
+                    RandomAngleOffset + (AngleStep * i);
+
+                SpawnLocation.X +=
+                    FMath::Cos(Angle) * SpawnPoint.SpreadRadius;
+
+                SpawnLocation.Y +=
+                    FMath::Sin(Angle) * SpawnPoint.SpreadRadius;
+            }
 
             const FRotator SpawnRotation =
                 SpawnPoint.SpawnTransform.GetRotation().Rotator();
 
-            World->SpawnActor<AActor>(
-                SelectedEnemyClass,
-                SpawnLocation,
-                SpawnRotation
-            );
+            AActor* SpawnedEnemy = World->SpawnActor<AActor>(
+               SelectedEnemyClass,
+               SpawnLocation,
+               SpawnRotation
+           );
+            
+            if (IsValid(SpawnedEnemy))
+            {
+                SpawnedEnemies.Add(SpawnedEnemy);
+            }
         }
     }
+}
+
+void UEnemySpawner::ClearSpawnedEnemies()
+{
+    for (AActor* SpawnedEnemy : SpawnedEnemies)
+    {
+        if (IsValid(SpawnedEnemy))
+        {
+            SpawnedEnemy->Destroy();
+        }
+    }
+
+    SpawnedEnemies.Empty();
 }
 

@@ -73,30 +73,6 @@ void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceDat
 	}
 }
 
-// ---------- Find Wander Point ----------
-
-EStateTreeRunStatus FCompanionFindWanderPointTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
-{
-	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
-	if (!InstanceData.Anchor)
-	{
-		return EStateTreeRunStatus::Failed;
-	}
-
-	UNavigationSystemV1* NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(InstanceData.Anchor->GetWorld());
-	FNavLocation Result;
-	if (!NavSystem || !NavSystem->GetRandomReachablePointInRadius(InstanceData.Anchor->GetActorLocation(), InstanceData.Radius, Result))
-	{
-		UE_LOG(LogCompanionAI, Warning, TEXT("No reachable wander point near %s. Is there a navmesh?"), *InstanceData.Anchor->GetName());
-		return EStateTreeRunStatus::Failed;
-	}
-
-	InstanceData.WanderLocation = Result.Location;
-
-	// keep running: child states bind to WanderLocation while this state is active
-	return EStateTreeRunStatus::Running;
-}
-
 // ---------- Look At ----------
 
 EStateTreeRunStatus FCompanionLookAtTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const

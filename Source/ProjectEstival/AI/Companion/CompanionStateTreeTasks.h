@@ -189,3 +189,54 @@ struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
 
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
 };
+
+
+// instance data for CatchUp Teleport
+USTRUCT()
+struct FCompanionCatchUpTeleportInstanceData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+	
+	// bind this to Find Follow Target's Follow target in StateTree 
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<AActor> FollowTarget;
+	
+	// never teleport inside this distance
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
+	float LeashRadius = 900.f;
+	
+	// farther than this means we need to teleport
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
+	float TeleportDistance = 2500.f;
+	
+	// if not getting closer for this long then we need to teleport, we're stuck
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="s"))
+	float StuckTime = 3.f;
+	
+	
+	// not shown in Editor
+	float StuckTimer =  0.f;
+	float ClosestDistance = 0.f;
+	
+};
+
+
+ // Global safety net: teleports the companion just off screen when it is
+ // off screen AND (far behind OR stuck). It then walks back into view. 
+USTRUCT()
+struct FCompanionCatchUpTeleportTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionCatchUpTeleportInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+
+private:
+	static bool IsOnScreen(const UWorld* World, const FVector& Location);
+	static bool TryTeleport(const FInstanceDataType& InstanceData);
+};

@@ -10,6 +10,7 @@
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISense_Sight.h"
 #include "Systems/Core/Characters/CharacterBase.h"
+#include "Kismet/GameplayStatics.h"
 #include "StateTreeExecutionContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
@@ -207,4 +208,131 @@ EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& C
 
 	// not ready yet: try again next tick
 	return EStateTreeRunStatus::Running;
+}
+
+// ---------- Catch-Up Teleport ----------
+EStateTreeRunStatus FCompanionCatchUpTeleportTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	if (!InstanceData.Pawn || !InstanceData.FollowTarget)
+	{
+		return EStateTreeRunStatus::Running;
+	}
+
+	const float Distance = static_cast<float>(FVector::Dist(InstanceData.Pawn->GetActorLocation(), InstanceData.FollowTarget->GetActorLocation()));
+
+	// close enough, nothing to watch
+	if (Distance <= InstanceData.LeashRadius)
+	{
+		InstanceData.StuckTimer = 0.f;
+		InstanceData.ClosestDistance = Distance;
+		return EStateTreeRunStatus::Running;
+	}
+
+	// stuck: not getting at least 50 cm closer
+	if (Distance < InstanceData.ClosestDistance - 50.f)
+	{
+		InstanceData.ClosestDistance = Distance;
+		InstanceData.StuckTimer = 0.f;
+	}
+	else
+	{
+		InstanceData.StuckTimer += DeltaTime;
+	}
+
+	const bool bFarBehind = Distance > InstanceData.TeleportDistance;
+	const bool bStuck = InstanceData.StuckTimer > InstanceData.StuckTime;
+
+	// only cheat where nobody can see it
+	if ((bFarBehind || bStuck) && !IsOnScreen(InstanceData.Pawn->GetWorld(), InstanceData.Pawn->GetActorLocation()))
+	{
+		if (TryTeleport(InstanceData))
+		{
+			InstanceData.StuckTimer = 0.f;
+			InstanceData.ClosestDistance = TNumericLimits<float>::Max();
+		}
+	}
+
+	// global task that keeps running for the whole tree
+	return EStateTreeRunStatus::Running;
+}
+
+bool FCompanionCatchUpTeleportTask::IsOnScreen(const UWorld* World, const FVector& Location)
+{
+	APlayerController* PlayerController = UGameplayStatics::GetPlayerController(World, 0);
+	
+	if (!PlayerController)
+	{
+		return true;
+	}
+
+	FVector2D ScreenPosition;
+	if (!UGameplayStatics::ProjectWorldToScreen(PlayerController, Location, ScreenPosition))
+	{
+		return false;
+	}
+
+	int32 Width = 0;
+	int32 Height = 0;
+	PlayerController->GetViewportSize(Width, Height);
+
+	// a bot half visible at the edge should still count as on screen
+	const float Margin = 100.f;
+	return ScreenPosition.X > -Margin && ScreenPosition.X < Width + Margin
+		&& ScreenPosition.Y > -Margin && ScreenPosition.Y < Height + Margin;
+}
+
+bool FCompanionCatchUpTeleportTask::TryTeleport(const FInstanceDataType& InstanceData)
+{
+	APawn* Pawn = InstanceData.Pawn;
+	UWorld* World = Pawn->GetWorld();
+	UNavigationSystemV1* NavSystem = FNavigationSystem::GetCurrent<UNavigationSystemV1>(World);
+	
+	if (!NavSystem)
+	{
+		return false;
+	}
+
+	const FVector PlayerLocation = InstanceData.FollowTarget->GetActorLocation();
+	const FVector Direction = (Pawn->GetActorLocation() - PlayerLocation).GetSafeNormal2D();
+	const float Distance = static_cast<float>(FVector::Dist(Pawn->GetActorLocation(), PlayerLocation));
+
+	// walk out from the player toward the bot's side and  land at the first point just a little bit off screen
+	for (float Step = 600.f; Step < Distance; Step += 300.f)
+	{
+		FNavLocation NavLocation;
+		// no floor here
+		if (!NavSystem->ProjectPointToNavigation(PlayerLocation + Direction * Step, NavLocation))
+		{
+			continue; 
+		}
+
+		if (IsOnScreen(World, NavLocation.Location))
+		{
+			continue; 
+		}
+
+		// skip points behind a wall
+		FHitResult Hit;
+		if (World->LineTraceSingleByChannel(Hit, PlayerLocation, NavLocation.Location + FVector(0.f, 0.f, 50.f), ECC_Visibility))
+		{
+			continue;
+		}
+
+		const FVector Destination = NavLocation.Location + FVector(0.f, 0.f, Pawn->GetSimpleCollisionHalfHeight());
+		if (Pawn->TeleportTo(Destination, Pawn->GetActorRotation()))
+		{
+			// cancel the old path 
+			// the tree picks a new move from here
+			if (AAIController* AIController = Cast<AAIController>(Pawn->GetController()))
+			{
+				AIController->StopMovement();
+			}
+
+			UE_LOG(LogCompanionAI, Log, TEXT("%s teleported to catch up"), *Pawn->GetName());
+			return true;
+		}
+	}
+
+	return false;
 }

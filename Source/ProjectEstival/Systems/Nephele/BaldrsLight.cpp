@@ -237,7 +237,7 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 	// Add/remove corruption
 	UResourceComponent* ResourceManager = Player->FindComponentByClass<UResourceComponent>();
 	if (!ResourceManager) return;
-	ResourceManager->Modify(CorruptionTag, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
+	ResourceManager->ModifyResource(CorruptionTag, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
 	
 	// Debug player health / corruption [DELETE ME]
 	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Health: %.2f"), ResourceManager->GetFloat(HealthTag)));
@@ -262,7 +262,7 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 		State.DamageIntervalTimer -= DamageInterval;
 		
 		const float Damage = GetDamagePerTick(CurrentTier);
-		ResourceManager->Modify(HealthTag, -Damage);
+		ResourceManager->ModifyResource(HealthTag, -Damage);
 		
 		PlayerDamaged(Player, Damage);
 		OnPlayerDamaged.Broadcast(Player, Damage);

@@ -32,5 +32,8 @@ struct FAbilityContext
 	TObjectPtr<UWorld> World;
 	
 	UPROPERTY(BlueprintReadWrite, Category = "Ability")
-	FVector Origin;
+	FVector Origin = FVector::ZeroVector;
+	
+	UPROPERTY(BlueprintReadWrite, Category = "Ability")
+	FVector Direction = FVector::ForwardVector;
 };

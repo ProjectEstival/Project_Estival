@@ -119,6 +119,8 @@ private:
 	UFUNCTION()
 	void OnStatusEffectChanged(FGameplayTag Tag);
 	UFUNCTION()
+	void OnStatChanged(FGameplayTag Stat, float NewValue, float OldValue);
+	UFUNCTION()
 	void BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag);
 	void Die();
 	bool bIsDead = false;

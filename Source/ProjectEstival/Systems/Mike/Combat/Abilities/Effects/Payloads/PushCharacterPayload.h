@@ -4,16 +4,27 @@
 
 #include "CoreMinimal.h"
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
-#include "KnockbackPayload.generated.h"
+#include "PushCharacterPayload.generated.h"
+
+UENUM(BlueprintType)
+enum class EPushDirection : uint8
+{
+	AwayFromOrigin,
+	AlongDirection,
+	TowardOrigin
+};
 
 UCLASS()
-class PROJECTESTIVAL_API UKnockbackPayload : public UAbilityEffectPayload
+class PROJECTESTIVAL_API UPushCharacterPayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()
 	
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Knockback", meta = (Units = "cm"))
 	float KnockbackDistance = 1000;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Knockback")
+	EPushDirection PushDirection = EPushDirection::AwayFromOrigin;
 	
 	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

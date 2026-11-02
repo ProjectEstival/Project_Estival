@@ -24,10 +24,10 @@ public:
         const FKey Key = InEvent.GetKey();
         const bool bIsJoinButton = Key == EKeys::Gamepad_FaceButton_Bottom;
         const bool bIsCancelButton = Key == EKeys::Gamepad_FaceButton_Right;
-        if (!bIsJoinButton && !bIsCancelButton) return true;
+        if (!bIsJoinButton && !bIsCancelButton) return false;
         
         // Ignore key-repeat events
-        if (InEvent.IsRepeat()) return true;
+        if (InEvent.IsRepeat()) return false;
         
         if (UPlayerProfileSubsystem* PinnedSubsystem = Subsystem.Get())
         {

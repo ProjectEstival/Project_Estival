@@ -13,8 +13,6 @@ public:
 	virtual void Execute_Implementation(const FAbilityContext& Context) const override;
 	
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
-	TArray<TObjectPtr<UAbilityEffect>> Effects;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat", meta = (ClampMin = 2))
 	int32 TotalRepeats = 3;
@@ -27,6 +25,9 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
 	bool bStopOnInterrupt = true;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
+	TArray<TObjectPtr<UAbilityEffect>> Effects;
 	
 private:
 	void Run(const FAbilityContext& Context) const;

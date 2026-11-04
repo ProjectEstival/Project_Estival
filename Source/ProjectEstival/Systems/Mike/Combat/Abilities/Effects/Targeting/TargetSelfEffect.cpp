@@ -3,7 +3,7 @@
 
 #include "TargetSelfEffect.h"
 
-TSet<AActor*> UTargetSelfEffect::GetTargets_Implementation(const FAbilityContext& Context) const
+TArray<AActor*> UTargetSelfEffect::GetTargets_Implementation(const FAbilityContext& Context) const
 {
-	return TSet<AActor*> { Context.Instigator };
+	return TArray { Context.Instigator.Get() };
 }

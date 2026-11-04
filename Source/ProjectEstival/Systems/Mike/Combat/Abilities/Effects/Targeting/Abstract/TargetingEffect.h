@@ -14,7 +14,11 @@ class PROJECTESTIVAL_API UTargetingEffect : public UTargetingEffectBase
 	
 public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
-	TSet<AActor*> GetTargets(const FAbilityContext& Context) const;
-	virtual TSet<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const { return TSet<AActor*>(); }
+	TArray<AActor*> GetTargets(const FAbilityContext& Context) const;
+	virtual TArray<AActor*> GetTargets_Implementation(const FAbilityContext& Context) const { return TArray<AActor*>(); }
 	virtual void Execute_Implementation(const FAbilityContext& Context) const override final;
+	
+protected:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Targeting")
+	bool bNearestFirst = true;
 };

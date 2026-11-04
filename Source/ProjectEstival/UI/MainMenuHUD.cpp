@@ -81,6 +81,13 @@ void AMainMenuHUD::HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer)
     // Close the current popup before advancing the queue
     if (IsValid(ActivePopup) && ActivePopup->GetTargetLocalPlayer() == LocalPlayer)
     {
+        // Close card options
+        if (ActivePopup->IsCardOptionsOpen())
+        {
+            ActivePopup->CloseCardOptions();
+            return;
+        }
+        
         ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
         ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
         

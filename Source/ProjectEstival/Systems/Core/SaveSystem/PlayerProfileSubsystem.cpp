@@ -334,6 +334,78 @@ FGuid UPlayerProfileSubsystem::CreateProfile(const FString& ProfileName)
     RefreshSavedProfiles();
     return NewId;
 }
+bool UPlayerProfileSubsystem::EditProfileName(const FGuid& ProfileId, const FString& NewName)
+{
+    const FString CleanName = NewName.TrimStartAndEnd();
+    if (!ProfileId.IsValid() || CleanName.IsEmpty()) return false;
+    
+    RefreshSavedProfiles();
+    
+    // Verify that the profile exists
+    const FProfileSummary* ExistingProfile = SavedProfiles.FindByPredicate([&ProfileId](const FProfileSummary& Profile) { return Profile.ProfileId == ProfileId; });
+    if (!ExistingProfile) return false;
+    
+    // Reject duplicate names (excluding this profile)
+    if (SavedProfiles.ContainsByPredicate([&CleanName, &ProfileId](const FProfileSummary& Profile) { return Profile.ProfileId != ProfileId && Profile.ProfileName.Equals(CleanName, ESearchCase::IgnoreCase); })) return false;
+    
+    // Ensure save data is loaded
+    UPlayerProfileSaveGame* Save = GetLoadedProfile(ProfileId);
+    if (!Save)
+    {
+        if (!LoadProfile(ProfileId)) return false;
+        Save = GetLoadedProfile(ProfileId);
+    }
+    
+    if (!Save || Save->Profile.ProfileId != ProfileId) return false;
+    if (Save->Profile.ProfileName == CleanName) return true; // Nothing to change
+    
+    const FString OldName = Save->Profile.ProfileName;
+    Save->Profile.ProfileName = CleanName;
+    if (!SaveProfile(ProfileId))
+    {
+        // Restore in-memory data if saving fails
+        Save->Profile.ProfileName = OldName;
+        return false;
+    }
+    
+    RefreshSavedProfiles();
+    return true;
+}
+bool UPlayerProfileSubsystem::DeleteProfile(const FGuid& ProfileId)
+{
+    if (!ProfileId.IsValid()) return false;
+    
+    // Refresh first so the existence check uses current data
+    RefreshSavedProfiles();
+    
+    // Don't delete profiles currently assigned to players
+    if (IsProfileTaken(ProfileId))
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Profiles] Cannot delete assigned profile %s"), *ProfileId.ToString());
+        return false;
+    }
+    
+    // Verify profile actually exists
+    const bool bProfileExists = SavedProfiles.ContainsByPredicate([&ProfileId](const FProfileSummary& Summary) { return Summary.ProfileId == ProfileId; });
+    if (!bProfileExists) return false;
+    
+    // Delete persistent save
+    const FString SlotName = GetProfileSlotName(ProfileId);
+    if (!UGameplayStatics::DeleteGameInSlot(SlotName, 0))
+    {
+        UE_LOG(LogTemp, Error, TEXT("[Profiles] Failed to delete profile %s"), *ProfileId.ToString());
+        return false;
+    }
+    
+    // Remove in-memory data
+    LoadedProfiles.Remove(ProfileId);
+    
+    // Refresh profile summaries
+    RefreshSavedProfiles();
+    
+    UE_LOG(LogTemp, Log, TEXT("[Profiles] Deleted profile %s"), *ProfileId.ToString());
+    return true;
+}
 bool UPlayerProfileSubsystem::AssignProfile(ULocalPlayer* LocalPlayer, const FGuid& ProfileId)
 {
     if (!IsValid(LocalPlayer) || !IsPlayerRegistered(LocalPlayer) || !ProfileId.IsValid()) return false;

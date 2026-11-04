@@ -2,14 +2,16 @@
 
 #include "Blueprint/UserWidget.h"
 #include "CoreMinimal.h"
+#include "PlayerProfileCard.h"
+#include "Components/Button.h"
 #include "Components/ScrollBoxSlot.h"
 #include "Components/TextBlock.h"
 #include "ProfileSelectionPopup.generated.h"
 
-class UButton;
+class UCanvasPanel;
 class UScrollBox;
 class ULocalPlayer;
-class UPlayerProfileCard;
+class UPlayerProfileSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FProfilePopupPlayerEvent, ULocalPlayer*, LocalPlayer);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnProfileSelected, ULocalPlayer*, LocalPlayer, FGuid, ProfileId);
@@ -36,8 +38,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")
 	void ConfirmSelection(const FGuid& ProfileId);
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")
-	void CancelSelection(); // Optional flow for closing the popup from the UI.
+	void CancelSelection(); // Optional flow for closing the popup from the UI
 	void CompleteSelection(); // Accessible from MainMenuHUD
+	
+	// Details menu
+	UFUNCTION()
+	void CloseCardOptions();
+	bool IsCardOptionsOpen() const { return IsValid(ActiveOptionsCard); }
 	
 protected:
 	// Popup creation
@@ -56,13 +63,21 @@ protected:
 	// Cards
 	UPROPERTY(EditDefaultsOnly, Category = "Profile Selection")
 	TSubclassOf<UPlayerProfileCard> ProfileCardClass;
-	
 private:
 	// Object references
 	UPROPERTY(Transient)
 	TArray<TObjectPtr<UPlayerProfileCard>> SpawnedCards;
 	UPROPERTY(Transient)
 	TObjectPtr<UPlayerProfileCard> PendingNameCard;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UCanvasPanel> Options;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> OptionsEntryButton;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> EditButton;
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UButton> DeleteButton;
 	
 	// Cards
 	void RebuildProfileCards();
@@ -80,4 +95,19 @@ private:
 	
 	// Helpers
 	static UScrollBoxSlot* InsertWidgetAt(UScrollBox* ScrollBox, UWidget* NewWidget, int32 Index);
+	
+	
+	
+	
+	UFUNCTION()
+	void HandleOptionsEntryReleased() const;
+	
+	UFUNCTION()
+	void HandleCardLongPressed(UPlayerProfileCard* Card);
+	UPROPERTY()
+	TObjectPtr<UPlayerProfileCard> ActiveOptionsCard;
+	UFUNCTION()
+	void EditProfile();
+	UFUNCTION()
+	void DeleteProfile();
 };

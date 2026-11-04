@@ -34,6 +34,8 @@ public:
     
     // Profiles
     FGuid CreateProfile(const FString& ProfileName);
+    bool EditProfileName(const FGuid& ProfileId, const FString& NewName);
+    bool DeleteProfile(const FGuid& ProfileId);
     TArray<FProfileSummary> GetUnassignedProfiles() const;
     
     // Onboarding

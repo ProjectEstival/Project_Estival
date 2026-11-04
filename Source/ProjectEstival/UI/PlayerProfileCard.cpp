@@ -9,13 +9,23 @@ void UPlayerProfileCard::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
 	
-	if (CardButton) CardButton->OnClicked.AddDynamic(this, &UPlayerProfileCard::HandleCardClicked);
+	if (CardButton)
+	{
+		CardButton->OnPressed.AddDynamic(this, &UPlayerProfileCard::HandleCardPressed);
+		CardButton->OnReleased.AddDynamic(this, &UPlayerProfileCard::HandleCardReleased);
+	}
 	if (ProfileNameText)
 	{
 		ProfileNameText->OnTextCommitted.AddDynamic(this, &UPlayerProfileCard::HandleNameCommitted);
 		ProfileNameText->SetIsReadOnly(true);
 		ProfileNameText->SetVisibility(ESlateVisibility::HitTestInvisible);
 	}
+}
+void UPlayerProfileCard::NativeDestruct()
+{
+	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(LongPressTimerHandle);
+	
+	Super::NativeDestruct();
 }
 void UPlayerProfileCard::SetProfile(const FGuid& InProfileId, const FString& InProfileName)
 {
@@ -52,9 +62,36 @@ void UPlayerProfileCard::FocusCard(APlayerController* PlayerController) const
 {
 	if (IsValid(PlayerController) && IsValid(CardButton) && !bIsNamingProfile) CardButton->SetUserFocus(PlayerController);
 }
+void UPlayerProfileCard::HandleCardPressed()
+{
+	if (bIsCreateCard || bIsNamingProfile) return;
+	bLongPressTriggered = false;
+	if (UWorld* World = GetWorld()) World->GetTimerManager().SetTimer(LongPressTimerHandle, this, &UPlayerProfileCard::HandleLongPressTriggered, 0.6f, false);
+}
+void UPlayerProfileCard::HandleCardReleased()
+{
+	GetWorld()->GetTimerManager().ClearTimer(LongPressTimerHandle);
+	if (bLongPressTriggered)
+	{
+		bLongPressTriggered = false;
+		return;
+	}
+	HandleCardClicked();
+}
+void UPlayerProfileCard::HandleLongPressTriggered()
+{
+	if (bIsCreateCard || bIsNamingProfile) return;
+	bLongPressTriggered = true;
+	OnCardLongPressed.Broadcast(this);
+}
 void UPlayerProfileCard::HandleCardClicked()
 {
-	if (!bIsNamingProfile) OnCardClicked.Broadcast(this);
+	if (bLongPressTriggered) return;
+	if (bIsNamingProfile)
+	{
+		if (IsValid(ProfileNameText)) HandleNameCommitted(ProfileNameText->GetText(), ETextCommit::OnEnter);
+	}
+	else OnCardClicked.Broadcast(this);
 }
 
 // Naming
@@ -74,6 +111,17 @@ void UPlayerProfileCard::BeginNameEntry()
 		ProfileNameText->SetKeyboardFocus();
 	}
 }
+void UPlayerProfileCard::BeginNameEdit()
+{
+	bIsNamingProfile = true;
+	if (CardButton) CardButton->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (ProfileNameText)
+	{
+		ProfileNameText->SetIsReadOnly(false);
+		ProfileNameText->SetVisibility(ESlateVisibility::Visible);
+		ProfileNameText->SetKeyboardFocus();
+	}
+}
 void UPlayerProfileCard::HandleNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
 {
 	if (!bIsNamingProfile) return;
@@ -83,7 +131,6 @@ void UPlayerProfileCard::RejectNameEntry() const
 {
 	if (!bIsNamingProfile || !ProfileNameText) return;
 	
-	ProfileNameText->SetText(FText::GetEmpty());
 	ProfileNameText->SetIsReadOnly(false);
 	ProfileNameText->SetVisibility(ESlateVisibility::Visible);
 	ProfileNameText->SetKeyboardFocus();

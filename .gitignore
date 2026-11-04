@@ -75,3 +75,6 @@ Plugins/**/Intermediate/*
 
 # Cache files for the editor to use
 DerivedDataCache/*
+
+# Ignore the rider workplace xml file
+.idea/.idea.ProjectEstival/.idea/workspace.xml

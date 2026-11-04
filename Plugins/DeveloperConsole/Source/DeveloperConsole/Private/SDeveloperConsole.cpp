@@ -2,7 +2,6 @@
 #include "SDeveloperConsole.h"
 
 #include "DevConsoleLogEvent.h"
-#include "DeveloperConsole.h"
 
 #include "Engine/Engine.h"
 #include "Engine/World.h"
@@ -30,7 +29,9 @@
 #define LOCTEXT_NAMESPACE "SDeveloperConsole"
 
 void SDeveloperConsole::Construct(const FArguments& InArgs)
-{    
+{
+    bAfterInitialization = false;
+    
     // Hook to module's event list
     OnClearLogs = InArgs._OnClearLogs;
     LogSink = InArgs._LogSink;
@@ -39,6 +40,7 @@ void SDeveloperConsole::Construct(const FArguments& InArgs)
     const FDevConsoleUIState& InitialState = InArgs._InitialUIState;
     EnabledVerbosity = InitialState.EnabledVerbosity;
     UIScale = FMath::Clamp(InitialState.UIScale, MinUIScale, MaxUIScale);
+    ScrollOffset = InitialState.ScrollOffset;
     
     ChildSlot
     [
@@ -86,8 +88,7 @@ void SDeveloperConsole::Construct(const FArguments& InArgs)
                 // Error
                 + SHorizontalBox::Slot().AutoWidth().Padding(4.0f).VAlign(VAlign_Center)
                 [
-                    SNew(SCheckBox).IsChecked(this, &SDeveloperConsole::GetVerbosityCheckState, ELogVerbosity::Error).OnCheckStateChanged_Lambda(
-                    [this](ECheckBoxState State)
+                    SNew(SCheckBox).IsChecked(this, &SDeveloperConsole::GetVerbosityCheckState, ELogVerbosity::Error).OnCheckStateChanged_Lambda([this](ECheckBoxState State)
                     {
                         OnVerbosityToggled(ELogVerbosity::Error, State);
                     })
@@ -190,7 +191,7 @@ void SDeveloperConsole::Construct(const FArguments& InArgs)
 }
 
 // Event Drawing
-TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable)
+TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEvent> Event, const TSharedRef<STableViewBase>& OwnerTable) const
 {
     const TCHAR* LevelText = TEXT("LOG");
     FSlateColor LevelColor = FSlateColor(FLinearColor(0.75f, 0.78f, 0.82f));
@@ -230,7 +231,6 @@ TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEv
     })
     [
         SNew(SHorizontalBox)
-        
         + SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center).Padding(TAttribute<FMargin>::CreateLambda([this]()
         {
             return FMargin(0.0f, 0.0f, Scaled(10.0f),0.0f);
@@ -276,11 +276,22 @@ TSharedRef<ITableRow> SDeveloperConsole::GenerateRow(TSharedPtr<FDevConsoleLogEv
 void SDeveloperConsole::AddEvents(const TArray<FDevConsoleLogEvent>& NewEvents)
 {
     if (NewEvents.IsEmpty()) return;
+    const bool wasNearBottom = ListView->GetScrollDistanceRemaining().Y <= 0.01f;
     for (const FDevConsoleLogEvent& Event : NewEvents)
     {
         Events.Add(MakeShared<FDevConsoleLogEvent>(Event));
     }
     RefreshVisibleEvents();
+    if (bAfterInitialization)
+    {
+        if (wasNearBottom) ListView->ScrollToBottom();
+    }
+    else
+    {
+        if (ScrollOffset >= 0.0f) ListView->SetScrollOffset(ScrollOffset);
+        else ListView->ScrollToBottom();
+    }
+    bAfterInitialization = true;
 }
 
 // Event Selection
@@ -391,7 +402,7 @@ void SDeveloperConsole::ClearLogs()
 }
 
 // Details Panel (Stack Trace)
-void SDeveloperConsole::UpdateDetails()
+void SDeveloperConsole::UpdateDetails() const
 {
     if (DetailsText.IsValid()) DetailsText->SetText(GetSelectedDetails());
 }
@@ -429,6 +440,7 @@ FDevConsoleUIState SDeveloperConsole::GetUIState() const
     FDevConsoleUIState State;
     State.EnabledVerbosity = EnabledVerbosity;
     State.UIScale = UIScale;
+    State.ScrollOffset = ListView->GetScrollDistanceRemaining().Y <= 0.01f ? -1.0f : ListView->GetScrollOffset();
     return State;
 }
 #undef LOCTEXT_NAMESPACE

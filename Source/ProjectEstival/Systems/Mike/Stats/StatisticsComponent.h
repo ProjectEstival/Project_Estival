@@ -26,7 +26,7 @@ public:
 	FOnStatChanged OnStatChanged;
  
 	UFUNCTION(BlueprintCallable, Category = "Stats")
-	void InitializeFromDefinitions(const UStatDefinitionSet* Definitions);
+	void SetStatCollection(const UStatDefinitionSet* Definitions);
  
 	UFUNCTION(BlueprintCallable, Category = "Stats",  meta = (Categories = "Stats."))
 	void RegisterStat(FGameplayTag StatTag, const FStatDefinition& Definition);
@@ -70,4 +70,7 @@ private:
  
 	UPROPERTY(VisibleInstanceOnly, Category = "Stats|Debug")
 	TMap<FGameplayTag, FStat> Stats;
+	
+	UPROPERTY(Transient)
+	TSet<FGameplayTag> RegisteredStats;
 };

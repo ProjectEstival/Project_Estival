@@ -22,8 +22,8 @@ public:
     virtual bool HandleKeyDownEvent(FSlateApplication& SlateApp, const FKeyEvent& InEvent) override
     {
         const FKey Key = InEvent.GetKey();
-        const bool bIsJoinButton = Key == EKeys::Gamepad_FaceButton_Bottom;
-        const bool bIsCancelButton = Key == EKeys::Gamepad_FaceButton_Right;
+        const bool bIsJoinButton = Key == EKeys::Gamepad_FaceButton_Bottom || Key == EKeys::Enter;
+        const bool bIsCancelButton = Key == EKeys::Gamepad_FaceButton_Right || Key == EKeys::Escape;
         if (!bIsJoinButton && !bIsCancelButton) return false;
         
         // Ignore key-repeat events
@@ -32,14 +32,14 @@ public:
         if (UPlayerProfileSubsystem* PinnedSubsystem = Subsystem.Get())
         {
             if (bIsCancelButton) return PinnedSubsystem->HandleCancelInput(InEvent.GetInputDeviceId());
-            return PinnedSubsystem->HandlePreprocessorKeyDown(InEvent);
+            return PinnedSubsystem->HandlePreprocessorJoinKeyDown(InEvent);
         }
         return false;
     }
 private:
     TWeakObjectPtr<UPlayerProfileSubsystem> Subsystem;
 };
-bool UPlayerProfileSubsystem::HandlePreprocessorKeyDown(const FKeyEvent& KeyEvent)
+bool UPlayerProfileSubsystem::HandlePreprocessorJoinKeyDown(const FKeyEvent& KeyEvent)
 {
     const FInputDeviceId DeviceId = KeyEvent.GetInputDeviceId();
     if (!DeviceId.IsValid()) return false;
@@ -117,7 +117,7 @@ bool UPlayerProfileSubsystem::HandleCancelInput(FInputDeviceId InputDeviceId) co
 {
     if (!InputDeviceId.IsValid()) return false;
     if (!IsValid(CurrentOnboardingPlayer)) return false;
-    
+        
     // Only the player who owns the active popup can cancel it
     ULocalPlayer* InputPlayer = GEngine ? GEngine->GetLocalPlayerFromInputDevice(GetWorld(), InputDeviceId) : nullptr;
     if (InputPlayer != CurrentOnboardingPlayer) return true;
@@ -151,6 +151,18 @@ void UPlayerProfileSubsystem::Deinitialize()
     CurrentOnboardingPlayer = nullptr;
     
     Super::Deinitialize();
+}
+
+// Mandatory profile
+void UPlayerProfileSubsystem::RequireProfileForPlayer(ULocalPlayer* LocalPlayer)
+{
+    if (!IsPlayerRegistered(LocalPlayer)) return;
+    MandatoryProfilePlayer = LocalPlayer;
+    EnqueuePlayer(LocalPlayer);
+}
+bool UPlayerProfileSubsystem::IsMandatoryProfilePlayer(const ULocalPlayer* LocalPlayer) const
+{
+    return IsValid(LocalPlayer) && MandatoryProfilePlayer.Get() == LocalPlayer;
 }
 
 // Selection queue
@@ -221,6 +233,9 @@ bool UPlayerProfileSubsystem::ConfirmProfileSelection(ULocalPlayer* LocalPlayer,
 void UPlayerProfileSubsystem::CancelProfileSelection(ULocalPlayer* LocalPlayer)
 {
     if (!IsValid(LocalPlayer) || CurrentOnboardingPlayer != LocalPlayer) return;
+    
+    // Mandatory players must select or create a profile
+    if (IsMandatoryProfilePlayer(LocalPlayer)) return;
     
     UGameInstance* GI = GetGameInstance();
     if (!GI) return;

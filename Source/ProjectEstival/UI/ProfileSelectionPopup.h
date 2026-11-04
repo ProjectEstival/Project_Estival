@@ -85,6 +85,18 @@ private:
 	UFUNCTION()
 	void HandleCardClicked(UPlayerProfileCard* Card);
 	
+	// Card options
+	UFUNCTION()
+	void HandleOptionsEntryReleased() const;
+	UFUNCTION()
+	void HandleCardLongPressed(UPlayerProfileCard* Card);
+	UPROPERTY()
+	TObjectPtr<UPlayerProfileCard> ActiveOptionsCard;
+	UFUNCTION()
+	void EditProfile();
+	UFUNCTION()
+	void DeleteProfile();
+	
 	// Profile creation
 	UPROPERTY(Transient)
 	bool bSelectionCompleted = false;
@@ -95,19 +107,4 @@ private:
 	
 	// Helpers
 	static UScrollBoxSlot* InsertWidgetAt(UScrollBox* ScrollBox, UWidget* NewWidget, int32 Index);
-	
-	
-	
-	
-	UFUNCTION()
-	void HandleOptionsEntryReleased() const;
-	
-	UFUNCTION()
-	void HandleCardLongPressed(UPlayerProfileCard* Card);
-	UPROPERTY()
-	TObjectPtr<UPlayerProfileCard> ActiveOptionsCard;
-	UFUNCTION()
-	void EditProfile();
-	UFUNCTION()
-	void DeleteProfile();
 };

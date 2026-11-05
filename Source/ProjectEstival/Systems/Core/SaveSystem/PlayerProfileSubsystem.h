@@ -47,6 +47,12 @@ public:
     void RequireProfileForPlayer(ULocalPlayer* LocalPlayer);
     bool IsMandatoryProfilePlayer(const ULocalPlayer* LocalPlayer) const;
     
+    // Saving / loading
+    UFUNCTION(BlueprintCallable, Category = "Profiles")
+    UPlayerProfileSaveGame* GetProfile(ULocalPlayer* LocalPlayer);
+    UFUNCTION(BlueprintCallable, Category = "Profiles")
+    bool SaveProfile(ULocalPlayer* LocalPlayer);
+    
 private:
     int32 MaxPlayers = 4;
     FString SavePrefix = TEXT("Profile_");

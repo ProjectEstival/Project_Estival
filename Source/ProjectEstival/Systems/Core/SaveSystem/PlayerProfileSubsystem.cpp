@@ -498,3 +498,50 @@ FString UPlayerProfileSubsystem::GetProfileSlotName(const FGuid& ProfileId) cons
 {
     return FString::Printf(TEXT("%s%s"), *SavePrefix, *ProfileId.ToString(EGuidFormats::Digits));
 }
+
+UPlayerProfileSaveGame* UPlayerProfileSubsystem::GetProfile(ULocalPlayer* LocalPlayer)
+{
+    if (!IsPlayerRegistered(LocalPlayer)) return nullptr;
+    
+    // Find the profile assigned to this player
+    const FGuid* ProfileId = SelectedProfiles.Find(LocalPlayer);
+    if (!ProfileId || !ProfileId->IsValid())
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Profiles] Player has no assigned profile"));
+        return nullptr;
+    }
+    
+    // Return already-loaded save if available
+    UPlayerProfileSaveGame* Save = GetLoadedProfile(*ProfileId);
+    
+    // Otherwise load it
+    if (!Save)
+    {
+        if (!LoadProfile(*ProfileId)) return nullptr;
+        Save = GetLoadedProfile(*ProfileId);
+    }
+    
+    // Validate the loaded save
+    if (!Save || Save->Profile.ProfileId != *ProfileId) return nullptr;
+    return Save;
+}
+bool UPlayerProfileSubsystem::SaveProfile(ULocalPlayer* LocalPlayer)
+{
+    if (!IsPlayerRegistered(LocalPlayer)) return false;
+    
+    // Find the profile assigned to this player
+    const FGuid* ProfileId = SelectedProfiles.Find(LocalPlayer);
+    if (!ProfileId || !ProfileId->IsValid()) return false;
+    
+    // Verify the profile is loaded and valid
+    UPlayerProfileSaveGame* Save = GetLoadedProfile(*ProfileId);
+    
+    if (!Save || Save->Profile.ProfileId != *ProfileId)
+    {
+        UE_LOG(LogTemp, Warning, TEXT("[Profiles] Cannot save: profile is not loaded or ID does not match"));
+        return false;
+    }
+    
+    // Commit changes to disk
+    return SaveProfile(*ProfileId);
+}

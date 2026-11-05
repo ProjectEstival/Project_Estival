@@ -76,6 +76,11 @@ void AEstivalBaseCharacter::BeginPlay()
 	Resources->OnResourceChanged.AddDynamic(this, &AEstivalBaseCharacter::OnResourceChanged);
 	StatusEffects->OnEffectAdded.AddDynamic(this, &AEstivalBaseCharacter::OnStatusEffectChanged);
 	StatusEffects->OnEffectRemoved.AddDynamic(this, &AEstivalBaseCharacter::OnStatusEffectChanged);
+	Statistics->OnStatChanged.AddDynamic(this, &AEstivalBaseCharacter::OnStatChanged);
+
+	if (const auto& MoveSpeedTag = TagDefinitions::Stats_MoveSpeed; Statistics->HasStat(MoveSpeedTag)) 
+		OnStatChanged(MoveSpeedTag, Statistics->GetFloat(MoveSpeedTag), 0.f);
+	
 	if (TeamId == FGenericTeamId::NoTeam) TeamId = DefaultTeam;
 }
 
@@ -122,12 +127,17 @@ void AEstivalBaseCharacter::OnStatusEffectChanged(const FGameplayTag Tag)
 	LookAt->SetComponentTickEnabled(!bBlocked);
 }
 
+void AEstivalBaseCharacter::OnStatChanged(const FGameplayTag Stat, const float NewValue, float OldValue)
+{
+	if (Stat.MatchesTagExact(TagDefinitions::Stats_MoveSpeed)) GetCharacterMovement()->MaxWalkSpeed = NewValue;
+}
+
 void AEstivalBaseCharacter::Die()
 {
 	if (bIsDead) return;
 	bIsDead = true;
 	
-	Loadout->CancelPendingExecution();
+	Loadout->Interrupt();
  
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();

@@ -79,3 +79,9 @@ DerivedDataCache/*
 
 # Ignore the rider workplace xml file
 .idea/.idea.ProjectEstival/.idea/workspace.xml
+
+# FMOD - Keep required native libraries
+!Plugins/FMODStudio/Binaries/
+!Plugins/FMODStudio/Binaries/Win64/
+!Plugins/FMODStudio/Binaries/Win64/*.lib
+!Plugins/FMODStudio/Binaries/Win64/*.dll

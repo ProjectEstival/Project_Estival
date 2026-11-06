@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
+#include "UObject/ObjectKey.h"
 #include "StatTypes.h"
 #include "StatisticsComponent.generated.h"
  
@@ -46,6 +47,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source);
 	
+	/** Adds modifiers that remove themselves after Duration (0 = until removed). Adding again from the same source replaces them and restarts the timer. */
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void AddTimedModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source, float Duration);
+
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void ApplyModifierAsset(UStatModifierSet* Set, UObject* Source);
 	
@@ -73,4 +78,6 @@ private:
 	
 	UPROPERTY(Transient)
 	TSet<FGameplayTag> RegisteredStats;
+
+	TMap<TObjectKey<UObject>, FTimerHandle> SourceTimers;
 };

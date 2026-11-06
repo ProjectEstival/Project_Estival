@@ -1,5 +1,7 @@
 ﻿#include "StatisticsComponent.h"
 #include "StatDataAssets.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
  
 UStatisticsComponent::UStatisticsComponent()
 {
@@ -68,6 +70,25 @@ void UStatisticsComponent::AddModifierSet(TMap<FGameplayTag, FStatModifier> Set,
 	for (const auto& Mod : Set) AddModifier(Mod.Key, Mod.Value, Source);
 }
 
+void UStatisticsComponent::AddTimedModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source, const float Duration)
+{
+	if (!Source) return;
+
+	RemoveAllFromSource(Source);
+	AddModifierSet(Set, Source);
+
+	UWorld* World = GetWorld();
+	if (!World || Duration <= 0.f) return;
+
+	const TWeakObjectPtr WeakSource(Source);
+	FTimerHandle& Handle = SourceTimers.FindOrAdd(TObjectKey<UObject>(Source));
+
+	World->GetTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, WeakSource]()
+	{
+		if (UObject* ExpiredSource = WeakSource.Get()) RemoveAllFromSource(ExpiredSource);
+	}), Duration, false);
+}
+
 void UStatisticsComponent::ApplyModifierAsset(UStatModifierSet* Set, UObject* Source)
 {
 	if (!Set) return;
@@ -78,6 +99,11 @@ int32 UStatisticsComponent::RemoveAllFromSource(UObject* Source)
 {
 	if (!Source) return 0;
  
+	if (FTimerHandle Handle; SourceTimers.RemoveAndCopyValue(TObjectKey<UObject>(Source), Handle))
+	{
+		if (const UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(Handle);
+	}
+
 	int32 TotalRemoved = 0;
 	TArray<FStatChange> Changes;
  
@@ -102,6 +128,12 @@ int32 UStatisticsComponent::RemoveAllFromSource(UObject* Source)
  
 void UStatisticsComponent::ClearAllModifiers()
 {
+	if (const UWorld* World = GetWorld())
+	{
+		for (TPair<TObjectKey<UObject>, FTimerHandle>& Pair : SourceTimers) World->GetTimerManager().ClearTimer(Pair.Value);
+	}
+	SourceTimers.Reset();
+
 	TArray<FStatChange> Changes;
  
 	for (TPair<FGameplayTag, FStat>& Pair : Stats)

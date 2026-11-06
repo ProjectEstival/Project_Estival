@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "StateTreeExecutionContext.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "DrawDebugHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
 
@@ -119,6 +120,9 @@ void FCompanionLookAtTask::UpdateLook(const FInstanceDataType& InstanceData)
 EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	
+	// remembering last tick's target before clearing the outputs
+	AActor* OldTarget = InstanceData.AttackTarget;
 	InstanceData.SeenEnemy = nullptr;
 	InstanceData.AttackTarget = nullptr;
 
@@ -135,6 +139,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 	const double EngageRadiusSq = FMath::Square(InstanceData.EngageRadius);
 	double NearestSeenSq = TNumericLimits<double>::Max();
 	double NearestAttackSq = TNumericLimits<double>::Max();
+	bool bOldTargetStillFighting = false;
 
 	for (AActor* Actor : SeenActors)
 	{
@@ -157,11 +162,33 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		const bool bNearPlayer = InstanceData.FollowTarget
 			&& FVector::DistSquared(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
 
-		if ((bNearMe || bNearPlayer) && DistSq < NearestAttackSq)
+		if (!bNearMe && !bNearPlayer)
+		{
+			continue;
+		}
+		
+		if (Actor == OldTarget)
+		{
+			bOldTargetStillFighting = true;
+		}
+		
+		if (DistSq < NearestAttackSq)
 		{
 			NearestAttackSq = DistSq;
 			InstanceData.AttackTarget = Actor;
 		}
+	}
+	
+	// stick to the target. companions should finish the fight they started
+	if (bOldTargetStillFighting)
+	{
+		InstanceData.AttackTarget = OldTarget;
+	}
+		
+	if (InstanceData.bDrawDebug && InstanceData.AttackTarget)
+	{
+		// red linem means who they fighting. draws every tick
+		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), FColor::Red, false, -1.f, 0, 3.f);
 	}
 
 	// global task: keeps running for the whole tree
@@ -199,12 +226,12 @@ EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& C
 	return EStateTreeRunStatus::Running;
 }
 
-bool FCompanionUseAbilityTask::IsFacing(const AActor* Me, const AActor* Target, float AimAngle)
+bool FCompanionUseAbilityTask::IsFacing(const AActor* Me, const AActor* Target, const float AimAngle)
 {
 	const FVector Forward = Me->GetActorForwardVector().GetSafeNormal2D();
-	const FVector ToTarget = Target->GetActorLocation() - Me->GetActorLocation().GetSafeNormal2D();
+	const FVector ToTarget = (Target->GetActorLocation() - Me->GetActorLocation()).GetSafeNormal2D();
 	
-	return FVector::DotProduct(Forward, ToTarget) <= FMath::Cos(FMath::DegreesToRadians(AimAngle));
+	return FVector::DotProduct(Forward, ToTarget) >= FMath::Cos(FMath::DegreesToRadians(AimAngle));
 }
 
 EStateTreeRunStatus FCompanionUseAbilityTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const

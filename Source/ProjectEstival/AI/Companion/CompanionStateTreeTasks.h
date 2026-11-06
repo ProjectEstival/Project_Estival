@@ -101,6 +101,10 @@ struct FCompanionFindThreatInstanceData
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
 	float EngageRadius = 600.f;
 	
+	// debug AttackTarget 
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bDrawDebug = false;
+	
 	// nearest enemy I can see. Used for looking
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	TObjectPtr<AActor> SeenEnemy;

@@ -24,7 +24,7 @@ ABaldrsLight::ABaldrsLight()
 	Lantern->SetGenerateOverlapEvents(false);
 	Lantern->SetCastShadow(false);
 	
-	// Default engine sphere. Artists can replace this mesh in the Blueprint.
+	// Default engine cube
 	static ConstructorHelpers::FObjectFinder<UStaticMesh> SphereMesh(TEXT("/Engine/BasicShapes/Cube.Cube"));
 	if (SphereMesh.Succeeded())
 	{
@@ -237,7 +237,7 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 	// Add/remove corruption
 	UResourceComponent* ResourceManager = Player->FindComponentByClass<UResourceComponent>();
 	if (!ResourceManager) return;
-	ResourceManager->Modify(CorruptionTag, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
+	ResourceManager->ModifyResource(CorruptionTag, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
 	
 	// Debug player health / corruption [DELETE ME]
 	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Health: %.2f"), ResourceManager->GetFloat(HealthTag)));
@@ -262,7 +262,7 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 		State.DamageIntervalTimer -= DamageInterval;
 		
 		const float Damage = GetDamagePerTick(CurrentTier);
-		ResourceManager->Modify(HealthTag, -Damage);
+		ResourceManager->ModifyResource(HealthTag, -Damage);
 		
 		PlayerDamaged(Player, Damage);
 		OnPlayerDamaged.Broadcast(Player, Damage);
@@ -299,18 +299,18 @@ void ABaldrsLight::DrawEditorDebug() const
     if (!World || !bShowLightDebug) return;
     const FVector FloorCenter = GetActorLocation();
 	
-    // Effect area circle on the XY floor plane.
+    // Effect area circle on the XY floor plane
     if (bShowEffectRadius) DrawDebugCircle(World, FloorCenter, LightRadius, 64, FColor::Green, false, 0.0f, 0, 2.5f, FVector(1, 0, 0), FVector(0, 1, 0), false);
 	
-    // Mark the physical spotlight's position.
+    // Mark the physical spotlight's position
     if (!Spotlight) return;
     const FVector LightLocation = Spotlight->GetComponentLocation();
     DrawDebugSphere(World, LightLocation, 25.0f, 12, FColor::Yellow, false, 0.0f, 0, 2.0f);
 	
-    // Outer cone.
+    // Outer cone
     DrawDebugLine(World, LightLocation, FloorCenter, FColor::Yellow, false, 0.0f, 0, 1.5f);
 	
-    // Inner cone.
+    // Inner cone
     if (!bShowSpotlightCone) return;
     const float HalfAngleRadians = FMath::DegreesToRadians(Spotlight->OuterConeAngle);
     DrawDebugCone(World, LightLocation, Spotlight->GetForwardVector(), Spotlight->AttenuationRadius, HalfAngleRadians, HalfAngleRadians, 32, FColor::Yellow, false, 0.0f, 0, 1.5f);

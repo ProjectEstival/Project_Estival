@@ -9,6 +9,7 @@
 #include "Framework/Application/IInputProcessor.h"
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
+#include "Kismet/GameplayStatics.h"
 
 #if WITH_EDITOR
 #include "Editor.h"
@@ -141,7 +142,28 @@ void FDeveloperConsoleModule::ToggleConsole()
 #if WITH_DEVELOPER_CONSOLE
     if (bConsoleVisible) HideConsole();
     else ShowConsole();
+    SetCursorVisible(bConsoleVisible);
 #endif
+}
+void FDeveloperConsoleModule::SetCursorVisible(bool bVisibility)
+{
+    if (!GEngine) return;
+    // Iterate through all active worlds managed by the engine
+    UWorld* GameWorld = nullptr;
+    for (const FWorldContext& Context : GEngine->GetWorldContexts())
+    {
+        if (Context.WorldType == EWorldType::Game || Context.WorldType == EWorldType::PIE)
+        {
+            GameWorld = Context.World();
+            if (GameWorld) break;
+        }
+    }
+    // Change cursor of the first local player controller from this world
+    if (GameWorld)
+    {
+        if (bVisibility) bWasCursorVisible = GameWorld->GetFirstPlayerController()->bShowMouseCursor;
+        GameWorld->GetFirstPlayerController()->bShowMouseCursor = bVisibility ? true : bWasCursorVisible;
+    }
 }
 void FDeveloperConsoleModule::ShowConsole()
 {

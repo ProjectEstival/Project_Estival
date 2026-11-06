@@ -5,15 +5,20 @@
 
 void URepeaterEffect::Execute_Implementation(const FAbilityContext& Context) const
 {
-	Run(Context);
-	
-	if (TotalRepeats <= 1 || !Context.World) return;
-	if (!Context.Instigator) return;
-	
+	if (!Context.World || !Context.Instigator) return;
+
 	const TWeakObjectPtr WeakThis(this);
-	
-	for (int32 Index = 1; Index < TotalRepeats; ++Index)
+
+	for (int32 Index = 0; Index < TotalRepeats; ++Index)
 	{
+		const float Delay = InitialDelay + Interval * Index;
+
+		if (Delay <= 0.f)
+		{
+			Run(Context);
+			continue;
+		}
+
 		FTimerHandle Handle;
 		
 		Context.World->GetTimerManager().SetTimer(
@@ -22,25 +27,17 @@ void URepeaterEffect::Execute_Implementation(const FAbilityContext& Context) con
 			{
 				if (const URepeaterEffect* Self = WeakThis.Get()) Self->Run(Context);
 			}),
-			Interval * Index,
+			Delay,
 			false);
-		
-		if (bStopOnInterrupt && Context.Loadout) Context.Loadout->AddInterruptibleTimer(Handle);
+
+		if (bStopOnInterrupt && Context.Loadout) Context.Loadout->AddInterruptibleTimer(Context, Handle);
 	}
 }
 
 void URepeaterEffect::Run(const FAbilityContext& Context) const
 {
-	FAbilityContext RunContext = Context;
-	
-	if (bFollowCaster && IsValid(Context.Instigator))
-	{
-		RunContext.Origin = Context.Instigator->GetActorLocation();
-		RunContext.Direction = Context.Instigator->GetActorForwardVector().GetSafeNormal2D();
-	}
-	
 	for (const TObjectPtr<UAbilityEffect>& Effect : Effects)
 	{
-		if (Effect) Effect->Execute(RunContext);
+		if (Effect) Effect->Execute(Context);
 	}
 }

@@ -131,14 +131,30 @@ struct FCompanionUseAbilityInstanceData
 	UPROPERTY(EditAnywhere, Category="Context")
 	TObjectPtr<APawn> Pawn;
 
-	/** Which loadout slot to use. Ability.Base is the basic attack */
+	// Which loadout slot to use. Ability.Base is the basic attack 
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
 	FGameplayTag Slot;
+	
+	// Target faced before the ability fires. Leave this unbound for abilities without a target
+	UPROPERTY(EditAnywhere, Category="Input", meta=(Optional))
+	TObjectPtr<AActor> Target;
+	
+	// the target must be inside this cone before we fire the ability 
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, ClampMax=180, Units="Degrees"))
+	float AimAngle = 20.f;
+	
+	// give up after waiting this long, so the tree can pick again
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="s"))
+	float MaxWaitTime = 2.f;
+	
+	// code only
+	float WaitTimer = 0.f;
 };
 
 
  //  Uses an ability through the character, the same function player input calls.
  // Waits while the ability is busy or on cooldown, then succeeds once it fires.
+// Fails on an empty slot or after waiting MaxWaitTime
 USTRUCT()
 struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
 {
@@ -148,6 +164,10 @@ struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	
+private:
+	static bool IsFacing(const AActor* Me, const AActor* Target, float AimAngle);
 };
 
 

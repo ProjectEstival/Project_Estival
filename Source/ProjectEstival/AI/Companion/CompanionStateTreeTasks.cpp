@@ -12,6 +12,7 @@
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "StateTreeExecutionContext.h"
+#include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
 
@@ -170,11 +171,23 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 // ---------- Use Ability ----------
 EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
 	if (!Character || !InstanceData.Slot.IsValid())
 	{
 		return EStateTreeRunStatus::Failed;
+	}
+	
+	InstanceData.WaitTimer += DeltaTime;
+	if (InstanceData.WaitTimer > InstanceData.MaxWaitTime)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+	
+	// abilities fire where the character faces so wait while Look At turns the companions
+	if (IsValid(InstanceData.Target) && !IsFacing(Character, InstanceData.Target, InstanceData.AimAngle))
+	{
+		return EStateTreeRunStatus::Running;
 	}
 	
 	if (Character->TryActivateAbility(InstanceData.Slot))
@@ -185,6 +198,34 @@ EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& C
 	// not ready yet: try again next tick
 	return EStateTreeRunStatus::Running;
 }
+
+bool FCompanionUseAbilityTask::IsFacing(const AActor* Me, const AActor* Target, float AimAngle)
+{
+	const FVector Forward = Me->GetActorForwardVector().GetSafeNormal2D();
+	const FVector ToTarget = Target->GetActorLocation() - Me->GetActorLocation().GetSafeNormal2D();
+	
+	return FVector::DotProduct(Forward, ToTarget) <= FMath::Cos(FMath::DegreesToRadians(AimAngle));
+}
+
+EStateTreeRunStatus FCompanionUseAbilityTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	
+	// make a fresh start every time the state is entered
+	InstanceData.WaitTimer = 0.f;
+	
+	const ULoadoutComponent* Loadout = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<ULoadoutComponent>() : nullptr;
+	
+	// failing
+	if (!Loadout || !Loadout->GetAbility(InstanceData.Slot))
+	{
+		UE_LOG(LogCompanionAI, Warning, TEXT("%s has nothing in slot %s"), *GetNameSafe(InstanceData.Pawn), *InstanceData.Slot.ToString());
+		return EStateTreeRunStatus::Failed;
+	}
+	
+	return EStateTreeRunStatus::Running;
+}	
+
 
 // ---------- Catch-Up Teleport ----------
 EStateTreeRunStatus FCompanionCatchUpTeleportTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const

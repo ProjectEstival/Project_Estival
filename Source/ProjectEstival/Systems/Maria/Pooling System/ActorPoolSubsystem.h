@@ -36,7 +36,7 @@ struct FPooledActorList
 	int32 MaxIdle = 0;
 };
 
-/** World-scoped pool for arbitary actors. Pooled actors keep their own class; nothing needs to inherit from a special base.
+/** World-scoped pool for arbitrary actors. Pooled actors keep their own class; nothing needs to inherit from a special base.
  * Each class has its own list, capacity and lifetime, taken from FActorPoolSettings.
  * The pool is torn down together with the world, no map changes need no extra handling.
  */

@@ -16,7 +16,7 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")
 	ETargetOrCaster Check = ETargetOrCaster::Caster;
 
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status."))
 	FGameplayTag Status;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")

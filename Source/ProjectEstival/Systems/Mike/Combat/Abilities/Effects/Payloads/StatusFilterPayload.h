@@ -10,7 +10,7 @@ class PROJECTESTIVAL_API UStatusFilterPayload : public UAbilityEffectPayload
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status."))
 	FGameplayTag Status;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status")

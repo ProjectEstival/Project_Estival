@@ -12,7 +12,7 @@ class PROJECTESTIVAL_API URemoveStatusPayload : public UAbilityEffectPayload
 	GENERATED_BODY()
 
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status."))
 	FGameplayTagContainer Statuses;
 
 	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;

@@ -13,6 +13,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "StateTreeExecutionContext.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "AI/Companion/CompanionTactics.h"
 #include "DrawDebugHelpers.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
@@ -230,13 +231,13 @@ EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& C
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
-	if (!Character || !InstanceData.Slot.IsValid())
+	if (!Character)
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 	
 	InstanceData.WaitTimer += DeltaTime;
-	if (InstanceData.WaitTimer > InstanceData.MaxWaitTime)
+	if (InstanceData.MaxWaitTime > 0.f && InstanceData.WaitTimer > InstanceData.MaxWaitTime)
 	{
 		return EStateTreeRunStatus::Failed;
 	}
@@ -247,13 +248,11 @@ EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& C
 		return EStateTreeRunStatus::Running;
 	}
 	
-	if (Character->TryActivateAbility(InstanceData.Slot))
-	{
-		return EStateTreeRunStatus::Succeeded;
-	}
+	// a set Slot always wins. An empty Slot means: try the bot style's list
+	const bool bFired = InstanceData.Slot.IsValid() ? Character->TryActivateAbility(InstanceData.Slot) : TryTacticsAbilities(Character, InstanceData.Target);
 
-	// not ready yet: try again next tick
-	return EStateTreeRunStatus::Running;
+	// ikf nothing fired yet try again next tick
+	return bFired ? EStateTreeRunStatus::Succeeded : EStateTreeRunStatus::Running;
 }
 
 bool FCompanionUseAbilityTask::IsFacing(const AActor* Me, const AActor* Target, const float AimAngle)
@@ -264,6 +263,31 @@ bool FCompanionUseAbilityTask::IsFacing(const AActor* Me, const AActor* Target, 
 	return FVector::DotProduct(Forward, ToTarget) >= FMath::Cos(FMath::DegreesToRadians(AimAngle));
 }
 
+bool FCompanionUseAbilityTask::TryTacticsAbilities(AEstivalBaseCharacter* Me, const AActor* Target)
+{
+	// from the body to the brain where the style is stored
+	const ACompanionAIController* Companion = Cast<ACompanionAIController>(Me->GetController());
+	const UCompanionTactics* Tactics = Companion ? Companion->GetTactics() : nullptr;
+	if (!Tactics)
+	{
+		return false;
+	}
+
+	// no target bound? Then only rows that start at 0 can match
+	const double Distance = IsValid(Target) ? FVector::Dist(Me->GetActorLocation(), Target->GetActorLocation()) : 0.0;
+
+	// from the top: the first row that is in range AND fires wins
+	for (const FCompanionAbilityRule& Rule : Tactics->Abilities)
+	{
+		const bool bInRange = Distance >= Rule.MinRange && Distance <= Rule.MaxRange;
+		if (bInRange && Me->TryActivateAbility(Rule.Slot))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 EStateTreeRunStatus FCompanionUseAbilityTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
@@ -271,9 +295,21 @@ EStateTreeRunStatus FCompanionUseAbilityTask::EnterState(FStateTreeExecutionCont
 	// make a fresh start every time the state is entered
 	InstanceData.WaitTimer = 0.f;
 	
+	// making sure the slot is never empty: the bot style's list decides, so the bot needs a style
+	if (!InstanceData.Slot.IsValid())
+	{
+		const ACompanionAIController* Companion = InstanceData.Pawn ? Cast<ACompanionAIController>(InstanceData.Pawn->GetController()) : nullptr;
+		if (!Companion || !Companion->GetTactics())
+		{
+			UE_LOG(LogCompanionAI, Warning, TEXT("%s has no bot style (Tactics)"), *GetNameSafe(InstanceData.Pawn));
+			return EStateTreeRunStatus::Failed;
+		}
+		return EStateTreeRunStatus::Running;
+	}
+	
 	const ULoadoutComponent* Loadout = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<ULoadoutComponent>() : nullptr;
 	
-	// failing
+	// failing now instead of latr
 	if (!Loadout || !Loadout->GetAbility(InstanceData.Slot))
 	{
 		UE_LOG(LogCompanionAI, Warning, TEXT("%s has nothing in slot %s"), *GetNameSafe(InstanceData.Pawn), *InstanceData.Slot.ToString());

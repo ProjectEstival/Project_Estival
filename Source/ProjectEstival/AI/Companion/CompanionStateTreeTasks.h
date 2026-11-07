@@ -10,6 +10,7 @@
 class AActor;
 class APawn;
 class AAIController;
+class AEstivalBaseCharacter;
 
 USTRUCT()
 struct FCompanionFindFollowTargetInstanceData
@@ -181,6 +182,7 @@ struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
 	
 private:
 	static bool IsFacing(const AActor* Me, const AActor* Target, float AimAngle);
+	static bool TryTacticsAbilities(AEstivalBaseCharacter* Me, const AActor* Target);
 };
 
 

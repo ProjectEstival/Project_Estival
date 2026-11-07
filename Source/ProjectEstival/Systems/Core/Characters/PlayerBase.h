@@ -5,7 +5,7 @@
 #include "CoreMinimal.h"
 #include "CharacterBase.h"
 #include "InputAction.h"
-#include "Systems/Maria/ReviveComponent.h"
+#include "Systems/Maria/Revive System/ReviveComponent.h"
 #include "PlayerBase.generated.h"
 
 UCLASS()

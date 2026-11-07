@@ -34,6 +34,8 @@ EStateTreeRunStatus FCompanionFindFollowTargetTask::Tick(FStateTreeExecutionCont
 
 void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceData)
 {
+	// remember who we followed last tick, then start fresh
+	APawn* OldTarget = InstanceData.FollowTarget;
 	InstanceData.FollowTarget = nullptr;
 	InstanceData.DistanceToTarget = 0.f;
 
@@ -43,7 +45,9 @@ void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceDat
 	}
 
 	const FVector MyLocation = InstanceData.Pawn->GetActorLocation();
-	double NearestDistSq = TNumericLimits<double>::Max();
+	APawn* NearestPawn = nullptr;
+	double NearestDistance = TNumericLimits<double>::Max();
+	double OldTargetDistance = -1.0;
 
 	// a player is any pawn possessed by a PlayerController
 	for (FConstPlayerControllerIterator It = InstanceData.Pawn->GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -55,20 +59,40 @@ void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceDat
 			continue;
 		}
 
-		const double DistSq = FVector::DistSquared(MyLocation, PlayerPawn->GetActorLocation());
-		if (DistSq < NearestDistSq)
+		// real distance, not squared, so we can add a margin in cm below
+		const double Distance = FVector::Dist(MyLocation, PlayerPawn->GetActorLocation());
+		if (PlayerPawn == OldTarget)
 		{
-			NearestDistSq = DistSq;
-			InstanceData.FollowTarget = PlayerPawn;
+			OldTargetDistance = Distance;
+		}
+
+		if (Distance < NearestDistance)
+		{
+			NearestDistance = Distance;
+			NearestPawn = PlayerPawn;
 		}
 	}
 
-	if (InstanceData.FollowTarget)
+	// stay with the old player unless the nearest one is clearly closer
+	const bool bKeepOld = OldTargetDistance >= 0.0 && NearestDistance + InstanceData.SwitchMargin > OldTargetDistance;
+	if (bKeepOld)
 	{
-		InstanceData.DistanceToTarget = static_cast<float>(FMath::Sqrt(NearestDistSq));
+		InstanceData.FollowTarget = OldTarget;
+		InstanceData.DistanceToTarget = static_cast<float>(OldTargetDistance);
 	}
-	
-	// EQS can't read StateTree data, so sharing the target through the controller
+	else if (NearestPawn)
+	{
+		InstanceData.FollowTarget = NearestPawn;
+		InstanceData.DistanceToTarget = static_cast<float>(NearestDistance);
+	}
+
+	if (InstanceData.bDrawDebug && InstanceData.FollowTarget)
+	{
+		// green line: who I'm following
+		DrawDebugLine(InstanceData.Pawn->GetWorld(), MyLocation, InstanceData.FollowTarget->GetActorLocation(), FColor::Green, false, -1.f, 0, 3.f);
+	}
+
+	// EQS cant read StateTree data so sharing the target through the controller
 	if (ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.Pawn->GetController()))
 	{
 		Companion->SetFollowTarget(InstanceData.FollowTarget);

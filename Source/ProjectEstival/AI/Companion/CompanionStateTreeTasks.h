@@ -24,6 +24,15 @@ struct FCompanionFindFollowTargetInstanceData
 	
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	float DistanceToTarget = 0.f;
+	
+	// only switch to another player who is this much closer than the one we follow
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
+	float SwitchMargin = 300.f;
+	
+	// debug
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bDrawDebug = false;
+	
 };
 
 /**

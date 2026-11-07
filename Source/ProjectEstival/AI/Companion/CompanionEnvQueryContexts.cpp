@@ -33,7 +33,7 @@ void UEnvQueryContext_OtherCompanions::ProvideContext(FEnvQueryInstance& QueryIn
 		const APawn* OtherPawn = Other->GetPawn();
 		if (!OtherPawn || OtherPawn == MyPawn)
 		{
-			continue;
+			continue; 
 		}
 
 		// a walking companion has already "claimed" its destination

@@ -2,6 +2,8 @@
 
 
 #include "EnemyAIController.h"
+
+#include "EnemyBaseCharacter.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AIPerceptionTypes.h"
@@ -68,6 +70,7 @@ void AEnemyAIController::OnTargetSensorForgot(AActor* Actor)
 	}
 }
 
+// Checks Dist to see what player to chase first
 void AEnemyAIController::DistCheck()
 {
 	if (Players.IsEmpty()) return;
@@ -96,6 +99,23 @@ void AEnemyAIController::DistCheck()
 		{
 			StopMovement();
 			StateTree->SendStateTreeEvent(ForceStateChangeTag);
+		}
+	}
+}
+
+// Assigns Correct state tree to controller.
+void AEnemyAIController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	
+	if (!StateTree) return;
+	
+	if (AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(InPawn))
+	{
+		if (UStateTree* StateAsset = EnemyChar->StateTreeAsset)
+		{
+			StateTree->SetStateTree(StateAsset);
+			StateTree->StartLogic();
 		}
 	}
 }

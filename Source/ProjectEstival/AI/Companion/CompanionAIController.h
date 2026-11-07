@@ -25,6 +25,11 @@ class PROJECTESTIVAL_API ACompanionAIController : public AAIController
 	UPROPERTY(Transient)
 	TObjectPtr<APawn> FollowTarget;
 	
+	// the enemy we follow and fight
+	UPROPERTY(Transient)
+	TObjectPtr<AActor> AttackTarget;
+	
+	
 
 public:
 	ACompanionAIController(const FObjectInitializer& ObjectInitializer);
@@ -33,6 +38,11 @@ public:
 	APawn* GetFollowTarget() const {return FollowTarget;}
 	
 	void SetFollowTarget(APawn* NewTarget) { FollowTarget = NewTarget; }
+	
+	UFUNCTION(BlueprintPure, Category="Companion")
+	AActor* GetAttackTarget() const { return AttackTarget; }
+
+	void SetAttackTarget(AActor* NewTarget) { AttackTarget = NewTarget; }
 	
 	// how fast the pawn turns to face when it walks. this is fix for the snapping issue on rotation. 
 	UPROPERTY(EditAnywhere, Category = "Companion", meta=(ClampMin=0))

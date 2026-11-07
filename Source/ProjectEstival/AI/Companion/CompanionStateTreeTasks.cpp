@@ -214,6 +214,12 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		// red linem means who they fighting. draws every tick
 		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), FColor::Red, false, -1.f, 0, 3.f);
 	}
+	
+	// EQS can't read StateTree data, so share the target through the controller (same as FollowTarget)
+	if (ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.AIController.Get()))
+	{
+		Companion->SetAttackTarget(InstanceData.AttackTarget);
+	}
 
 	// global task: keeps running for the whole tree
 	return EStateTreeRunStatus::Running;

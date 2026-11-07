@@ -49,3 +49,15 @@ void UEnvQueryContext_OtherCompanions::ProvideContext(FEnvQueryInstance& QueryIn
 
 	UEnvQueryItemType_Point::SetContextHelper(ContextData, Spots);
 }
+
+void UEnvQueryContext_CompanionAttackTarget::ProvideContext(FEnvQueryInstance& QueryInstance, FEnvQueryContextData& ContextData) const
+{
+	// the querier is the bot's pawn because Run Env Query's Query Owner is Actor
+	const APawn* Pawn = Cast<APawn>(QueryInstance.Owner.Get());
+	const ACompanionAIController* Companion = Pawn ? Cast<ACompanionAIController>(Pawn->GetController()) : nullptr;
+
+	if (Companion && Companion->GetAttackTarget())
+	{
+		UEnvQueryItemType_Actor::SetContextHelper(ContextData, Companion->GetAttackTarget());
+	}
+}

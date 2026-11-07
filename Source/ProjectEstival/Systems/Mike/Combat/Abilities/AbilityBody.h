@@ -24,6 +24,13 @@ enum EPayloadSuccess : uint8
 	ChainPartial
 };
 
+UENUM(BlueprintType)
+enum class ETargetOrCaster : uint8
+{
+	Target,
+	Caster
+};
+
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
 class PROJECTESTIVAL_API UAbilityEffectPayload : public UObject
 {
@@ -31,6 +38,9 @@ class PROJECTESTIVAL_API UAbilityEffectPayload : public UObject
  
 protected:
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
+	ETargetOrCaster ApplyTo = ETargetOrCaster::Target;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
 	TEnumAsByte<EPayloadSuccess> SuccessRequirement = ChainPartial;
 	
@@ -46,7 +56,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Ability")
 	bool TryApply(const FAbilityContext& Context, AActor* Target)
 	{
-		if (!TryApplySelf(Context, Target)) return false;
+		AActor* Receiver = ApplyTo == ETargetOrCaster::Caster ? Context.Instigator.Get() : Target;
+		if (!TryApplySelf(Context, Receiver)) return false;
 		
 		int SuccessfulChains = 0;
 		const int TotalChains = SuccessChain.Num();

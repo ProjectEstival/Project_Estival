@@ -27,4 +27,13 @@ struct FAbilityContext
  
 	UPROPERTY(BlueprintReadOnly, Category = "Ability")
 	TObjectPtr<UAbilityDefinition> Ability;
+	
+	UPROPERTY(BlueprintReadOnly, Category = "Ability")
+	TObjectPtr<UWorld> World;
+	
+	UPROPERTY(BlueprintReadWrite, Category = "Ability")
+	FVector Origin = FVector::ZeroVector;
+	
+	UPROPERTY(BlueprintReadWrite, Category = "Ability")
+	FVector Direction = FVector::ForwardVector;
 };

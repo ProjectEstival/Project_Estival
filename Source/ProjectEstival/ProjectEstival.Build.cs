@@ -36,7 +36,7 @@ public class ProjectEstival : ModuleRules
 			PrivateDependencyModuleNames.Add("UnrealEd");
 		}
 
-		PrivateDependencyModuleNames.AddRange(new string[] { });
+		PrivateDependencyModuleNames.AddRange(new string[] { "FMODStudio" });
 
 		PublicIncludePaths.AddRange(new string[] {
 			"ProjectEstival",

@@ -15,6 +15,5 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status", ClampMin = 0))
 	TMap<FGameplayTag, float> StatusDurations;
 	
-public:
-	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const override;
+	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

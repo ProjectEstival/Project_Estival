@@ -30,6 +30,10 @@ class PROJECTESTIVAL_API ACompanionAIController : public AAIController
 	UPROPERTY(Transient)
 	TObjectPtr<AActor> AttackTarget;
 	
+	// every enemy in the fight. Find54 Threat sets it, the target query reads it
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<AActor>> Threats;
+	
 	// this bot's style: abilities, target rules and formation. 
 	// Set it in BP_CompanionAIController
 	UPROPERTY(EditAnywhere, Category="Companion|Tactics")
@@ -47,6 +51,9 @@ public:
 	AActor* GetAttackTarget() const { return AttackTarget; }
 
 	void SetAttackTarget(AActor* NewTarget) { AttackTarget = NewTarget; }
+	
+	const TArray<TObjectPtr<AActor>>& GetThreats() const { return Threats; }
+	void SetThreats(const TArray<TObjectPtr<AActor>>& NewThreats) { Threats = NewThreats; }
 	
 	UFUNCTION(BlueprintPure, Category="Companion")
 	UCompanionTactics* GetTactics() const { return Tactics; }

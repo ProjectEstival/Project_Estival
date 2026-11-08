@@ -11,6 +11,7 @@ class AActor;
 class APawn;
 class AAIController;
 class AEstivalBaseCharacter;
+class UEnvQuery;
 
 USTRUCT()
 struct FCompanionFindFollowTargetInstanceData
@@ -122,6 +123,13 @@ struct FCompanionFindThreatInstanceData
 	// Nearest enemy that is fighting the player or me. Used for attacking
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	TObjectPtr<AActor> AttackTarget;
+	
+	// every enemy in the fight. The target query picks from these
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TArray<TObjectPtr<AActor>> Threats;
+
+	// the target query that is still running, or INDEX_NONE. code only
+	int32 QueryId = INDEX_NONE;
 };
 
 // global task: reads what the companion sees and picks enemies to look at and to attack.
@@ -134,6 +142,9 @@ struct FCompanionFindThreatTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+private:
+	static void StartTargetQuery(FStateTreeExecutionContext& Context, FInstanceDataType& InstanceData, UEnvQuery* TargetQuery);
+	
 };
 
 // instance data for Use Ability

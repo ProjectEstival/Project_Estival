@@ -15,6 +15,8 @@
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 #include "AI/Companion/CompanionTactics.h"
 #include "DrawDebugHelpers.h"
+#include "EnvironmentQuery/EnvQueryManager.h"
+#include "StateTreeAsyncExecutionContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
 
@@ -150,6 +152,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 	AActor* OldTarget = InstanceData.AttackTarget;
 	InstanceData.SeenEnemy = nullptr;
 	InstanceData.AttackTarget = nullptr;
+	InstanceData.Threats.Reset();
 
 	const AEstivalBaseCharacter* Me = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
 	const UAIPerceptionComponent* Perception = InstanceData.AIController ? InstanceData.AIController->GetAIPerceptionComponent() : nullptr;
@@ -192,6 +195,9 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 			continue;
 		}
 		
+		// in the fight the target query may pick it
+		InstanceData.Threats.Add(Actor);
+		
 		if (Actor == OldTarget)
 		{
 			bOldTargetStillFighting = true;
@@ -209,6 +215,21 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 	{
 		InstanceData.AttackTarget = OldTarget;
 	}
+	
+	// EQS can't read StateTree data, so share the target and the threats through the controller
+	ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.AIController.Get());
+	if (Companion)
+	{
+		Companion->SetAttackTarget(InstanceData.AttackTarget);
+		Companion->SetThreats(InstanceData.Threats);
+	}
+	
+	// a new target found: fight the nearest for now and ask the style's target query for the best one
+	const UCompanionTactics* Tactics = Companion ? Companion->GetTactics() : nullptr;
+	if (InstanceData.AttackTarget && InstanceData.AttackTarget != OldTarget && Tactics && Tactics->TargetQuery)
+	{
+		StartTargetQuery(Context, InstanceData, Tactics->TargetQuery);
+	}
 		
 	if (InstanceData.bDrawDebug && InstanceData.AttackTarget)
 	{
@@ -216,14 +237,43 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), FColor::Red, false, -1.f, 0, 3.f);
 	}
 	
-	// EQS can't read StateTree data, so share the target through the controller (same as FollowTarget)
-	if (ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.AIController.Get()))
-	{
-		Companion->SetAttackTarget(InstanceData.AttackTarget);
-	}
-
 	// global task: keeps running for the whole tree
 	return EStateTreeRunStatus::Running;
+}
+
+void FCompanionFindThreatTask::StartTargetQuery(FStateTreeExecutionContext& Context, FInstanceDataType& InstanceData, UEnvQuery* TargetQuery)
+{
+	// one question in the query at a time
+	if (InstanceData.QueryId != INDEX_NONE)
+	{
+		return;
+	}
+
+	// the pawn asks, so the generator and the tests can find this bot
+	FEnvQueryRequest Request(TargetQuery, InstanceData.Pawn);
+	InstanceData.QueryId = Request.Execute(EEnvQueryRunMode::SingleResult,
+		// note: WeakContext stores a weak handle to this bot's tree inside the Lambda. Weak means it doesn't keep anything alive. 
+		// It can only check later whether the tree is still there. 
+		// mutable: because needs writing access to change it to usable later. 
+		FQueryFinishedSignature::CreateLambda([WeakContext = Context.MakeWeakExecutionContext()](TSharedPtr<FEnvQueryResult> Result) mutable
+		{
+			// the answer comes a little later: find this task's data again, if the tree still runs
+			const FStateTreeStrongExecutionContext StrongContext = WeakContext.MakeStrongExecutionContext();
+			FInstanceDataType* Data = StrongContext.GetInstanceDataPtr<FInstanceDataType>();
+			if (!Data)
+			{
+				return;
+			}
+
+			Data->QueryId = INDEX_NONE;
+			AActor* Best = (Result && Result->IsSuccessful()) ? Result->GetItemAsActor(0) : nullptr;
+
+			// only if it's still in the fight. It may have died while EQS was thinking
+			if (Best && Data->Threats.Contains(Best))
+			{
+				Data->AttackTarget = Best;
+			}
+		}));
 }
 
 // ---------- Use Ability ----------

@@ -10,7 +10,7 @@ void AHUDBase::BeginPlay()
 	UGameInstance* GI = GetGameInstance();
 	if (!GI || !BaseWidgetClass) return;
 	
-	// This HUD manages global UI only for local player 0.
+	// This HUD manages global UI only for local player 0
 	APlayerController* OwningPC = GetOwningPlayerController();
 	ULocalPlayer* FirstLocalPlayer = GI->GetLocalPlayerByIndex(0);
 	if (!OwningPC || OwningPC->GetLocalPlayer() != FirstLocalPlayer) return;
@@ -40,7 +40,7 @@ UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, int32 ZO
 {
 	if (!WidgetClass) return nullptr;
 	
-	// Remove stale entries of the same class.
+	// Remove stale entries of the same class
 	ModalStack.RemoveAll([WidgetClass](const FWidgetContext& Entry) { return Entry.WidgetClass == WidgetClass && !IsValid(Entry.Widget); });
 	
 	// If it already exists in the stack, return nullptr
@@ -66,11 +66,11 @@ UUserWidget* AHUDBase::PopWidget()
 {
 	if (ModalStack.IsEmpty()) return nullptr;
     
-	// Remove the top modal.
+	// Remove the top widget
 	FWidgetContext ClosedModal = ModalStack.Pop();
 	if (IsValid(ClosedModal.Widget)) ClosedModal.Widget->RemoveFromParent();
     
-	// Restore the previous modal and its input settings.
+	// Restore the previous modal and its input settings
 	while (!ModalStack.IsEmpty())
 	{
 		const FWidgetContext& Top = ModalStack.Last();
@@ -81,11 +81,11 @@ UUserWidget* AHUDBase::PopWidget()
 			return Top.Widget;
 		}
         
-		// Discard stale entries if a widget was destroyed.
+		// Discard stale entries if a widget was destroyed
 		ModalStack.Pop();
 	}
     
-	// No modals remain: return to normal gameplay input.
+	// No widgets remain: return to normal gameplay input
 	ApplyInputMode(BaseWidget, BaseInputMode, bBaseShowCursor);
 	return nullptr;
 }

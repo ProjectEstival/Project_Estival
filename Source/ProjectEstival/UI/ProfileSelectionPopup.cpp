@@ -27,8 +27,8 @@ void UProfileSelectionPopup::NativeTick(const FGeometry& MyGeometry, float InDel
 	if (bPendingNameFocus)
 	{
 		if (!IsInViewport() || !IsValid(PendingNameCard) || !ProfileScrollBox || ProfileScrollBox->GetCachedGeometry().GetLocalSize().IsNearlyZero()) return;
-		PendingNameCard->FocusNameEntry();
 		ProfileScrollBox->ScrollWidgetIntoView(PendingNameCard, true, EDescendantScrollDestination::Center);
+		PendingNameCard->FocusNameEntry();
 		bPendingNameFocus = false;
 		return;
 	}

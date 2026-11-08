@@ -60,7 +60,7 @@ void UPlayerProfileCard::SetCreateCard()
 
 void UPlayerProfileCard::FocusCard(APlayerController* PlayerController) const
 {
-	if (IsValid(PlayerController) && IsValid(CardButton) && !bIsNamingProfile) CardButton->SetUserFocus(PlayerController);
+	if (IsValid(PlayerController) && IsValid(CardButton)) CardButton->SetUserFocus(PlayerController);
 }
 void UPlayerProfileCard::HandleCardPressed()
 {
@@ -137,5 +137,9 @@ void UPlayerProfileCard::RejectNameEntry() const
 }
 void UPlayerProfileCard::FocusNameEntry() const
 {
-	if (bIsNamingProfile && IsValid(ProfileNameText)) ProfileNameText->SetKeyboardFocus();
+	if (bIsNamingProfile && IsValid(ProfileNameText))
+	{
+		ProfileNameText->SetKeyboardFocus();
+		if (APlayerController* PC = GetOwningPlayer()) FocusCard(PC);
+	}
 }

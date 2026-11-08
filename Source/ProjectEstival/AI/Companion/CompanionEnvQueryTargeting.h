@@ -28,3 +28,30 @@ public:
 
 	virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
 };
+/** Yes if this enemy is chasing a human player. Score it to protect the players */
+UCLASS(meta=(DisplayName="Companion: Is After a Player"))
+class PROJECTESTIVAL_API UEnvQueryTest_CompanionAfterPlayer : public UEnvQueryTest
+{
+	GENERATED_BODY()
+
+public:
+	UEnvQueryTest_CompanionAfterPlayer(const FObjectInitializer& ObjectInitializer);
+
+	virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
+};
+
+// Yes if the actor has this tag in Details › Actor › Tags, for example Caster 
+UCLASS(meta=(DisplayName="Companion: Has Actor Tag"))
+class PROJECTESTIVAL_API UEnvQueryTest_CompanionHasTag : public UEnvQueryTest
+{
+	GENERATED_BODY()
+
+public:
+	UEnvQueryTest_CompanionHasTag(const FObjectInitializer& ObjectInitializer);
+
+	virtual void RunTest(FEnvQueryInstance& QueryInstance) const override;
+
+	// the tag to look for. Designers add it to an enemy in Details › Actor › Tags
+	UPROPERTY(EditDefaultsOnly, Category=Test)
+	FName Tag = TEXT("Caster");
+};

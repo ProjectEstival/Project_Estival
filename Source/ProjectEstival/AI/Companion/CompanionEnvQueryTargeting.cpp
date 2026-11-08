@@ -5,6 +5,7 @@
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Systems/Core/TagDefinitions.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
+#include "AI/Enemy/EnemyAIController.h"
 
 // ---------- Companion Threats ----------
 UEnvQueryGenerator_CompanionThreats::UEnvQueryGenerator_CompanionThreats(const FObjectInitializer& ObjectInitializer)
@@ -64,5 +65,65 @@ void UEnvQueryTest_CompanionHealth::RunTest(FEnvQueryInstance& QueryInstance) co
 		const bool bHasHealth = Resources && Resources->HasResource(HealthTag);
 		const float Health = bHasHealth ? Resources->GetPercentage01(HealthTag) : 1.f;
 		It.SetScore(TestPurpose, FilterType, Health, MinThreshold, MaxThreshold);
+	}
+}
+
+// ---------- Companion Is After a Player ----------
+UEnvQueryTest_CompanionAfterPlayer::UEnvQueryTest_CompanionAfterPlayer(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	Cost = EEnvTestCost::Low;
+	ValidItemType = UEnvQueryItemType_ActorBase::StaticClass();
+	SetWorkOnFloatValues(false); // a yes/no test
+}
+
+void UEnvQueryTest_CompanionAfterPlayer::RunTest(FEnvQueryInstance& QueryInstance) const
+{
+	UObject* QueryOwner = QueryInstance.Owner.Get();
+	if (!QueryOwner)
+	{
+		return;
+	}
+
+	// Bool Match in the editor: which answer passes
+	BoolValue.BindData(QueryOwner, QueryInstance.QueryID);
+	const bool bWanted = BoolValue.GetValue();
+
+	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
+	{
+		// the enemy's controller remembers who it chases 
+		const APawn* Enemy = Cast<APawn>(GetItemActor(QueryInstance, It.GetIndex()));
+		const AEnemyAIController* EnemyAI = Enemy ? Cast<AEnemyAIController>(Enemy->GetController()) : nullptr;
+		const bool bAfterPlayer = EnemyAI && EnemyAI->PlayerRef && EnemyAI->PlayerRef->IsPlayerControlled();
+		It.SetScore(TestPurpose, FilterType, bAfterPlayer, bWanted);
+	}
+}
+
+// ---------- Companion Has Actor Tag ----------
+UEnvQueryTest_CompanionHasTag::UEnvQueryTest_CompanionHasTag(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer)
+{
+	Cost = EEnvTestCost::Low;
+	ValidItemType = UEnvQueryItemType_ActorBase::StaticClass();
+	SetWorkOnFloatValues(false);
+}
+
+void UEnvQueryTest_CompanionHasTag::RunTest(FEnvQueryInstance& QueryInstance) const
+{
+	UObject* QueryOwner = QueryInstance.Owner.Get();
+	if (!QueryOwner)
+	{
+		return;
+	}
+
+	BoolValue.BindData(QueryOwner, QueryInstance.QueryID);
+	const bool bWanted = BoolValue.GetValue();
+
+	for (FEnvQueryInstance::ItemIterator It(this, QueryInstance); It; ++It)
+	{
+		// Actor Tags are plain names so no enemy code has to change
+		const AActor* ItemActor = GetItemActor(QueryInstance, It.GetIndex());
+		const bool bHasTag = ItemActor && ItemActor->ActorHasTag(Tag);
+		It.SetScore(TestPurpose, FilterType, bHasTag, bWanted);
 	}
 }

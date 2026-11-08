@@ -1,0 +1,93 @@
+name: CodeRabbit review to Discord
+
+# "status" events only run from the copy of this file on the default branch (main).
+on:
+  status:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  notify:
+    if: >-
+      github.event.context == 'CodeRabbit' &&
+      github.event.state == 'success' &&
+      github.event.description == 'Review completed'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_CODERABBIT }}
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+            const sha = context.payload.sha;
+            const bot = 'coderabbitai[bot]';
+            const clip = (s, n) => (s.length > n ? s.slice(0, n - 1) + '…' : s);
+
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner, repo, commit_sha: sha,
+            });
+            const pr = prs.find(p => p.state === 'open' && p.head.sha === sha);
+            if (!pr) {
+              core.info(`No open PR has ${sha} as its head; nothing to send.`);
+              return;
+            }
+
+            const pull_number = pr.number;
+            const [comments, reviews, inline] = await Promise.all([
+              github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: pull_number, per_page: 100 }),
+              github.paginate(github.rest.pulls.listReviews, { owner, repo, pull_number, per_page: 100 }),
+              github.paginate(github.rest.pulls.listReviewComments, { owner, repo, pull_number, per_page: 100 }),
+            ]);
+
+            const walkthrough = comments.find(c => c.user.login === bot && c.body.includes('walkthrough_start'));
+            const summaryMatch = walkthrough?.body.match(/## Walkthrough\s+([\s\S]*?)(?=\n## |\n<\/details>|$)/);
+            const summary = summaryMatch ? summaryMatch[1].trim() : 'CodeRabbit finished reviewing this PR.';
+
+            const body = reviews.filter(r => r.user.login === bot && r.commit_id === sha).map(r => r.body).join('\n');
+            const actionable = Number(body.match(/Actionable comments posted: (\d+)/)?.[1] ?? 0);
+            const nitpicks = Number(body.match(/Nitpick comments \((\d+)\)/)?.[1] ?? 0);
+
+            const issues = inline
+              .filter(c => c.user.login === bot && c.commit_id === sha && !c.in_reply_to_id)
+              .map(c => {
+                const title = c.body.match(/\*\*(.+?)\*\*/)?.[1] ?? 'Review comment';
+                return `• [${clip(title, 90).replace(/[\[\]]/g, '')}](${c.html_url})`;
+              });
+
+            let list = '';
+            let shown = 0;
+            for (const line of issues) {
+              if (list.length + line.length + 30 > 1024) break;
+              list += line + '\n';
+              shown++;
+            }
+            if (shown < issues.length) list += `…and ${issues.length - shown} more on the PR`;
+
+            const fields = [
+              { name: 'Actionable', value: String(actionable), inline: true },
+              { name: 'Nitpicks', value: String(nitpicks), inline: true },
+              { name: 'Branch', value: clip(`${pr.head.ref} → ${pr.base.ref}`, 1024), inline: false },
+            ];
+            if (list) fields.push({ name: 'Findings', value: list.trim(), inline: false });
+
+            const res = await fetch(process.env.DISCORD_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                username: 'CodeRabbit',
+                allowed_mentions: { parse: [] },
+                embeds: [{
+                  title: clip(`🐰 PR #${pull_number}: ${pr.title}`, 256),
+                  url: pr.html_url,
+                  description: clip(summary, 3500),
+                  color: actionable > 0 ? 0xE67E22 : 0x2ECC71,
+                  author: { name: pr.user.login, icon_url: pr.user.avatar_url },
+                  fields,
+                  footer: { text: `Commit ${sha.slice(0, 7)}` },
+                }],
+              }),
+            });
+            if (!res.ok) core.setFailed(`Discord returned ${res.status}: ${await res.text()}`);

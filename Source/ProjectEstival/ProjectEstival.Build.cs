@@ -7,12 +7,23 @@ public class ProjectEstival : ModuleRules
 	public ProjectEstival(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
+		
+		AddEngineThirdPartyPrivateStaticDependencies(Target, new string[]
+		{
+			"libcurl",
+			"nghttp2",
+			"OpenSSL",
+			"zlib"
+		});
 
 		PublicDependencyModuleNames.AddRange(new string[] {
 			//Core default
 			"Core",
 			"CoreUObject",
 			"Engine",
+			"HTTP",
+			"Json",
+			
 
 			//Other
 			"InputCore",

@@ -4,6 +4,7 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "StatusFilterPayload.generated.h"
 
+/** Continues to its Success Chain only if the receiver has the status (or doesn't, inverted). */
 UCLASS(meta = (DisplayName = "Status Filter"))
 class PROJECTESTIVAL_API UStatusFilterPayload : public UAbilityEffectPayload
 {

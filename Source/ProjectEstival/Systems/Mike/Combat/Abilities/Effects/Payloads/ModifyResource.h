@@ -28,13 +28,14 @@ struct FModifyOption
 	bool Deplete = false;
 };
 
-UCLASS()
+/** Gives or takes resources (health, mana) from the receiver, a fixed amount or from a caster stat. */
+UCLASS(meta = (DisplayName = "Modify Resource"))
 class PROJECTESTIVAL_API UModifyResource : public UAbilityEffectPayload
 {
 	GENERATED_BODY()
 	
 	protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (TitleProperty = "{TagName}"))
 	TArray<FModifyOption> ResourceChanges;
 	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

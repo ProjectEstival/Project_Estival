@@ -13,8 +13,5 @@ void UConditionalEffect::Execute_Implementation(const FAbilityContext& Context) 
 		}
 	}
 
-	for (const TObjectPtr<UAbilityEffect>& Effect : bPassed ? Then : Else)
-	{
-		if (Effect) Effect->Execute(Context);
-	}
+	ExecuteAll(bPassed ? Then : Else, Context);
 }

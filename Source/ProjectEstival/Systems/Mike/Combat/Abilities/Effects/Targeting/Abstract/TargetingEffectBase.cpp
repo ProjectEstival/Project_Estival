@@ -10,14 +10,7 @@ bool UTargetingEffectBase::TryApplyOnTarget(const FAbilityContext& Context, AAct
 	if (Limit > 0 && Tracker.HitCounts.FindRef(Attitude) >= Limit) return false;
 
 	Tracker.AlreadyHit.Add(Target);
-	bool bPayloadApplied = false;
-
-	for (UAbilityEffectPayload* Payload : EffectPayloads)
-	{
-		if (IsValid(Payload) && Payload->TryApply(Context, Target)) bPayloadApplied = true;
-	}
-
-	if (!bPayloadApplied) return false;
+	if (!UAbilityEffectPayload::ApplyAll(EffectPayloads, Context, Target)) return false;
 	
 	Tracker.HitCounts.FindOrAdd(Attitude)++;
 	return true;

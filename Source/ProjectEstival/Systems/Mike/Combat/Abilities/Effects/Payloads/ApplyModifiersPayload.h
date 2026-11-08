@@ -5,6 +5,7 @@
 #include "Systems/Mike/Stats/StatTypes.h"
 #include "ApplyModifiersPayload.generated.h"
 
+/** Applies stat modifiers to the receiver for a duration (buffs, slows). */
 UCLASS(meta = (DisplayName = "Apply Modifiers"))
 class PROJECTESTIVAL_API UApplyModifiersPayload : public UAbilityEffectPayload
 {

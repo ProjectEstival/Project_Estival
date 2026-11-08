@@ -4,7 +4,8 @@
 #include "Systems/Mike/Combat/Abilities/Effects/Targeting/Abstract/TargetShape.h"
 #include "SphereTargetShape.generated.h"
 
-UCLASS()
+/** A sphere around the origin. */
+UCLASS(meta = (DisplayName = "Sphere"))
 class PROJECTESTIVAL_API USphereTargetShape : public UTargetShape
 {
 	GENERATED_BODY()

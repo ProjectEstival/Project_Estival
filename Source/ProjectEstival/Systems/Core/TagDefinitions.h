@@ -14,4 +14,7 @@ namespace TagDefinitions
 	// Status
 	PROJECTESTIVAL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Invincible);
 	PROJECTESTIVAL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Status_Stunned);
+
+	// Ability events
+	PROJECTESTIVAL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(AbilityEvent_Hit);
 }

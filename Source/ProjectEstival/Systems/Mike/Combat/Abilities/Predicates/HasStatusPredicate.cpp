@@ -5,8 +5,7 @@
 
 bool UHasStatusPredicate::IsSatisfied_Implementation(const FAbilityContext& Context) const
 {
-	const AActor* Actor = Check == ETargetOrCaster::Caster ? Context.Instigator.Get() : Context.TargetActor.Get();
-	const AEstivalBaseCharacter* Character = IsValid(Actor) ? Actor->FindComponentByClass<AEstivalBaseCharacter>() : nullptr;
+	const AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(Context.Instigator);
 
 	const bool bHasStatus = Character && Character->GetStatusEffects()->HasEffect(Status);
 	return bHasStatus != bInvert;

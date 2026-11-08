@@ -14,6 +14,15 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
 	void Execute(const FAbilityContext& Context) const;
 	virtual void Execute_Implementation(const FAbilityContext& Context) const {}
+
+	template <typename ArrayType>
+	static void ExecuteAll(const ArrayType& Effects, const FAbilityContext& Context)
+	{
+		for (UAbilityEffect* Effect : Effects)
+		{
+			if (Effect) Effect->Execute(Context);
+		}
+	}
 };
 
 UENUM()
@@ -75,6 +84,19 @@ public:
 			case ChainPartial: return TotalChains == 0 || SuccessfulChains > 0;
 			default: return false;
 		}
+	}
+
+	template <typename ArrayType>
+	static bool ApplyAll(const ArrayType& Payloads, const FAbilityContext& Context, AActor* Target)
+	{
+		bool bAnyApplied = false;
+
+		for (UAbilityEffectPayload* Payload : Payloads)
+		{
+			if (IsValid(Payload) && Payload->TryApply(Context, Target)) bAnyApplied = true;
+		}
+
+		return bAnyApplied;
 	}
 };
 

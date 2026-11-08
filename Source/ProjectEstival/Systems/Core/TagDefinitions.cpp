@@ -12,4 +12,7 @@ namespace TagDefinitions
 	// Status
 	UE_DEFINE_GAMEPLAY_TAG(Status_Invincible, "Status.Invincible");
 	UE_DEFINE_GAMEPLAY_TAG(Status_Stunned, "Status.Stunned");
+
+	// Ability events
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(AbilityEvent_Hit, "AbilityEvent.Hit", "The hit frame of an ability animation");
 }

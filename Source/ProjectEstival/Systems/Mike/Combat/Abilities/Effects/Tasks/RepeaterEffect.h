@@ -1,19 +1,20 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "Systems/Mike/Combat/Abilities/AbilityBody.h"
+#include "AbilityTask.h"
 #include "RepeaterEffect.generated.h"
 
-UCLASS(meta = (DisplayName = "Repeat/Delay Effect"))
-class PROJECTESTIVAL_API URepeaterEffect : public UAbilityEffect
+/** Runs its effects a number of times with a delay before and between runs. With one repeat it's a plain delay. */
+UCLASS(meta = (DisplayName = "Repeat / Delay"))
+class PROJECTESTIVAL_API URepeaterEffect : public UAbilityTask
 {
 	GENERATED_BODY()
 	
 public:
-	virtual void Execute_Implementation(const FAbilityContext& Context) const override;
-	
+	URepeaterEffect();
+	virtual float GetProgress_Implementation() const override;
+
 protected:
-	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat", meta = (ClampMin = 1))
 	int32 TotalRepeats = 3;
 
@@ -27,11 +28,17 @@ protected:
 	
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
-	bool bStopOnInterrupt = true;
+	bool bStopOnRelease = false;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
 	TArray<TObjectPtr<UAbilityEffect>> Effects;
-	
+
+	virtual void OnStart_Implementation() override;
+	virtual void OnInputReleased_Implementation() override;
+
 private:
-	void Run(const FAbilityContext& Context) const;
+	void Run();
+
+	FTimerHandle Timer;
+	int32 RunCount = 0;
 };

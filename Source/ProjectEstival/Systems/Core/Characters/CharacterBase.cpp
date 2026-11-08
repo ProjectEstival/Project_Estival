@@ -11,8 +11,9 @@
 
 AEstivalBaseCharacter::AEstivalBaseCharacter()
 {
-	// components do their own ticking
-	PrimaryActorTick.bCanEverTick = false;
+	// components do their own ticking, the character only ticks while an ability makes it face the aim
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = false;
 	
 	LookAt = CreateDefaultSubobject<UAC_LookAtComponent>(TEXT("LookAt"));
 	StatusEffects = CreateDefaultSubobject<UAC_StatusEffectComponent>(TEXT("StatusEffects"));
@@ -57,17 +58,39 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	{
 		BindAbilityInput(Input, InputPair.Key, InputPair.Value);
 	}
+
+	if (StickAimAction)
+	{
+		Input->BindActionValueLambda(StickAimAction, ETriggerEvent::Triggered, [this](const FInputActionValue& Value)
+		{
+			Loadout->SetAimDirection(InputToWorld(Value.Get<FVector2D>()));
+		});
+
+		Input->BindActionValueLambda(StickAimAction, ETriggerEvent::Completed, [this](const FInputActionValue&)
+		{
+			Loadout->ClearAim();
+		});
+	}
+
+	if (MouseAimAction)
+	{
+		Input->BindActionValueLambda(MouseAimAction, ETriggerEvent::Triggered, [this](const FInputActionValue&)
+		{
+			Loadout->AimAtCursor();
+		});
+	}
 }
 
 void AEstivalBaseCharacter::DoMove(float AxisX, float AxisY)
 {
 	if (!CanMove()) return;
 
-	FRotator FlatRot = GetControlRotation();
-	FlatRot.Pitch = 0.0f;
+	AddMovementInput(InputToWorld(FVector2D(AxisX, AxisY)));
+}
 
-	AddMovementInput(FlatRot.RotateVector(FVector::ForwardVector), AxisX);
-	AddMovementInput(FlatRot.RotateVector(FVector::RightVector), AxisY);
+FVector AEstivalBaseCharacter::InputToWorld(const FVector2D Axis) const
+{
+	return FRotator(0.f, GetControlRotation().Yaw, 0.f).RotateVector(FVector(Axis.X, Axis.Y, 0.f));
 }
 
 void AEstivalBaseCharacter::BeginPlay()
@@ -77,11 +100,37 @@ void AEstivalBaseCharacter::BeginPlay()
 	StatusEffects->OnEffectAdded.AddDynamic(this, &AEstivalBaseCharacter::OnStatusEffectChanged);
 	StatusEffects->OnEffectRemoved.AddDynamic(this, &AEstivalBaseCharacter::OnStatusEffectChanged);
 	Statistics->OnStatChanged.AddDynamic(this, &AEstivalBaseCharacter::OnStatChanged);
+	Loadout->OnAbilityActivated.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityActivated);
+	Loadout->OnAbilityEnded.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityEnded);
 
 	if (const auto& MoveSpeedTag = TagDefinitions::Stats_MoveSpeed; Statistics->HasStat(MoveSpeedTag)) 
 		OnStatChanged(MoveSpeedTag, Statistics->GetFloat(MoveSpeedTag), 0.f);
 	
 	if (TeamId == FGenericTeamId::NoTeam) TeamId = DefaultTeam;
+}
+
+void AEstivalBaseCharacter::Tick(const float DeltaSeconds)
+{
+	Super::Tick(DeltaSeconds);
+	LookAt->SetLookDirection(Loadout->GetAimDirection());
+}
+
+void AEstivalBaseCharacter::OnAbilityActivated(FGameplayTag Slot, UAbilityDefinition* Ability)
+{
+	if (!Ability || !Ability->bFaceAim) return;
+
+	const FVector Aim = Loadout->GetAimDirection();
+	SetActorRotation(Aim.Rotation());
+	LookAt->SetLookDirection(Aim);
+	SetActorTickEnabled(true);
+}
+
+void AEstivalBaseCharacter::OnAbilityEnded(FGameplayTag Slot, UAbilityDefinition* Ability)
+{
+	if (!IsActorTickEnabled()) return;
+
+	SetActorTickEnabled(false);
+	LookAt->ClearLookTarget();
 }
 
 void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)
@@ -99,7 +148,17 @@ void AEstivalBaseCharacter::BindAbilityInput(UEnhancedInputComponent* Input, con
 	
 	Input->BindActionInstanceLambda(Action, ETriggerEvent::Started, [this, AbilityTag](const FInputActionInstance&)
 		{
-			TryActivateAbility(AbilityTag);
+			if (CanUseAbilities()) Loadout->InputPressed(AbilityTag);
+		});
+
+	Input->BindActionInstanceLambda(Action, ETriggerEvent::Completed, [this, AbilityTag](const FInputActionInstance&)
+		{
+			Loadout->InputReleased(AbilityTag);
+		});
+
+	Input->BindActionInstanceLambda(Action, ETriggerEvent::Canceled, [this, AbilityTag](const FInputActionInstance&)
+		{
+			Loadout->InputReleased(AbilityTag);
 		});
 }
 

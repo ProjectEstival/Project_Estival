@@ -2,9 +2,10 @@
 
 #include "CoreMinimal.h"
 
-//The 4 sides of a room, listed clockwise so the opposite side is 2 rotations away
-//U is world X
-
+/**
+* This enum counts the directions of a room clockwise so the opposite side is always 2 rotations away
+* U is world X
+*/
 enum class EDirection : uint8 {
 	Up,
 	Right,
@@ -13,6 +14,10 @@ enum class EDirection : uint8 {
 };
 
 namespace Direction {
+	/**
+	 * Inline helps with naming conflicts when this header is used in a script and share methods of the same name
+	 * Constexpr bakes the value on runtime and is much lighter at runtime
+	 */
 	inline constexpr EDirection All[] = EDirection::Up, EDirection::Right, EDirection::Down, EDirection::Left;
 	
 	inline EDirection Opposite(EDirection Direction) {
@@ -47,15 +52,11 @@ namespace Direction {
 		return Rotated;
 	}
 	
-	//"UR", "URD", "OMNI", "EMPTY"
-	inline FString DoorMaskToString(uint8 DoorMask)
-	{
-		if (DoorMask == 0)
-		{
+	inline FString DoorMaskToString(uint8 DoorMask) {
+		if (DoorMask == 0) {
 			return TEXT("EMPTY");
 		}
-		if (DoorMask == 0b1111)
-		{
+		if (DoorMask == 0b1111) {
 			return TEXT("OMNI");
 		}
 

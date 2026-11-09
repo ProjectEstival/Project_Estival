@@ -7,7 +7,7 @@
 /**The Rooms that the solver actually places.
 * The solver only ever talks about modules, never about rows.
 */
-struct FDungeonRoomModule
+struct FRoomModule
 {
 	//The DataTable row this came from
 	FName RowName;

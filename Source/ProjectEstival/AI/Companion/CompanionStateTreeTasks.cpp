@@ -12,6 +12,11 @@
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Kismet/GameplayStatics.h"
 #include "StateTreeExecutionContext.h"
+#include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "AI/Companion/CompanionTactics.h"
+#include "DrawDebugHelpers.h"
+#include "EnvironmentQuery/EnvQueryManager.h"
+#include "StateTreeAsyncExecutionContext.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
 
@@ -32,6 +37,8 @@ EStateTreeRunStatus FCompanionFindFollowTargetTask::Tick(FStateTreeExecutionCont
 
 void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceData)
 {
+	// remember who we followed last tick, then start fresh
+	APawn* OldTarget = InstanceData.FollowTarget;
 	InstanceData.FollowTarget = nullptr;
 	InstanceData.DistanceToTarget = 0.f;
 
@@ -41,7 +48,9 @@ void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceDat
 	}
 
 	const FVector MyLocation = InstanceData.Pawn->GetActorLocation();
-	double NearestDistSq = TNumericLimits<double>::Max();
+	APawn* NearestPawn = nullptr;
+	double NearestDistance = TNumericLimits<double>::Max();
+	double OldTargetDistance = -1.0;
 
 	// a player is any pawn possessed by a PlayerController
 	for (FConstPlayerControllerIterator It = InstanceData.Pawn->GetWorld()->GetPlayerControllerIterator(); It; ++It)
@@ -53,20 +62,40 @@ void FCompanionFindFollowTargetTask::UpdateTarget(FInstanceDataType& InstanceDat
 			continue;
 		}
 
-		const double DistSq = FVector::DistSquared(MyLocation, PlayerPawn->GetActorLocation());
-		if (DistSq < NearestDistSq)
+		// real distance, not squared, so we can add a margin in cm below
+		const double Distance = FVector::Dist(MyLocation, PlayerPawn->GetActorLocation());
+		if (PlayerPawn == OldTarget)
 		{
-			NearestDistSq = DistSq;
-			InstanceData.FollowTarget = PlayerPawn;
+			OldTargetDistance = Distance;
+		}
+
+		if (Distance < NearestDistance)
+		{
+			NearestDistance = Distance;
+			NearestPawn = PlayerPawn;
 		}
 	}
 
-	if (InstanceData.FollowTarget)
+	// stay with the old player unless the nearest one is clearly closer
+	const bool bKeepOld = OldTargetDistance >= 0.0 && NearestDistance + InstanceData.SwitchMargin > OldTargetDistance;
+	if (bKeepOld)
 	{
-		InstanceData.DistanceToTarget = static_cast<float>(FMath::Sqrt(NearestDistSq));
+		InstanceData.FollowTarget = OldTarget;
+		InstanceData.DistanceToTarget = static_cast<float>(OldTargetDistance);
 	}
-	
-	// EQS can't read StateTree data, so sharing the target through the controller
+	else if (NearestPawn)
+	{
+		InstanceData.FollowTarget = NearestPawn;
+		InstanceData.DistanceToTarget = static_cast<float>(NearestDistance);
+	}
+
+	if (InstanceData.bDrawDebug && InstanceData.FollowTarget)
+	{
+		// green line: who I'm following
+		DrawDebugLine(InstanceData.Pawn->GetWorld(), MyLocation, InstanceData.FollowTarget->GetActorLocation(), FColor::Green, false, -1.f, 0, 3.f);
+	}
+
+	// EQS cant read StateTree data so sharing the target through the controller
 	if (ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.Pawn->GetController()))
 	{
 		Companion->SetFollowTarget(InstanceData.FollowTarget);
@@ -118,8 +147,12 @@ void FCompanionLookAtTask::UpdateLook(const FInstanceDataType& InstanceData)
 EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
 	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	
+	// remembering last tick's target before clearing the outputs
+	AActor* OldTarget = InstanceData.AttackTarget;
 	InstanceData.SeenEnemy = nullptr;
 	InstanceData.AttackTarget = nullptr;
+	InstanceData.Threats.Reset();
 
 	const AEstivalBaseCharacter* Me = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
 	const UAIPerceptionComponent* Perception = InstanceData.AIController ? InstanceData.AIController->GetAIPerceptionComponent() : nullptr;
@@ -134,6 +167,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 	const double EngageRadiusSq = FMath::Square(InstanceData.EngageRadius);
 	double NearestSeenSq = TNumericLimits<double>::Max();
 	double NearestAttackSq = TNumericLimits<double>::Max();
+	bool bOldTargetStillFighting = false;
 
 	for (AActor* Actor : SeenActors)
 	{
@@ -156,35 +190,189 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		const bool bNearPlayer = InstanceData.FollowTarget
 			&& FVector::DistSquared(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
 
-		if ((bNearMe || bNearPlayer) && DistSq < NearestAttackSq)
+		if (!bNearMe && !bNearPlayer)
+		{
+			continue;
+		}
+		
+		// in the fight the target query may pick it
+		InstanceData.Threats.Add(Actor);
+		
+		if (Actor == OldTarget)
+		{
+			bOldTargetStillFighting = true;
+		}
+		
+		if (DistSq < NearestAttackSq)
 		{
 			NearestAttackSq = DistSq;
 			InstanceData.AttackTarget = Actor;
 		}
 	}
-
+	
+	// stick to the target. companions should finish the fight they started
+	if (bOldTargetStillFighting)
+	{
+		InstanceData.AttackTarget = OldTarget;
+	}
+	
+	// EQS can't read StateTree data, so share the target and the threats through the controller
+	ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.AIController.Get());
+	if (Companion)
+	{
+		Companion->SetAttackTarget(InstanceData.AttackTarget);
+		Companion->SetThreats(InstanceData.Threats);
+	}
+	
+	// a new target found: fight the nearest for now and ask the style's target query for the best one
+	const UCompanionTactics* Tactics = Companion ? Companion->GetTactics() : nullptr;
+	if (InstanceData.AttackTarget && InstanceData.AttackTarget != OldTarget && Tactics && Tactics->TargetQuery)
+	{
+		StartTargetQuery(Context, InstanceData, Tactics->TargetQuery);
+	}
+		
+	if (InstanceData.bDrawDebug && InstanceData.AttackTarget)
+	{
+		// red linem means who they fighting. draws every tick
+		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), FColor::Red, false, -1.f, 0, 3.f);
+	}
+	
 	// global task: keeps running for the whole tree
 	return EStateTreeRunStatus::Running;
+}
+
+void FCompanionFindThreatTask::StartTargetQuery(FStateTreeExecutionContext& Context, FInstanceDataType& InstanceData, UEnvQuery* TargetQuery)
+{
+	// one question in the query at a time
+	if (InstanceData.QueryId != INDEX_NONE)
+	{
+		if(UEnvQueryManager* QueryManager = UEnvQueryManager::GetCurrent(Context.GetOwner()))
+		{
+			QueryManager->AbortQuery(InstanceData.QueryId);
+		}
+		InstanceData.QueryId = INDEX_NONE;
+	}
+
+	// the pawn asks, so the generator and the tests can find this bot
+	FEnvQueryRequest Request(TargetQuery, InstanceData.Pawn);
+	InstanceData.QueryId = Request.Execute(EEnvQueryRunMode::SingleResult,
+		// note: WeakContext stores a weak handle to this bot's tree inside the Lambda. Weak means it doesn't keep anything alive. 
+		// It can only check later whether the tree is still there. 
+		// mutable: because needs writing access to change it to usable later. 
+		FQueryFinishedSignature::CreateLambda([WeakContext = Context.MakeWeakExecutionContext()](TSharedPtr<FEnvQueryResult> Result) mutable
+		{
+			// the answer comes a little later: find this task's data again, if the tree still runs
+			const FStateTreeStrongExecutionContext StrongContext = WeakContext.MakeStrongExecutionContext();
+			FInstanceDataType* Data = StrongContext.GetInstanceDataPtr<FInstanceDataType>();
+			if (!Data)
+			{
+				return;
+			}
+
+			Data->QueryId = INDEX_NONE;
+			AActor* Best = (Result && Result->IsSuccessful()) ? Result->GetItemAsActor(0) : nullptr;
+
+			// only if it's still in the fight. It may have died while EQS was thinking
+			if (Best && Data->Threats.Contains(Best))
+			{
+				Data->AttackTarget = Best;
+			}
+		}));
 }
 
 // ---------- Use Ability ----------
 EStateTreeRunStatus FCompanionUseAbilityTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
-	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
 	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
-	if (!Character || !InstanceData.Slot.IsValid())
+	if (!Character)
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 	
-	if (Character->TryActivateAbility(InstanceData.Slot))
+	InstanceData.WaitTimer += DeltaTime;
+	if (InstanceData.MaxWaitTime > 0.f && InstanceData.WaitTimer > InstanceData.MaxWaitTime)
 	{
-		return EStateTreeRunStatus::Succeeded;
+		return EStateTreeRunStatus::Failed;
+	}
+	
+	// abilities fire where the character faces so wait while Look At turns the companions
+	if (IsValid(InstanceData.Target) && !IsFacing(Character, InstanceData.Target, InstanceData.AimAngle))
+	{
+		return EStateTreeRunStatus::Running;
+	}
+	
+	// a set Slot always wins. An empty Slot means: try the bot style's list
+	const bool bFired = InstanceData.Slot.IsValid() ? Character->TryActivateAbility(InstanceData.Slot) : TryTacticsAbilities(Character, InstanceData.Target);
+
+	// ikf nothing fired yet try again next tick
+	return bFired ? EStateTreeRunStatus::Succeeded : EStateTreeRunStatus::Running;
+}
+
+bool FCompanionUseAbilityTask::IsFacing(const AActor* Me, const AActor* Target, const float AimAngle)
+{
+	const FVector Forward = Me->GetActorForwardVector().GetSafeNormal2D();
+	const FVector ToTarget = (Target->GetActorLocation() - Me->GetActorLocation()).GetSafeNormal2D();
+	
+	return FVector::DotProduct(Forward, ToTarget) >= FMath::Cos(FMath::DegreesToRadians(AimAngle));
+}
+
+bool FCompanionUseAbilityTask::TryTacticsAbilities(AEstivalBaseCharacter* Me, const AActor* Target)
+{
+	// from the body to the brain where the style is stored
+	const ACompanionAIController* Companion = Cast<ACompanionAIController>(Me->GetController());
+	const UCompanionTactics* Tactics = Companion ? Companion->GetTactics() : nullptr;
+	if (!Tactics)
+	{
+		return false;
 	}
 
-	// not ready yet: try again next tick
-	return EStateTreeRunStatus::Running;
+	// no target bound? Then only rows that start at 0 can match
+	const double Distance = IsValid(Target) ? FVector::Dist(Me->GetActorLocation(), Target->GetActorLocation()) : 0.0;
+
+	// from the top: the first row that is in range AND fires wins
+	for (const FCompanionAbilityRule& Rule : Tactics->Abilities)
+	{
+		const bool bInRange = Distance >= Rule.MinRange && Distance <= Rule.MaxRange;
+		if (bInRange && Me->TryActivateAbility(Rule.Slot))
+		{
+			return true;
+		}
+	}
+	return false;
 }
+
+EStateTreeRunStatus FCompanionUseAbilityTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	
+	// make a fresh start every time the state is entered
+	InstanceData.WaitTimer = 0.f;
+	
+	// making sure the slot is never empty: the bot style's list decides, so the bot needs a style
+	if (!InstanceData.Slot.IsValid())
+	{
+		const ACompanionAIController* Companion = InstanceData.Pawn ? Cast<ACompanionAIController>(InstanceData.Pawn->GetController()) : nullptr;
+		if (!Companion || !Companion->GetTactics())
+		{
+			UE_LOG(LogCompanionAI, Warning, TEXT("%s has no bot style (Tactics)"), *GetNameSafe(InstanceData.Pawn));
+			return EStateTreeRunStatus::Failed;
+		}
+		return EStateTreeRunStatus::Running;
+	}
+	
+	const ULoadoutComponent* Loadout = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<ULoadoutComponent>() : nullptr;
+	
+	// failing now instead of latr
+	if (!Loadout || !Loadout->GetAbility(InstanceData.Slot))
+	{
+		UE_LOG(LogCompanionAI, Warning, TEXT("%s has nothing in slot %s"), *GetNameSafe(InstanceData.Pawn), *InstanceData.Slot.ToString());
+		return EStateTreeRunStatus::Failed;
+	}
+	
+	return EStateTreeRunStatus::Running;
+}	
+
 
 // ---------- Catch-Up Teleport ----------
 EStateTreeRunStatus FCompanionCatchUpTeleportTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
@@ -311,4 +499,27 @@ bool FCompanionCatchUpTeleportTask::TryTeleport(const FInstanceDataType& Instanc
 	}
 
 	return false;
+}
+
+// ---------- Read Tactics ----------
+EStateTreeRunStatus FCompanionReadTacticsTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	// reads on enter too so the outputs are valid before the first tick
+	Read(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FCompanionReadTacticsTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	// every tick because the style can change while playing
+	Read(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FCompanionReadTacticsTask::Read(FInstanceDataType& InstanceData)
+{
+	const ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.AIController.Get());
+	const UCompanionTactics* Tactics = Companion ? Companion->GetTactics() : nullptr;
+	
+	InstanceData.AttackSpotQuery = Tactics ? Tactics->AttackSpotQuery.Get() : nullptr;
 }

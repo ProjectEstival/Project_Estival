@@ -18,7 +18,7 @@ namespace Direction {
 	 * Inline helps with naming conflicts when this header is used in a script and share methods of the same name
 	 * Constexpr bakes the value on runtime and is much lighter at runtime
 	 */
-	inline constexpr EDirection All[] = EDirection::Up, EDirection::Right, EDirection::Down, EDirection::Left;
+	inline constexpr EDirection All[] = {EDirection::Up, EDirection::Right, EDirection::Down, EDirection::Left};
 	
 	inline EDirection Opposite(EDirection Direction) {
 		return static_cast<EDirection>((static_cast<uint8>(Direction)+2) % 4);
@@ -44,7 +44,7 @@ namespace Direction {
 	
 	inline uint8 RotateDoorMask(uint8 DoorMask) {
 		uint8 Rotated = 0;
-		for (Edirection Direction : All) {
+		for (EDirection Direction : All) {
 			if (HasDoor(DoorMask, Direction)) {
 				Rotated |= ToBit(Direction);
 			}

@@ -131,19 +131,28 @@ public:
 private:
 	UFUNCTION()
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue);
+	
 	UFUNCTION()
 	void OnStatusEffectChanged(FGameplayTag Tag);
+	
 	UFUNCTION()
 	void OnStatChanged(FGameplayTag Stat, float NewValue, float OldValue);
+	
 	UFUNCTION()
 	void BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag);
+	
 	UFUNCTION()
 	void OnAbilityActivated(FGameplayTag Slot, UAbilityDefinition* Ability);
+	
+	UFUNCTION()
+	void OnAbilityCommitted(FGameplayTag Slot, UAbilityDefinition* Ability);
+	
 	UFUNCTION()
 	void OnAbilityEnded(FGameplayTag Slot, UAbilityDefinition* Ability);
 
 	/** Turns stick input into a world direction, relative to where the camera looks. */
 	FVector InputToWorld(FVector2D Axis) const;
+	void FaceAim();
 	void Die();
 	bool bIsDead = false;
 	FGenericTeamId TeamId = FGenericTeamId::NoTeam;

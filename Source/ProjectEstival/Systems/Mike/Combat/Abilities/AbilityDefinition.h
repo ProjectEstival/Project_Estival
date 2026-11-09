@@ -6,6 +6,14 @@
 #include "Systems/Mike/Stats/StatTypes.h"
 #include "AbilityDefinition.generated.h"
 
+UENUM(BlueprintType)
+enum class EAbilityFacing : uint8
+{
+	None UMETA(DisplayName = "Don't Turn"),
+	WholeTime,
+	OnCommit
+};
+
 UCLASS(BlueprintType)
 class PROJECTESTIVAL_API UAbilityDefinition : public UDataAsset
 {
@@ -47,9 +55,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
 	TObjectPtr<UAnimMontage> Montage;
 
-	/** The character turns to the aim while this ability is active. Turn off for movement abilities like a dash. */
+	/** When the character turns to the aim. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
-	bool bFaceAim = false;
+	EAbilityFacing Facing = EAbilityFacing::None;
 
 	/** Activates again when it ends if its button is still held. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Input")

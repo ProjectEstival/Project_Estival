@@ -101,6 +101,7 @@ void AEstivalBaseCharacter::BeginPlay()
 	StatusEffects->OnEffectRemoved.AddDynamic(this, &AEstivalBaseCharacter::OnStatusEffectChanged);
 	Statistics->OnStatChanged.AddDynamic(this, &AEstivalBaseCharacter::OnStatChanged);
 	Loadout->OnAbilityActivated.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityActivated);
+	Loadout->OnAbilityCommitted.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityCommitted);
 	Loadout->OnAbilityEnded.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityEnded);
 
 	if (const auto& MoveSpeedTag = TagDefinitions::Stats_MoveSpeed; Statistics->HasStat(MoveSpeedTag)) 
@@ -117,20 +118,30 @@ void AEstivalBaseCharacter::Tick(const float DeltaSeconds)
 
 void AEstivalBaseCharacter::OnAbilityActivated(FGameplayTag Slot, UAbilityDefinition* Ability)
 {
-	if (!Ability || !Ability->bFaceAim) return;
+	if (!Ability || Ability->Facing != EAbilityFacing::WholeTime) return;
 
-	const FVector Aim = Loadout->GetAimDirection();
-	SetActorRotation(Aim.Rotation());
-	LookAt->SetLookDirection(Aim);
+	FaceAim();
 	SetActorTickEnabled(true);
+}
+
+void AEstivalBaseCharacter::OnAbilityCommitted(FGameplayTag Slot, UAbilityDefinition* Ability)
+{
+	if (Ability && Ability->Facing == EAbilityFacing::OnCommit) FaceAim();
 }
 
 void AEstivalBaseCharacter::OnAbilityEnded(FGameplayTag Slot, UAbilityDefinition* Ability)
 {
-	if (!IsActorTickEnabled()) return;
+	if (!Ability || Ability->Facing == EAbilityFacing::None) return;
 
 	SetActorTickEnabled(false);
 	LookAt->ClearLookTarget();
+}
+
+void AEstivalBaseCharacter::FaceAim()
+{
+	const FVector Aim = Loadout->GetAimDirection();
+	SetActorRotation(Aim.Rotation());
+	LookAt->SetLookDirection(Aim);
 }
 
 void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)

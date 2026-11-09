@@ -40,6 +40,10 @@ public:
 	UPROPERTY(BlueprintAssignable, Category = "Loadout|Events")
 	FOnAbilityStateChanged OnAbilityActivated;
 
+	/** The ability paid its costs and started its cooldown. */
+	UPROPERTY(BlueprintAssignable, Category = "Loadout|Events")
+	FOnAbilityStateChanged OnAbilityCommitted;
+
 	UPROPERTY(BlueprintAssignable, Category = "Loadout|Events")
 	FOnAbilityStateChanged OnAbilityInterrupted;
 

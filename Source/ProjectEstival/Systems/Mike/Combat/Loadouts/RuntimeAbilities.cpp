@@ -50,7 +50,8 @@ bool UAbilityActivation::Commit()
 	}
 
 	bCommitted = true;
-	return true;
+	Loadout->OnAbilityCommitted.Broadcast(Slot, Ability);
+	return bActive;
 }
 
 void UAbilityActivation::Cancel()

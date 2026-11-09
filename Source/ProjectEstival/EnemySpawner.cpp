@@ -38,84 +38,65 @@ void UEnemySpawner::TickComponent(float DeltaTime, ELevelTick TickType, FActorCo
 void UEnemySpawner::SpawnEnemies()
 {
     if (EnemyClasses.IsEmpty())
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("EnemySpawner: EnemyClasses is empty."));
-        return;
-    }
-
- 
-    ASpawnerBase* Spawner = Cast<ASpawnerBase>(GetOwner());
-
-    if (!Spawner)
-    {
-        UE_LOG(LogTemp, Warning,
-            TEXT("EnemySpawner: Owner is not a SpawnerBase."));
-        return;
-    }
-
-    for (const FEnemySpawnPoint& SpawnPoint : SpawnPoints)
-    {
-        if (SpawnPoint.Amount <= 0)
         {
-            continue;
+            UE_LOG(LogTemp, Warning, TEXT("EnemySpawner: EnemyClasses is empty."));
+            return;
         }
-
-        const float AngleStep =
-            (2.0f * PI) / SpawnPoint.Amount;
-
-        const float RandomAngleOffset =
-            FMath::FRandRange(0.0f, 2.0f * PI);
-
-        for (int32 i = 0; i < SpawnPoint.Amount; i++)
+    
+        ASpawnerBase* Spawner = Cast<ASpawnerBase>(GetOwner());
+    
+        if (!Spawner)
         {
-            const int32 RandomIndex =
-                FMath::RandRange(0, EnemyClasses.Num() - 1);
-
-            TSubclassOf<AActor> SelectedEnemyClass =
-                EnemyClasses[RandomIndex];
-
-            if (!SelectedEnemyClass)
+            UE_LOG(LogTemp, Warning, TEXT("EnemySpawner: Owner is not a SpawnerBase."));
+            return;
+        }
+    
+        for (const FEnemySpawnPoint& SpawnPoint : SpawnPoints)
+        {
+            if (SpawnPoint.Amount <= 0 || !IsValid(SpawnPoint.SpawnMarker))
             {
                 continue;
             }
-
-            FVector SpawnLocation =
-                SpawnPoint.SpawnTransform.GetLocation();
-
-           
-            if (SpawnPoint.Amount > 1 &&
-                SpawnPoint.SpreadRadius > 0.0f)
+            
+            FTransform BaseTransform = SpawnPoint.SpawnMarker->GetActorTransform();
+    
+            const float AngleStep = (2.0f * PI) / SpawnPoint.Amount;
+            const float RandomAngleOffset = FMath::FRandRange(0.0f, 2.0f * PI);
+    
+            for (int32 i = 0; i < SpawnPoint.Amount; i++)
             {
-                const float Angle =
-                    RandomAngleOffset + (AngleStep * i);
-
-                SpawnLocation.X +=
-                    FMath::Cos(Angle) * SpawnPoint.SpreadRadius;
-
-                SpawnLocation.Y +=
-                    FMath::Sin(Angle) * SpawnPoint.SpreadRadius;
-            }
-
-            const FRotator SpawnRotation =
-                SpawnPoint.SpawnTransform.GetRotation().Rotator();
-
-            const FTransform SpawnTransform(
-                SpawnRotation,
-                SpawnLocation,
-                SpawnPoint.SpawnTransform.GetScale3D()
-            );
-
-            // Ask SpawnerBase to create the enemy
-            AActor* SpawnedEnemy =
-                Spawner->SpawnActor(SelectedEnemyClass, SpawnTransform);
-
-            if (IsValid(SpawnedEnemy))
-            {
-                SpawnedEnemies.Add(SpawnedEnemy);
+                const int32 RandomIndex = FMath::RandRange(0, EnemyClasses.Num() - 1);
+                TSubclassOf<AActor> SelectedEnemyClass = EnemyClasses[RandomIndex];
+    
+                if (!SelectedEnemyClass)
+                {
+                    continue;
+                }
+                
+                FVector SpawnLocation = BaseTransform.GetLocation();
+               
+                if (SpawnPoint.Amount > 1 && SpawnPoint.SpreadRadius > 0.0f)
+                {
+                    const float Angle = RandomAngleOffset + (AngleStep * i);
+                    SpawnLocation.X += FMath::Cos(Angle) * SpawnPoint.SpreadRadius;
+                    SpawnLocation.Y += FMath::Sin(Angle) * SpawnPoint.SpreadRadius;
+                }
+    
+                const FRotator SpawnRotation = BaseTransform.GetRotation().Rotator();
+                const FTransform SpawnTransform(
+                    SpawnRotation,
+                    SpawnLocation,
+                    BaseTransform.GetScale3D()
+                );
+                
+                AActor* SpawnedEnemy = Spawner->SpawnActor(SelectedEnemyClass, SpawnTransform);
+    
+                if (IsValid(SpawnedEnemy))
+                {
+                    SpawnedEnemies.Add(SpawnedEnemy);
+                }
             }
         }
-    }
 }
 
 void UEnemySpawner::ClearSpawnedEnemies()

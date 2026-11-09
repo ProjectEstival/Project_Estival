@@ -14,7 +14,7 @@ struct FEnemySpawnPoint
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning")
-	FTransform SpawnTransform;
+	TObjectPtr<AActor> SpawnMarker;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Spawning", meta = (ClampMin = "0"))
 	int32 Amount = 1;

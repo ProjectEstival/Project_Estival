@@ -11,9 +11,9 @@ class PROJECTESTIVAL_API UPlayerProfileSaveGame : public ULocalPlayerSaveGame
 	GENERATED_BODY()
 	
 public:
-	UPROPERTY(SaveGame)
+	UPROPERTY(SaveGame, BlueprintReadOnly, Category = "Profile")
 	int32 SchemaVersion = 1;
 
-	UPROPERTY(SaveGame)
+	UPROPERTY(SaveGame, BlueprintReadWrite, Category = "Profile")
 	FPlayerProfileData Profile;
 };

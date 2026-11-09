@@ -3,10 +3,12 @@
 #include "Systems/Core/SaveSystem/PlayerProfileSubsystem.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/ScrollBoxSlot.h"
+#include "Components/CanvasPanel.h"
 #include "UI/PlayerProfileCard.h"
 #include "Components/ScrollBox.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "Components/Widget.h"
 
 // Initialization
 void UProfileSelectionPopup::NativeOnInitialized()
@@ -14,6 +16,9 @@ void UProfileSelectionPopup::NativeOnInitialized()
 	Super::NativeOnInitialized();
 
 	SetIsFocusable(true);
+	if (IsValid(OptionsEntryButton)) OptionsEntryButton->OnReleased.AddDynamic(this, &UProfileSelectionPopup::HandleOptionsEntryReleased);
+	if (IsValid(EditButton)) EditButton->OnClicked.AddDynamic(this, &UProfileSelectionPopup::EditProfile);
+	if (IsValid(DeleteButton)) DeleteButton->OnClicked.AddDynamic(this, &UProfileSelectionPopup::DeleteProfile);
 }
 void UProfileSelectionPopup::NativeTick(const FGeometry& MyGeometry, float InDeltaTime)
 {
@@ -22,8 +27,8 @@ void UProfileSelectionPopup::NativeTick(const FGeometry& MyGeometry, float InDel
 	if (bPendingNameFocus)
 	{
 		if (!IsInViewport() || !IsValid(PendingNameCard) || !ProfileScrollBox || ProfileScrollBox->GetCachedGeometry().GetLocalSize().IsNearlyZero()) return;
-		PendingNameCard->FocusNameEntry();
 		ProfileScrollBox->ScrollWidgetIntoView(PendingNameCard, true, EDescendantScrollDestination::Center);
+		PendingNameCard->FocusNameEntry();
 		bPendingNameFocus = false;
 		return;
 	}
@@ -50,16 +55,14 @@ void UProfileSelectionPopup::RebuildProfileCards()
 {
 	if (!ProfileScrollBox || !ProfileCardClass)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ProfileSelectionPopup: ProfileScrollBox or ProfileCardClass is not set."));
+		UE_LOG(LogTemp, Warning, TEXT("[ProfileSelection] ProfileScrollBox or ProfileCardClass is not set."));
 		return;
 	}
 	ProfileScrollBox->ClearChildren();
 	SpawnedCards.Reset();
 	
 	UGameInstance* GameInstance = GetGameInstance();
-	if (!GameInstance) return;
-	
-	UPlayerProfileSubsystem* ProfileSubsystem = GameInstance->GetSubsystem<UPlayerProfileSubsystem>();
+	UPlayerProfileSubsystem* ProfileSubsystem = GameInstance ? GameInstance->GetSubsystem<UPlayerProfileSubsystem>() : nullptr;
 	if (!ProfileSubsystem) return;
 	
 	// Add all available profiles
@@ -71,22 +74,24 @@ void UProfileSelectionPopup::RebuildProfileCards()
 		
 		Card->SetProfile(Profile.ProfileId, Profile.ProfileName);
 		Card->OnCardClicked.AddDynamic(this, &UProfileSelectionPopup::HandleCardClicked);
+		Card->OnCardLongPressed.AddDynamic(this, &UProfileSelectionPopup::HandleCardLongPressed);
+		Card->OnNameCommitted.AddDynamic(this, &UProfileSelectionPopup::HandleNameCommitted);
 		
 		if (UScrollBoxSlot* ScrollSlot = Cast<UScrollBoxSlot>(ProfileScrollBox->AddChild(Card))) ScrollSlot->SetPadding(FMargin(20.0f, 0.0f));
 		SpawnedCards.Add(Card);
 	}
 	
 	// Append the create-profile tile last
-	UPlayerProfileCard* CreateCard = CreateWidget<UPlayerProfileCard>(this, ProfileCardClass);
-	if (CreateCard)
+	if (UPlayerProfileCard* CreateCard = CreateWidget<UPlayerProfileCard>(this, ProfileCardClass))
 	{
 		CreateCard->SetCreateCard();
 		CreateCard->OnCardClicked.AddDynamic(this, &UProfileSelectionPopup::HandleCardClicked);
-		CreateCard->OnNameCommitted.AddDynamic(this, &UProfileSelectionPopup::HandleNameCommitted);
+		CreateCard->SetNavigationRuleBase(EUINavigation::Right, EUINavigationRule::Stop);
 		
 		if (UScrollBoxSlot* ScrollSlot = Cast<UScrollBoxSlot>(ProfileScrollBox->AddChild(CreateCard))) ScrollSlot->SetPadding(FMargin(20.0f, 0.0f));
 		SpawnedCards.Add(CreateCard);
 	}
+	if (!SpawnedCards.IsEmpty()) SpawnedCards[0]->SetNavigationRuleBase(EUINavigation::Left, EUINavigationRule::Stop);
 }
 bool UProfileSelectionPopup::FocusFirstCard()
 {
@@ -129,6 +134,78 @@ void UProfileSelectionPopup::HandleCardClicked(UPlayerProfileCard* Card)
 	// Existing profile selection flow
 	ConfirmSelection(ProfileId);
 }
+void UProfileSelectionPopup::HandleCardLongPressed(UPlayerProfileCard* Card)
+{
+	if (bSelectionCompleted || !IsValid(Card) || Card->IsCreateCard() || IsValid(PendingNameCard)) return;
+	if (IsValid(ActiveOptionsCard)) CloseCardOptions();
+	
+	ActiveOptionsCard = Card;
+	Options->SetVisibility(ESlateVisibility::Visible);
+	if (IsValid(TargetLocalPlayer))
+	{
+		if (APlayerController* PC = TargetLocalPlayer->GetPlayerController(GetWorld())) OptionsEntryButton->SetUserFocus(PC);
+	}
+}
+void UProfileSelectionPopup::CloseCardOptions()
+{
+	if (IsValid(ActiveOptionsCard) && IsValid(TargetLocalPlayer))
+	{
+		if (APlayerController* PC = TargetLocalPlayer->GetPlayerController(GetWorld())) ActiveOptionsCard->FocusCard(PC);
+	}
+	ActiveOptionsCard = nullptr;
+	if (IsValid(Options)) Options->SetVisibility(ESlateVisibility::Collapsed);
+}
+
+// Card options
+void UProfileSelectionPopup::EditProfile()
+{
+	if (!IsValid(ActiveOptionsCard)) return;
+	
+	ActiveOptionsCard->SetNavigationRuleBase(EUINavigation::Left, EUINavigationRule::Stop);
+	ActiveOptionsCard->SetNavigationRuleBase(EUINavigation::Right, EUINavigationRule::Stop);
+	
+	ActiveOptionsCard->BeginNameEdit();
+	
+	PendingNameCard = ActiveOptionsCard;
+	bPendingNameFocus = true;
+	
+	CloseCardOptions();
+}
+void UProfileSelectionPopup::DeleteProfile()
+{
+	if (!IsValid(ActiveOptionsCard) || !IsValid(TargetLocalPlayer)) return;
+	const FGuid ProfileId = ActiveOptionsCard->GetProfileId();
+	if (!ProfileId.IsValid()) return;
+	
+	UGameInstance* GameInstance = GetGameInstance();
+	UPlayerProfileSubsystem* ProfileSubsystem = GameInstance ? GameInstance->GetSubsystem<UPlayerProfileSubsystem>() : nullptr;
+	if (!ProfileSubsystem) return;
+	
+	// Attempt deletion
+	if (!ProfileSubsystem->DeleteProfile(ProfileId))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[ProfileSelection] Failed to delete profile %s"), *ProfileId.ToString());
+		return;
+	}
+	
+	// Close options popup
+	ActiveOptionsCard = nullptr;
+	if (IsValid(Options)) Options->SetVisibility(ESlateVisibility::Collapsed);
+	
+	// Rebuild cards from the updated saved profiles
+	RebuildProfileCards();
+	
+	// Restore navigation focus
+	if (APlayerController* PC = TargetLocalPlayer->GetPlayerController(GetWorld()))
+	{
+		if (!SpawnedCards.IsEmpty()) SpawnedCards[0]->FocusCard(PC);
+	}
+}
+void UProfileSelectionPopup::HandleOptionsEntryReleased() const
+{
+	if (!IsValid(TargetLocalPlayer) || !IsValid(EditButton)) return;
+	if (APlayerController* PC = TargetLocalPlayer->GetPlayerController(GetWorld())) EditButton->SetUserFocus(PC);
+}
 
 // Selection events
 void UProfileSelectionPopup::ConfirmSelection(const FGuid& ProfileId)
@@ -157,17 +234,15 @@ void UProfileSelectionPopup::BeginCreatingProfile()
 	if (!NewCard) return;
 	
 	NewCard->OnCardClicked.AddDynamic(this, &UProfileSelectionPopup::HandleCardClicked);
+	NewCard->OnCardLongPressed.AddDynamic(this, &UProfileSelectionPopup::HandleCardLongPressed);
 	NewCard->OnNameCommitted.AddDynamic(this, &UProfileSelectionPopup::HandleNameCommitted);
+	NewCard->SetNavigationRuleBase(EUINavigation::Left, EUINavigationRule::Stop);
+	NewCard->SetNavigationRuleBase(EUINavigation::Right, EUINavigationRule::Stop);
 	
 	// Insert in the second to last slot
 	const int32 InsertIndex = ProfileScrollBox->GetChildrenCount() - 1;
 	UScrollBoxSlot* NewSlot = InsertWidgetAt(ProfileScrollBox, NewCard, InsertIndex);
-	if (!NewSlot)
-	{
-		UE_LOG(LogTemp, Error, TEXT("InsertChildAt failed."));
-		return;
-	}
-	NewSlot->SetPadding(FMargin(20.0f, 0.0f));
+	if (!NewSlot) return;
 	ProfileScrollBox->InvalidateLayoutAndVolatility();
 	
 	// Keep the array in exactly the same order
@@ -181,7 +256,7 @@ void UProfileSelectionPopup::BeginCreatingProfile()
 void UProfileSelectionPopup::HandleNameCommitted(UPlayerProfileCard* Card, FText EnteredName)
 {
 	if (!IsValid(Card) || Card != PendingNameCard || !Card->IsNamingProfile()) return;
-	
+		
 	// Trim spaces from both ends before validating or saving.
 	const FString ProfileName = EnteredName.ToString().TrimStartAndEnd();
 	
@@ -202,29 +277,52 @@ void UProfileSelectionPopup::HandleNameCommitted(UPlayerProfileCard* Card, FText
 		return;
 	}
 	
-	// CreateProfile returns an invalid GUID if creation fails.
-	const FGuid NewProfileId = ProfileSubsystem->CreateProfile(ProfileName);
-	if (!NewProfileId.IsValid())
+	// Card already associated with profile, must be a rename
+	FGuid ProfileId = Card->GetProfileId();  
+	if (ProfileId.IsValid())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("ProfileSelectionPopup: Failed to create profile '%s'."), *ProfileName);
-		Card->RejectNameEntry();
-		bPendingNameFocus = true;
-		return;
+		if (!ProfileSubsystem->EditProfileName(ProfileId, ProfileName))
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ProfileSelection] Failed to edit profile '%s'."), *ProfileName);
+			Card->RejectNameEntry();
+			bPendingNameFocus = true;
+			return;
+		}
+	}
+	else
+	{
+		// CreateProfile returns an invalid GUID if creation fails
+		ProfileId = ProfileSubsystem->CreateProfile(ProfileName);
+		if (!ProfileId.IsValid())
+		{
+			UE_LOG(LogTemp, Warning, TEXT("[ProfileSelection] Failed to create profile '%s'."), *ProfileName);
+			Card->RejectNameEntry();
+			bPendingNameFocus = true;
+			return;
+		}
 	}
 	
-	// Success: turn the editable card into a normal profile card.
-	Card->SetProfile(NewProfileId, ProfileName);
+	// Success: turn the editable card into a normal profile card
+	Card->SetProfile(ProfileId, ProfileName);
 	
 	PendingNameCard = nullptr;
 	bPendingNameFocus = false;
 	
-	// Focus and center the newly created profile.
+	// Focus and center the newly created profile
 	if (IsValid(TargetLocalPlayer))
 	{
 		if (APlayerController* PlayerController = TargetLocalPlayer->GetPlayerController(GetWorld())) Card->FocusCard(PlayerController);
 	}
 	
 	ProfileScrollBox->ScrollWidgetIntoView(Card, true, EDescendantScrollDestination::Center);
+	
+	if (SpawnedCards[0] == Card)
+	{
+		Card->SetNavigationRuleBase(EUINavigation::Left, EUINavigationRule::Stop);
+		SpawnedCards.Last()->SetNavigationRuleBase(EUINavigation::Left, EUINavigationRule::Escape);
+	}
+	else Card->SetNavigationRuleBase(EUINavigation::Left, EUINavigationRule::Escape);
+	Card->SetNavigationRuleBase(EUINavigation::Right, EUINavigationRule::Escape);
 }
 UScrollBoxSlot* UProfileSelectionPopup::InsertWidgetAt(UScrollBox* ScrollBox, UWidget* NewWidget, int32 Index)
 {
@@ -242,8 +340,10 @@ UScrollBoxSlot* UProfileSelectionPopup::InsertWidgetAt(UScrollBox* ScrollBox, UW
 	UScrollBoxSlot* ResultSlot = nullptr;
 	for (UWidget* Widget : ContentWidgets)
 	{
-		UPanelSlot* AddedSlot = ScrollBox->AddChild(Widget);
-		if (Widget == NewWidget) ResultSlot = Cast<UScrollBoxSlot>(AddedSlot);
+		UScrollBoxSlot* AddedSlot = Cast<UScrollBoxSlot>(ScrollBox->AddChild(Widget));
+		AddedSlot->SetPadding(FMargin(20.0f, 0.0f));
+		if (Widget == NewWidget) ResultSlot = AddedSlot;
 	}
 	return ResultSlot;
 }
+

@@ -246,7 +246,11 @@ void FCompanionFindThreatTask::StartTargetQuery(FStateTreeExecutionContext& Cont
 	// one question in the query at a time
 	if (InstanceData.QueryId != INDEX_NONE)
 	{
-		return;
+		if(UEnvQueryManager* QueryManager = UEnvQueryManager::GetCurrent(Context.GetOwner()))
+		{
+			QueryManager->AbortQuery(InstanceData.QueryId);
+		}
+		InstanceData.QueryId = INDEX_NONE;
 	}
 
 	// the pawn asks, so the generator and the tests can find this bot

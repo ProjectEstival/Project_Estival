@@ -246,3 +246,33 @@ private:
 	static bool IsOnScreen(const UWorld* World, const FVector& Location);
 	static bool TryTeleport(const FInstanceDataType& InstanceData);
 };
+
+// instance data for Read Tactics
+USTRUCT()
+struct FCompanionReadTacticsInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<AAIController> AIController;
+
+	// the bot style's formation. Bind Run Env Query's Query Template to it
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TObjectPtr<UEnvQuery> AttackSpotQuery;
+};
+
+// global task: copies values out of the bot style every tick, so states can bind to them
+USTRUCT(meta=(DisplayName="Read Tactics", Category="Companion"))
+struct FCompanionReadTacticsTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionReadTacticsInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+
+private:
+	static void Read(FInstanceDataType& InstanceData);
+};

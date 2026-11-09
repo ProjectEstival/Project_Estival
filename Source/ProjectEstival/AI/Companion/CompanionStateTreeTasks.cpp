@@ -496,3 +496,26 @@ bool FCompanionCatchUpTeleportTask::TryTeleport(const FInstanceDataType& Instanc
 
 	return false;
 }
+
+// ---------- Read Tactics ----------
+EStateTreeRunStatus FCompanionReadTacticsTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	// reads on enter too so the outputs are valid before the first tick
+	Read(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FCompanionReadTacticsTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	// every tick because the style can change while playing
+	Read(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FCompanionReadTacticsTask::Read(FInstanceDataType& InstanceData)
+{
+	const ACompanionAIController* Companion = Cast<ACompanionAIController>(InstanceData.AIController.Get());
+	const UCompanionTactics* Tactics = Companion ? Companion->GetTactics() : nullptr;
+	
+	InstanceData.AttackSpotQuery = Tactics ? Tactics->AttackSpotQuery.Get() : nullptr;
+}

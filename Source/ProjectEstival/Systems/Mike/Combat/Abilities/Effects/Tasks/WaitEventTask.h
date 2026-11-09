@@ -25,5 +25,6 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Wait Event")
 	TArray<TObjectPtr<UAbilityEffect>> Effects;
 
+	virtual void OnStart_Implementation() override;
 	virtual void OnAbilityEvent_Implementation(FGameplayTag ReceivedEvent) override;
 };

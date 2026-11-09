@@ -35,7 +35,7 @@ class PROJECTESTIVAL_API UModifyResource : public UAbilityEffectPayload
 	GENERATED_BODY()
 	
 	protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (TitleProperty = "{TagName}"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (TitleProperty = "{ModifyResource}"))
 	TArray<FModifyOption> ResourceChanges;
 	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

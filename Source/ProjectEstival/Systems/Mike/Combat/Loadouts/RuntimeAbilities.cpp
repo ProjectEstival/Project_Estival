@@ -116,7 +116,11 @@ void UAbilityActivation::End(const bool bInterrupted)
 	if (!bActive) return;
 	bActive = false;
 
-	if (!bInterrupted && !bCommitted) bCommitted = Loadout->TryCommit(Slot, Ability, bFromFollowUp);
+	if (!bInterrupted && !bCommitted && Loadout->TryCommit(Slot, Ability, bFromFollowUp))
+	{
+		bCommitted = true;
+		Loadout->OnAbilityCommitted.Broadcast(Slot, Ability);
+	}
 
 	if (bInterrupted && bMontagePlaying)
 	{

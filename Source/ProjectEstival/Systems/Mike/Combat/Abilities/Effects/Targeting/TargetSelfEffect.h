@@ -6,7 +6,8 @@
 #include "Abstract/TargetingEffect.h"
 #include "TargetSelfEffect.generated.h"
 
-UCLASS()
+/** Applies its payloads to the caster. */
+UCLASS(meta = (DisplayName = "Target Self"))
 class PROJECTESTIVAL_API UTargetSelfEffect : public UTargetingEffect
 {
 	GENERATED_BODY()

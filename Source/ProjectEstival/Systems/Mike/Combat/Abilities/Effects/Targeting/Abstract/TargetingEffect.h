@@ -19,6 +19,6 @@ public:
 	virtual void Execute_Implementation(const FAbilityContext& Context) const override final;
 	
 protected:
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Targeting")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Targeting", meta = (EditCondition = "bAllowsTargetLimits", EditConditionHides, HideEditConditionToggle))
 	bool bNearestFirst = true;
 };

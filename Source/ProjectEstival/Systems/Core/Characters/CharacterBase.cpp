@@ -7,6 +7,7 @@
 #include "EnhancedInputComponent.h"
 #include "InputAction.h"
 #include "Systems/Core/TagDefinitions.h"
+#include "Systems/Mike/Combat/Loadouts/AimComponent.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
 AEstivalBaseCharacter::AEstivalBaseCharacter()
@@ -20,6 +21,7 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 	Statistics = CreateDefaultSubobject<UStatisticsComponent>(TEXT("Statistics"));
 	Resources = CreateDefaultSubobject<UResourceComponent>(TEXT("Resources"));
 	Loadout = CreateDefaultSubobject<ULoadoutComponent>(TEXT("Loadout"));
+	Aim = CreateDefaultSubobject<UAimComponent>(TEXT("Aim"));
 
 	// rotation is driven by the LookAt component
 	bUseControllerRotationYaw = false;
@@ -63,12 +65,12 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	{
 		Input->BindActionValueLambda(StickAimAction, ETriggerEvent::Triggered, [this](const FInputActionValue& Value)
 		{
-			Loadout->SetAimDirection(InputToWorld(Value.Get<FVector2D>()));
+			Aim->SetAimDirection(InputToWorld(Value.Get<FVector2D>()));
 		});
 
 		Input->BindActionValueLambda(StickAimAction, ETriggerEvent::Completed, [this](const FInputActionValue&)
 		{
-			Loadout->ClearAim();
+			Aim->ClearAim();
 		});
 	}
 
@@ -76,7 +78,7 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	{
 		Input->BindActionValueLambda(MouseAimAction, ETriggerEvent::Triggered, [this](const FInputActionValue&)
 		{
-			Loadout->AimAtCursor();
+			Aim->AimAtCursor();
 		});
 	}
 }
@@ -113,7 +115,7 @@ void AEstivalBaseCharacter::BeginPlay()
 void AEstivalBaseCharacter::Tick(const float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
-	LookAt->SetLookDirection(Loadout->GetAimDirection());
+	LookAt->SetLookDirection(Aim->GetAimDirection());
 }
 
 void AEstivalBaseCharacter::OnAbilityActivated(FGameplayTag Slot, UAbilityDefinition* Ability)
@@ -139,9 +141,9 @@ void AEstivalBaseCharacter::OnAbilityEnded(FGameplayTag Slot, UAbilityDefinition
 
 void AEstivalBaseCharacter::FaceAim()
 {
-	const FVector Aim = Loadout->GetAimDirection();
-	SetActorRotation(Aim.Rotation());
-	LookAt->SetLookDirection(Aim);
+	const FVector Direction = Aim->GetAimDirection();
+	SetActorRotation(Direction.Rotation());
+	LookAt->SetLookDirection(Direction);
 }
 
 void AEstivalBaseCharacter::OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue)

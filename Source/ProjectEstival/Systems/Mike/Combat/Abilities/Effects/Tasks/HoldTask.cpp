@@ -1,6 +1,7 @@
 #include "HoldTask.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
+#include "Systems/Mike/Combat/Loadouts/AimComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 
 UHoldTask::UHoldTask()
@@ -51,7 +52,7 @@ void UHoldTask::Release()
 
 	if (bAimAtLocation)
 	{
-		ReleaseContext.Origin = GetLoadout()->GetAimLocation(MaxAimRange);
+		ReleaseContext.Origin = GetLoadout()->GetAim()->GetAimLocation(MaxAimRange);
 		ReleaseContext.bFollowCaster = false;
 	}
 
@@ -66,7 +67,7 @@ void UHoldTask::UpdateIndicator() const
 	Super::UpdateIndicator();
 
 	AActor* AimIndicator = GetIndicator();
-	if (bAimAtLocation && IsValid(AimIndicator)) AimIndicator->SetActorLocation(GetLoadout()->GetAimLocation(MaxAimRange));
+	if (bAimAtLocation && IsValid(AimIndicator)) AimIndicator->SetActorLocation(GetLoadout()->GetAim()->GetAimLocation(MaxAimRange));
 }
 
 const FHoldTier* UHoldTask::FindTier(const float HeldTime) const

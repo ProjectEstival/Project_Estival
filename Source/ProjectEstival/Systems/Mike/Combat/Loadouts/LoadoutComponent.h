@@ -13,6 +13,7 @@
 class ULoadout;
 class UStatisticsComponent;
 class UAbilityTask;
+class UAimComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnLoadoutChanged, ULoadout*, OldLoadout, ULoadout*, NewLoadout);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnAbilityStateChanged, FGameplayTag, Slot, UAbilityDefinition*, Ability);
@@ -114,30 +115,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Loadout|Input", meta = (Categories = "AbilityEvent"))
 	void SendAbilityEvent(FGameplayTag Event);
 
-	/** Aim in a direction, e.g. the right stick. */
-	UFUNCTION(BlueprintCallable, Category = "Loadout|Aim")
-	void SetAimDirection(FVector Direction);
-
-	/** Aim at a world location, e.g. an AI's target. */
-	UFUNCTION(BlueprintCallable, Category = "Loadout|Aim")
-	void SetAimLocation(FVector Location);
-
-	/** Aim at what is under the mouse cursor, read every time an ability needs it. */
-	UFUNCTION(BlueprintCallable, Category = "Loadout|Aim")
-	void AimAtCursor();
-
-	/** Stop aiming: abilities go where the character faces. */
-	UFUNCTION(BlueprintCallable, Category = "Loadout|Aim")
-	void ClearAim();
-
-	/** The flat direction abilities go in: toward the aim, or where the character faces. */
+	/** Where this character is aiming. */
 	UFUNCTION(BlueprintPure, Category = "Loadout|Aim")
-	FVector GetAimDirection() const;
+	UAimComponent* GetAim();
 
-	/** Where location abilities land, at most MaxRange away (0 = no limit). Direction aim lands MaxRange away along it. */
-	UFUNCTION(BlueprintPure, Category = "Loadout|Aim")
-	FVector GetAimLocation(float MaxRange = 0.f) const;
-	
+protected:
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
+	bool bConsumesResources = true;
+ 
+	UPROPERTY(EditAnywhere, Category = "Loadout|Debug")
+	bool bPrintDebug = false;
+
+private:
+	friend class UAbilityActivation;
+	friend class UAbilityTask;
+
 	FAbilityContext MakeContext(UAbilityDefinition* Ability, UAbilityActivation* Activation = nullptr);
 	UStatisticsComponent* GetStats();
 	float GetAttackSpeed();
@@ -149,21 +141,8 @@ public:
 	void CancelTasks(const UAbilityActivation* Activation);
 	bool HasTaskKeepingActive(const UAbilityActivation* Activation) const;
 
-protected:
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Loadout")
-	bool bConsumesResources = true;
- 
-	UPROPERTY(EditAnywhere, Category = "Loadout|Debug")
-	bool bPrintDebug = false;
-
-private:
-	enum class EAimMode : uint8 { None, Direction, Location, Cursor };
-
 	/** Why Slot can't activate right now. Empty if it can. */
 	FString GetBlockReason(FGameplayTag Slot);
-
-	/** The aimed world point, for location and cursor aim. */
-	bool FindAimPoint(FVector& OutPoint) const;
 
 	void SetFollowUp(FGameplayTag Slot, UAbilityDefinition* FollowUp);
 	void ClearFollowUp(FGameplayTag Slot, bool bBroadcast);
@@ -188,6 +167,9 @@ private:
 	TObjectPtr<UResourceComponent> ResourceComponent;
 
 	UPROPERTY(Transient)
+	TObjectPtr<UAimComponent> AimComponent;
+
+	UPROPERTY(Transient)
 	TObjectPtr<UAbilityActivation> Active;
 
 	UPROPERTY(Transient)
@@ -197,7 +179,4 @@ private:
 	TMap<FGameplayTag, FAbilitySlot> Slots;
 
 	TSet<FGameplayTag> HeldSlots;
-
-	EAimMode AimMode = EAimMode::None;
-	FVector Aim = FVector::ZeroVector;
 };

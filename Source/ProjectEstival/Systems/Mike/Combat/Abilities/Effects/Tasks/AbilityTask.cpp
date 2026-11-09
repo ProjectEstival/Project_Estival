@@ -4,6 +4,7 @@
 #include "Engine/LatentActionManager.h"
 #include "GameFramework/Pawn.h"
 #include "UObject/UnrealType.h"
+#include "Systems/Mike/Combat/Loadouts/AimComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 
 void UAbilityTask::Execute_Implementation(const FAbilityContext& InContext) const
@@ -87,7 +88,7 @@ FAbilityContext UAbilityTask::GetContext() const
 	if (!Current.bFollowCaster || !IsValid(Current.Instigator) || !IsValid(Current.Loadout)) return Current;
 
 	Current.Origin = Current.Instigator->GetActorLocation();
-	Current.Direction = Current.Loadout->GetAimDirection();
+	Current.Direction = Current.Loadout->GetAim()->GetAimDirection();
 	return Current;
 }
 

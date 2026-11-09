@@ -1,9 +1,9 @@
 ﻿#include "LoadoutComponent.h"
 #include "Loadout.h"
+#include "AimComponent.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
 #include "Engine/Engine.h"
-#include "GameFramework/PlayerController.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 #include "Systems/Mike/Combat/Abilities/Effects/Tasks/AbilityTask.h"
 
@@ -290,68 +290,6 @@ void ULoadoutComponent::RepeatIfHeld(const FGameplayTag Slot)
 	else World->GetTimerManager().SetTimerForNextTick(Repeat);
 }
 
-void ULoadoutComponent::SetAimDirection(const FVector Direction)
-{
-	AimMode = EAimMode::Direction;
-	Aim = Direction.GetSafeNormal2D();
-}
-
-void ULoadoutComponent::SetAimLocation(const FVector Location)
-{
-	AimMode = EAimMode::Location;
-	Aim = Location;
-}
-
-void ULoadoutComponent::AimAtCursor()
-{
-	AimMode = EAimMode::Cursor;
-}
-
-void ULoadoutComponent::ClearAim()
-{
-	AimMode = EAimMode::None;
-}
-
-FVector ULoadoutComponent::GetAimDirection() const
-{
-	const AActor* Owner = GetOwner();
-	FVector Direction = AimMode == EAimMode::Direction ? Aim : FVector::ZeroVector;
-
-	if (FVector Point; FindAimPoint(Point)) Direction = (Point - Owner->GetActorLocation()).GetSafeNormal2D();
-
-	return Direction.IsNearlyZero() ? Owner->GetActorForwardVector().GetSafeNormal2D() : Direction;
-}
-
-FVector ULoadoutComponent::GetAimLocation(const float MaxRange) const
-{
-	const FVector From = GetOwner()->GetActorLocation();
-
-	FVector Point;
-	if (!FindAimPoint(Point)) return From + GetAimDirection() * MaxRange;
-	if (MaxRange <= 0.f) return Point;
-
-	const FVector Flat = FVector(Point.X - From.X, Point.Y - From.Y, 0.f).GetClampedToMaxSize(MaxRange);
-	return FVector(From.X + Flat.X, From.Y + Flat.Y, Point.Z);
-}
-
-bool ULoadoutComponent::FindAimPoint(FVector& OutPoint) const
-{
-	if (AimMode == EAimMode::Location)
-	{
-		OutPoint = Aim;
-		return true;
-	}
-
-	const APawn* Pawn = Cast<APawn>(GetOwner());
-	const APlayerController* Player = Pawn ? Pawn->GetController<APlayerController>() : nullptr;
-
-	FHitResult Hit;
-	if (AimMode != EAimMode::Cursor || !Player || !Player->GetHitResultUnderCursor(ECC_Visibility, false, Hit)) return false;
-
-	OutPoint = Hit.Location;
-	return true;
-}
-
 void ULoadoutComponent::AddTask(UAbilityTask* Task)
 {
 	Tasks.Add(Task);
@@ -473,6 +411,19 @@ UResourceComponent* ULoadoutComponent::GetResources()
 	return ResourceComponent.Get();
 }
 
+UAimComponent* ULoadoutComponent::GetAim()
+{
+	if (!AimComponent) AimComponent = GetOwner()->FindComponentByClass<UAimComponent>();
+
+	if (!AimComponent)
+	{
+		AimComponent = NewObject<UAimComponent>(GetOwner());
+		AimComponent->RegisterComponent();
+	}
+
+	return AimComponent.Get();
+}
+
 FAbilityContext ULoadoutComponent::MakeContext(UAbilityDefinition* Ability, UAbilityActivation* Activation)
 {
 	AActor* Owner = GetOwner();
@@ -486,6 +437,6 @@ FAbilityContext ULoadoutComponent::MakeContext(UAbilityDefinition* Ability, UAbi
 	Context.World = GetWorld();
 	Context.Activation = Activation;
 	Context.Origin = Owner->GetActorLocation();
-	Context.Direction = GetAimDirection();
+	Context.Direction = GetAim()->GetAimDirection();
 	return Context;
 }

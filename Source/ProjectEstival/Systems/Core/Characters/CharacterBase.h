@@ -13,6 +13,7 @@
 
 class UInputAction;
 class UAC_LookAtComponent;
+class UAimComponent;
 class UAC_StatusEffectComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
@@ -45,6 +46,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<ULoadoutComponent> Loadout;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UAimComponent> Aim;
 
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MoveAction;
@@ -110,6 +114,12 @@ public:
 	ULoadoutComponent* GetLoadout() const
 	{
 		return Loadout.Get();
+	}
+
+	UFUNCTION(BlueprintCallable, Category= "Character")
+	UAimComponent* GetAim() const
+	{
+		return Aim.Get();
 	}
 	
 	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override

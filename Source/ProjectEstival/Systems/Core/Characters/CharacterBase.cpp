@@ -36,6 +36,7 @@ float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& 
 	if (!IsAlive() || DamageAmount <= 0.f || StatusEffects->HasEffect(TagDefinitions::Status_Invincible)) return 0.f;
 	if (DamageCauser && DamageCauser != this && GetTeamAttitudeTowards(*DamageCauser) == ETeamAttitude::Friendly) return 0.f;
 	
+	DamageAmount *= 1.f - FMath::Clamp(Statistics->GetFloat(TagDefinitions::Stats_DamageReduction), 0.f, 100.f) / 100.f;
 	Resources->ModifyResource(TagDefinitions::Stats_Resources_Health, -DamageAmount);
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 }

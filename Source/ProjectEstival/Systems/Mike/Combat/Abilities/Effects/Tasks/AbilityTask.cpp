@@ -115,6 +115,11 @@ bool UAbilityTask::CommitAbility() const
 	return !Activation || !Activation->IsActive() || Activation->Commit();
 }
 
+float UAbilityTask::GetAttackSpeed() const
+{
+	return IsValid(Context.Loadout) ? Context.Loadout->GetAttackSpeed() : 1.f;
+}
+
 void UAbilityTask::SpawnIndicator()
 {
 	UWorld* World = GetWorld();

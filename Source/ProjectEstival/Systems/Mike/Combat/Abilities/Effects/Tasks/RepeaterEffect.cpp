@@ -9,7 +9,7 @@ URepeaterEffect::URepeaterEffect()
 
 void URepeaterEffect::OnStart_Implementation()
 {
-	if (InitialDelay > 0.f) GetWorld()->GetTimerManager().SetTimer(Timer, this, &URepeaterEffect::Run, InitialDelay, false);
+	if (InitialDelay > 0.f) GetWorld()->GetTimerManager().SetTimer(Timer, this, &URepeaterEffect::Run, Scaled(InitialDelay), false);
 	else Run();
 }
 
@@ -26,7 +26,7 @@ void URepeaterEffect::Run()
 		return;
 	}
 
-	GetWorld()->GetTimerManager().SetTimer(Timer, this, &URepeaterEffect::Run, Interval, false);
+	GetWorld()->GetTimerManager().SetTimer(Timer, this, &URepeaterEffect::Run, Scaled(Interval), false);
 }
 
 void URepeaterEffect::OnInputReleased_Implementation()
@@ -37,5 +37,10 @@ void URepeaterEffect::OnInputReleased_Implementation()
 float URepeaterEffect::GetProgress_Implementation() const
 {
 	const float TotalTime = InitialDelay + Interval * (TotalRepeats - 1);
-	return TotalTime > 0.f ? GetElapsedTime() / TotalTime : -1.f;
+	return TotalTime > 0.f ? GetElapsedTime() / Scaled(TotalTime) : -1.f;
+}
+
+float URepeaterEffect::Scaled(const float Seconds) const
+{
+	return bScaleWithAttackSpeed ? Seconds / GetAttackSpeed() : Seconds;
 }

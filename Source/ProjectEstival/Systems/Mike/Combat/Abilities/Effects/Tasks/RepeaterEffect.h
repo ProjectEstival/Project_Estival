@@ -27,6 +27,10 @@ protected:
 	float Interval = 0.2f;
 	
 	
+	/** Attack speed shortens the delay and the time between runs. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
+	bool bScaleWithAttackSpeed = false;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Repeat")
 	bool bStopOnRelease = false;
 	
@@ -38,6 +42,7 @@ protected:
 
 private:
 	void Run();
+	float Scaled(float Seconds) const;
 
 	FTimerHandle Timer;
 	int32 RunCount = 0;

@@ -93,6 +93,9 @@ protected:
 	bool CommitAbility() const;
 
 	UFUNCTION(BlueprintPure, Category = "Task")
+	float GetAttackSpeed() const;
+
+	UFUNCTION(BlueprintPure, Category = "Task")
 	AActor* GetIndicator() const { return SpawnedIndicator; }
 
 	ULoadoutComponent* GetLoadout() const { return Context.Loadout; }

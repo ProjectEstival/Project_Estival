@@ -6,7 +6,7 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "DashEffect.generated.h"
 
-/** Launches the caster the way it is moving. */
+/** Launches the caster the way it is moving, or forward when standing still. */
 UCLASS(meta = (DisplayName = "Dash"))
 class PROJECTESTIVAL_API UDashEffect : public UAbilityEffect
 {

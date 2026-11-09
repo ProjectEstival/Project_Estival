@@ -40,6 +40,7 @@ class UOverTimeComponent : public UActorComponent
 
 public:
 	void Start(const UOverTimePayload* InSource, const FAbilityContext& InContext);
+	bool IsTicking(FGameplayTag InStatus) const;
 
 private:
 	void Pulse();

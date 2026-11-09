@@ -16,10 +16,12 @@ bool UOverTimePayload::TryApplySelf_Implementation(const FAbilityContext& Contex
 		UAC_StatusEffectComponent* StatusEffects = Character ? Character->GetStatusEffects() : nullptr;
 		if (!StatusEffects) return false;
 
-		const bool bAlreadyTicking = StatusEffects->HasEffect(Status);
-
 		StatusEffects->AddEffect(Status, Duration + 0.01f);
-		if (bAlreadyTicking) return true;
+
+		for (TInlineComponentArray<UOverTimeComponent*> OverTimeComps(Target); const UOverTimeComponent* Existing : OverTimeComps)
+		{
+			if (Existing->IsTicking(Status)) return true;
+		}
 	}
 
 	UOverTimeComponent* OverTime = NewObject<UOverTimeComponent>(Target);
@@ -36,6 +38,11 @@ void UOverTimeComponent::Start(const UOverTimePayload* InSource, const FAbilityC
 	PulsesLeft = FMath::Max(1, FMath::FloorToInt(Source->Duration / Source->Interval + UE_KINDA_SMALL_NUMBER));
 
 	GetWorld()->GetTimerManager().SetTimer(Timer, this, &UOverTimeComponent::Pulse, Source->Interval, true);
+}
+
+bool UOverTimeComponent::IsTicking(const FGameplayTag InStatus) const
+{
+	return Source && Source->Status == InStatus && IsValid(Context.Instigator);
 }
 
 void UOverTimeComponent::Pulse()

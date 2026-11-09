@@ -18,6 +18,6 @@ void UWaitEventTask::OnAbilityEvent_Implementation(const FGameplayTag ReceivedEv
 {
 	if (!ReceivedEvent.MatchesTagExact(Event)) return;
 
-	ExecuteAll(Effects, GetContext());
 	if (bOnce) Finish();
+	ExecuteAll(Effects, GetContext());
 }

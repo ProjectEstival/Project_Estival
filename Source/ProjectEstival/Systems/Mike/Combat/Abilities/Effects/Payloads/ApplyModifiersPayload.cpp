@@ -10,6 +10,6 @@ bool UApplyModifiersPayload::TryApplySelf_Implementation(const FAbilityContext& 
 	const auto Character = Cast<AEstivalBaseCharacter>(Target);
 	if (!Character) return false;
 
-	Character->GetStatistics()->AddTimedModifierSet(Modifiers, const_cast<UApplyModifiersPayload*>(this), Duration);
+	Character->GetStatistics()->AddTimedModifierSet(Modifiers, this, Duration);
 	return true;
 }

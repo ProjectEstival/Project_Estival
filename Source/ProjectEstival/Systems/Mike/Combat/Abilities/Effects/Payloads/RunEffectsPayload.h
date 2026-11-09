@@ -4,7 +4,7 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "RunEffectsPayload.generated.h"
 
-/** Runs effects at the receiver: Origin moves to it and Direction points from the previous origin toward it (explosion on hit, chain to the next enemy). */
+/** Runs effects at the receiver: Origin moves to it and Direction points from the previous origin toward it (explosion on hit). An Area inside it also finds the receiver. */
 UCLASS(meta = (DisplayName = "Run Effects"))
 class PROJECTESTIVAL_API URunEffectsPayload : public UAbilityEffectPayload
 {

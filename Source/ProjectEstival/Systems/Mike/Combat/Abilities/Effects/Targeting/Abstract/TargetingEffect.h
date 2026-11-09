@@ -7,7 +7,7 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "TargetingEffect.generated.h"
 
-UCLASS(Abstract, NotBlueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
+UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories, HideFunctions = (Execute))
 class PROJECTESTIVAL_API UTargetingEffect : public UTargetingEffectBase
 {
 	GENERATED_BODY()

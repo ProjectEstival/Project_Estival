@@ -53,7 +53,7 @@ int32 UStatisticsComponent::GetInt(const FGameplayTag Stat, const int32 Fallback
 	return FMath::RoundToInt(GetFloat(Stat, Fallback));
 }
  
-void UStatisticsComponent::AddModifier(const FGameplayTag StatTag, const FStatModifier Modifier, UObject* Source)
+void UStatisticsComponent::AddModifier(const FGameplayTag StatTag, const FStatModifier Modifier, const UObject* Source)
 {
 	if (!HasStat(StatTag)) return;
  
@@ -65,12 +65,12 @@ void UStatisticsComponent::AddModifier(const FGameplayTag StatTag, const FStatMo
 	if (FStatChange Change; Recalculate(StatTag, Change)) BroadcastChanges({ Change });
 }
 
-void UStatisticsComponent::AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source)
+void UStatisticsComponent::AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, const UObject* Source)
 {
 	for (const auto& Mod : Set) AddModifier(Mod.Key, Mod.Value, Source);
 }
 
-void UStatisticsComponent::AddTimedModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source, const float Duration)
+void UStatisticsComponent::AddTimedModifierSet(TMap<FGameplayTag, FStatModifier> Set, const UObject* Source, const float Duration)
 {
 	if (!Source) return;
 
@@ -85,17 +85,17 @@ void UStatisticsComponent::AddTimedModifierSet(TMap<FGameplayTag, FStatModifier>
 
 	World->GetTimerManager().SetTimer(Handle, FTimerDelegate::CreateWeakLambda(this, [this, WeakSource]()
 	{
-		if (UObject* ExpiredSource = WeakSource.Get()) RemoveAllFromSource(ExpiredSource);
+		if (const UObject* ExpiredSource = WeakSource.Get()) RemoveAllFromSource(ExpiredSource);
 	}), Duration, false);
 }
 
-void UStatisticsComponent::ApplyModifierAsset(UStatModifierSet* Set, UObject* Source)
+void UStatisticsComponent::ApplyModifierAsset(UStatModifierSet* Set, const UObject* Source)
 {
 	if (!Set) return;
 	AddModifierSet(Set->Modifiers, Source);
 }
  
-int32 UStatisticsComponent::RemoveAllFromSource(UObject* Source)
+int32 UStatisticsComponent::RemoveAllFromSource(const UObject* Source)
 {
 	if (!Source) return 0;
  

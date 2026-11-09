@@ -24,7 +24,7 @@ struct FActiveStatModifier
 	FStatModifier Modifier;
  
 	UPROPERTY(VisibleAnywhere, Category = "Stats")
-	TObjectPtr<UObject> Source = nullptr;
+	TObjectPtr<const UObject> Source = nullptr;
 };
  
 USTRUCT(BlueprintType)

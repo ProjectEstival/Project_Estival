@@ -233,8 +233,9 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		
 	if (InstanceData.bDrawDebug && InstanceData.AttackTarget)
 	{
-		// red linem means who they fighting. draws every tick
-		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), FColor::Red, false, -1.f, 0, 3.f);
+		// line to who they fight, in the style's debug color (red if no style)
+		const FColor LineColor = Tactics ? Tactics->DebugColor : FColor::Red;
+		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), LineColor, false, -1.f, 0, 3.f);
 	}
 	
 	// global task: keeps running for the whole tree

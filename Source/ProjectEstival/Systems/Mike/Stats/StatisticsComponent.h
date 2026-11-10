@@ -3,6 +3,7 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "GameplayTagContainer.h"
+#include "UObject/ObjectKey.h"
 #include "StatTypes.h"
 #include "StatisticsComponent.generated.h"
  
@@ -41,16 +42,20 @@ public:
 	int32 GetInt(FGameplayTag Stat, int32 Fallback = 0) const;
 	
 	UFUNCTION(BlueprintCallable, Category = "Stats",  meta = (Categories = "Stats."))
-	void AddModifier(FGameplayTag StatTag, FStatModifier Modifier, UObject* Source = nullptr);
+	void AddModifier(FGameplayTag StatTag, FStatModifier Modifier, const UObject* Source = nullptr);
 	
 	UFUNCTION(BlueprintCallable, Category = "Stats")
-	void AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, UObject* Source);
+	void AddModifierSet(TMap<FGameplayTag, FStatModifier> Set, const UObject* Source);
+	
+	/** Adds modifiers that remove themselves after Duration (0 = until removed). Adding again from the same source replaces them and restarts the timer. */
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void AddTimedModifierSet(TMap<FGameplayTag, FStatModifier> Set, const UObject* Source, float Duration);
+
+	UFUNCTION(BlueprintCallable, Category = "Stats")
+	void ApplyModifierAsset(UStatModifierSet* Set, const UObject* Source);
 	
 	UFUNCTION(BlueprintCallable, Category = "Stats")
-	void ApplyModifierAsset(UStatModifierSet* Set, UObject* Source);
-	
-	UFUNCTION(BlueprintCallable, Category = "Stats")
-	int32 RemoveAllFromSource(UObject* Source);
+	int32 RemoveAllFromSource(const UObject* Source);
 	
 	UFUNCTION(BlueprintCallable, Category = "Stats")
 	void ClearAllModifiers();
@@ -73,4 +78,6 @@ private:
 	
 	UPROPERTY(Transient)
 	TSet<FGameplayTag> RegisteredStats;
+
+	TMap<TObjectKey<UObject>, FTimerHandle> SourceTimers;
 };

@@ -34,6 +34,8 @@ public:
     
     // Profiles
     FGuid CreateProfile(const FString& ProfileName);
+    bool EditProfileName(const FGuid& ProfileId, const FString& NewName);
+    bool DeleteProfile(const FGuid& ProfileId);
     TArray<FProfileSummary> GetUnassignedProfiles() const;
     
     // Onboarding
@@ -42,6 +44,14 @@ public:
     bool ConfirmProfileSelection(ULocalPlayer* LocalPlayer, const FGuid& ProfileId);
     void ContinueOnboarding();
     bool IsPlayerRegistered(ULocalPlayer* LocalPlayer) const;
+    void RequireProfileForPlayer(ULocalPlayer* LocalPlayer);
+    bool IsMandatoryProfilePlayer(const ULocalPlayer* LocalPlayer) const;
+    
+    // Saving / loading
+    UFUNCTION(BlueprintCallable, Category = "Profiles")
+    UPlayerProfileSaveGame* GetProfile(ULocalPlayer* LocalPlayer);
+    UFUNCTION(BlueprintCallable, Category = "Profiles")
+    bool SaveProfile(ULocalPlayer* LocalPlayer);
     
 private:
     int32 MaxPlayers = 4;
@@ -50,7 +60,7 @@ private:
     // Input
     friend class FPlayerJoinInputProcessor;
     TSharedPtr<FPlayerJoinInputProcessor> InputProcessor;
-    bool HandlePreprocessorKeyDown(const FKeyEvent& KeyEvent);
+    bool HandlePreprocessorJoinKeyDown(const FKeyEvent& KeyEvent);
     void HandleJoinInput(FInputDeviceId InputDeviceId);
     bool HandleCancelInput(FInputDeviceId InputDeviceId) const;
     
@@ -61,6 +71,7 @@ private:
     TArray<TObjectPtr<ULocalPlayer>> TemporaryPlayers;
     UPROPERTY()
     TObjectPtr<ULocalPlayer> CurrentOnboardingPlayer;
+    TWeakObjectPtr<ULocalPlayer> MandatoryProfilePlayer;
     void EnqueuePlayer(ULocalPlayer* LocalPlayer);
     void ShowNextOnboardingPlayer();
     

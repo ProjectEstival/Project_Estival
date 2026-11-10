@@ -13,6 +13,7 @@
 
 class UInputAction;
 class UAC_LookAtComponent;
+class UAimComponent;
 class UAC_StatusEffectComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
@@ -46,11 +47,22 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Resources")
 	TObjectPtr<ULoadoutComponent> Loadout;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
+	TObjectPtr<UAimComponent> Aim;
+
 	UPROPERTY(EditAnywhere, Category="Input")
 	TObjectPtr<UInputAction> MoveAction;
 	
 	UPROPERTY(EditDefaultsOnly, Category= "Input")
 	TMap<TObjectPtr<UInputAction>, FGameplayTag> AbilityInputMap;
+
+	/** Right stick (Axis2D), set up like MoveAction. Aims abilities while held. */
+	UPROPERTY(EditDefaultsOnly, Category= "Input")
+	TObjectPtr<UInputAction> StickAimAction;
+
+	/** Mouse movement. Once the mouse moves, abilities aim at the cursor until the stick is used. */
+	UPROPERTY(EditDefaultsOnly, Category= "Input")
+	TObjectPtr<UInputAction> MouseAimAction;
 	
 	UPROPERTY(EditDefaultsOnly, Category = "Combat")
 	FGenericTeamId DefaultTeam = FGenericTeamId(0);
@@ -65,6 +77,7 @@ public:
 
 	AEstivalBaseCharacter();
 	virtual void BeginPlay() override;
+	virtual void Tick(float DeltaSeconds) override;
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
 	
 	UFUNCTION(BlueprintCallable, Category="Movement")
@@ -97,6 +110,18 @@ public:
 		return Resources.Get();
 	}
 	
+	UFUNCTION(BlueprintCallable, Category= "Character")
+	ULoadoutComponent* GetLoadout() const
+	{
+		return Loadout.Get();
+	}
+
+	UFUNCTION(BlueprintCallable, Category= "Character")
+	UAimComponent* GetAim() const
+	{
+		return Aim.Get();
+	}
+	
 	virtual void SetGenericTeamId(const FGenericTeamId& TeamID) override
 	{
 		this->TeamId = TeamID;
@@ -116,12 +141,28 @@ public:
 private:
 	UFUNCTION()
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue);
+	
 	UFUNCTION()
 	void OnStatusEffectChanged(FGameplayTag Tag);
+	
 	UFUNCTION()
 	void OnStatChanged(FGameplayTag Stat, float NewValue, float OldValue);
+	
 	UFUNCTION()
 	void BindAbilityInput(UEnhancedInputComponent* Input, const UInputAction* Action, FGameplayTag AbilityTag);
+	
+	UFUNCTION()
+	void OnAbilityActivated(FGameplayTag Slot, UAbilityDefinition* Ability);
+	
+	UFUNCTION()
+	void OnAbilityCommitted(FGameplayTag Slot, UAbilityDefinition* Ability);
+	
+	UFUNCTION()
+	void OnAbilityEnded(FGameplayTag Slot, UAbilityDefinition* Ability);
+
+	/** Turns stick input into a world direction, relative to where the camera looks. */
+	FVector InputToWorld(FVector2D Axis) const;
+	void FaceAim();
 	void Die();
 	bool bIsDead = false;
 	FGenericTeamId TeamId = FGenericTeamId::NoTeam;

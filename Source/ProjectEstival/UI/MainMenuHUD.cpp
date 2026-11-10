@@ -14,13 +14,16 @@ void AMainMenuHUD::BeginPlay()
     if (!GI || !OwningPC) return;
     
     // Only local player 0's HUD manages global onboarding UI
-    if (OwningPC->GetLocalPlayer() != GI->GetLocalPlayerByIndex(0)) return;
+    ULocalPlayer* FirstPlayer = GI->GetLocalPlayerByIndex(0);
+    if (OwningPC->GetLocalPlayer() != FirstPlayer) return;
     
     // Player profile setup
     PlayerProfileSubsystem = GI->GetSubsystem<UPlayerProfileSubsystem>();
     if (!PlayerProfileSubsystem) return;
     PlayerProfileSubsystem->OnOnboardingPlayerChanged.AddDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
     PlayerProfileSubsystem->OnProfileSelectionCancelRequested.AddDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
+    
+    PlayerProfileSubsystem->RequireProfileForPlayer(FirstPlayer);
 }
 void AMainMenuHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
@@ -81,6 +84,16 @@ void AMainMenuHUD::HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer)
     // Close the current popup before advancing the queue
     if (IsValid(ActivePopup) && ActivePopup->GetTargetLocalPlayer() == LocalPlayer)
     {
+        // Close card options
+        if (ActivePopup->IsCardOptionsOpen())
+        {
+            ActivePopup->CloseCardOptions();
+            return;
+        }
+        
+        // Never close onboarding popup for the mandatory player
+        if (PlayerProfileSubsystem->IsMandatoryProfilePlayer(LocalPlayer)) return;
+        
         ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
         ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
         

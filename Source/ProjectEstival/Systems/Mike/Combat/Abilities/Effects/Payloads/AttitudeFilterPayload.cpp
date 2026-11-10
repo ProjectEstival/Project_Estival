@@ -6,7 +6,7 @@
 
 UAttitudeFilterPayload::UAttitudeFilterPayload()
 {
-	SuccessRequirement = ChainPartial;
+	SuccessRequirement = EPayloadSuccess::ChainPartial;
 }
 
 bool UAttitudeFilterPayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const

@@ -10,6 +10,8 @@
 class AActor;
 class APawn;
 class AAIController;
+class AEstivalBaseCharacter;
+class UEnvQuery;
 
 USTRUCT()
 struct FCompanionFindFollowTargetInstanceData
@@ -24,6 +26,15 @@ struct FCompanionFindFollowTargetInstanceData
 	
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	float DistanceToTarget = 0.f;
+	
+	// only switch to another player who is this much closer than the one we follow
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
+	float SwitchMargin = 300.f;
+	
+	// debug
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bDrawDebug = false;
+	
 };
 
 /**
@@ -101,6 +112,10 @@ struct FCompanionFindThreatInstanceData
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="cm"))
 	float EngageRadius = 600.f;
 	
+	// debug AttackTarget 
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bDrawDebug = false;
+	
 	// nearest enemy I can see. Used for looking
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	TObjectPtr<AActor> SeenEnemy;
@@ -108,6 +123,13 @@ struct FCompanionFindThreatInstanceData
 	// Nearest enemy that is fighting the player or me. Used for attacking
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	TObjectPtr<AActor> AttackTarget;
+	
+	// every enemy in the fight. The target query picks from these
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TArray<TObjectPtr<AActor>> Threats;
+
+	// the target query that is still running, or INDEX_NONE. code only
+	int32 QueryId = INDEX_NONE;
 };
 
 // global task: reads what the companion sees and picks enemies to look at and to attack.
@@ -120,6 +142,9 @@ struct FCompanionFindThreatTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+private:
+	static void StartTargetQuery(FStateTreeExecutionContext& Context, FInstanceDataType& InstanceData, UEnvQuery* TargetQuery);
+	
 };
 
 // instance data for Use Ability
@@ -131,14 +156,30 @@ struct FCompanionUseAbilityInstanceData
 	UPROPERTY(EditAnywhere, Category="Context")
 	TObjectPtr<APawn> Pawn;
 
-	/** Which loadout slot to use. Ability.Base is the basic attack */
+	// Which loadout slot to use. Ability.Base is the basic attack 
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
 	FGameplayTag Slot;
+	
+	// Target faced before the ability fires. Leave this unbound for abilities without a target
+	UPROPERTY(EditAnywhere, Category="Input", meta=(Optional))
+	TObjectPtr<AActor> Target;
+	
+	// the target must be inside this cone before we fire the ability 
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, ClampMax=180, Units="Degrees"))
+	float AimAngle = 20.f;
+	
+	// give up after waiting this long, so the tree can pick again
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="s"))
+	float MaxWaitTime = 2.f;
+	
+	// code only
+	float WaitTimer = 0.f;
 };
 
 
  //  Uses an ability through the character, the same function player input calls.
  // Waits while the ability is busy or on cooldown, then succeeds once it fires.
+// Fails on an empty slot or after waiting MaxWaitTime
 USTRUCT()
 struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
 {
@@ -148,6 +189,11 @@ struct FCompanionUseAbilityTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	
+private:
+	static bool IsFacing(const AActor* Me, const AActor* Target, float AimAngle);
+	static bool TryTacticsAbilities(AEstivalBaseCharacter* Me, const AActor* Target);
 };
 
 
@@ -199,4 +245,34 @@ struct FCompanionCatchUpTeleportTask : public FStateTreeTaskCommonBase
 private:
 	static bool IsOnScreen(const UWorld* World, const FVector& Location);
 	static bool TryTeleport(const FInstanceDataType& InstanceData);
+};
+
+// instance data for Read Tactics
+USTRUCT()
+struct FCompanionReadTacticsInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<AAIController> AIController;
+
+	// the bot style's formation. Bind Run Env Query's Query Template to it
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TObjectPtr<UEnvQuery> AttackSpotQuery;
+};
+
+// global task: copies values out of the bot style every tick, so states can bind to them
+USTRUCT(meta=(DisplayName="Read Tactics", Category="Companion"))
+struct FCompanionReadTacticsTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionReadTacticsInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+
+private:
+	static void Read(FInstanceDataType& InstanceData);
 };

@@ -10,6 +10,7 @@ class APlayerController;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerProfileCardClicked, class UPlayerProfileCard*, Card);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerProfileNameCommitted, UPlayerProfileCard*, Card, FText, EnteredName);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnProfileCardLongPressed, UPlayerProfileCard*, Card);
 
 UCLASS()
 class PROJECTESTIVAL_API UPlayerProfileCard : public UUserWidget
@@ -20,6 +21,8 @@ public:
 	// Events
 	FOnPlayerProfileCardClicked OnCardClicked;
 	FOnPlayerProfileNameCommitted OnNameCommitted;
+	UPROPERTY(BlueprintAssignable)
+	FOnProfileCardLongPressed OnCardLongPressed;
 	
 	// Initialization
 	void SetProfile(const FGuid& InProfileId, const FString& InProfileName);
@@ -33,10 +36,12 @@ public:
 	void RejectNameEntry() const;
 	bool IsNamingProfile() const { return bIsNamingProfile; }
 	void FocusNameEntry() const;
+	void BeginNameEdit();
 	
 protected:
 	// Initialization
 	virtual void NativeOnInitialized() override;
+	virtual void NativeDestruct() override;
 	UPROPERTY(Transient)
 	FGuid ProfileId;
 	UPROPERTY(Transient)
@@ -49,8 +54,16 @@ protected:
 	TObjectPtr<UEditableText> ProfileNameText;
 	
 private:
+	// Input
+	UFUNCTION()
+	void HandleCardPressed();
+	UFUNCTION()
+	void HandleCardReleased();
 	UFUNCTION()
 	void HandleCardClicked();
+	void HandleLongPressTriggered();
+	bool bLongPressTriggered = false;
+	FTimerHandle LongPressTimerHandle;
 	
 	// Naming
 	UPROPERTY(Transient)

@@ -6,7 +6,8 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "AddStatusPayload.generated.h"
 
-UCLASS()
+/** Adds statuses to the receiver for their durations. */
+UCLASS(meta = (DisplayName = "Add Status"))
 class PROJECTESTIVAL_API UAddStatusPayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()

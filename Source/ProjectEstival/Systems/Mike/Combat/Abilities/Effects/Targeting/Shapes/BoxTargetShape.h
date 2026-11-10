@@ -4,7 +4,8 @@
 #include "Systems/Mike/Combat/Abilities/Effects/Targeting/Abstract/TargetShape.h"
 #include "BoxTargetShape.generated.h"
 
-UCLASS()
+/** A box. Extend Forward puts it in front of the origin instead of around it. */
+UCLASS(meta = (DisplayName = "Box"))
 class PROJECTESTIVAL_API UBoxTargetShape : public UTargetShape
 {
 	GENERATED_BODY()

@@ -5,6 +5,7 @@
 #include "Components/PrimitiveComponent.h"
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
+#include "GameFramework/MovementComponent.h"
 #include "TimerManager.h"
 
 void UActorPoolSubsystem::Deinitialize()
@@ -12,6 +13,7 @@ void UActorPoolSubsystem::Deinitialize()
 	// The world destroys the actors itself; only the references need dropping.
 	Pools.Empty();
 	PendingReleases.Empty();
+	SuspendedComponents.Empty();
 	Super::Deinitialize();
 }
 
@@ -87,6 +89,7 @@ void UActorPoolSubsystem::ReleaseActorAfterDelay(AActor* Actor, float Delay)
 		Handle,
 		FTimerDelegate::CreateWeakLambda(this,[this, WeakActor]()
 		{
+			PendingReleases.Remove(WeakActor);
 			ReleaseActor(WeakActor.Get());
 		}),
 		Delay,
@@ -98,7 +101,7 @@ void UActorPoolSubsystem::Prewarm(const FActorPoolSettings& Settings, int32 Coun
 	if (!Settings.ActorClass) return;
 	
 	FPooledActorList& Pool = GetPool(Settings);
-	const int32 ToSpawn = FMath::Min(Count, Pool.MaxIdle - Pool.Actors.Num());
+	const int32 ToSpawn = FMath::Min(Count, FMath::Min(Settings.MaxPoolSize, Pool.MaxIdle - Pool.Actors.Num()));
 	for (int32 i = 0; i< ToSpawn; ++i)
 	{
 		if (AActor* Actor = SpawnPooledActor(Settings.ActorClass, FTransform::Identity))
@@ -135,6 +138,22 @@ AActor* UActorPoolSubsystem::SpawnPooledActor(UClass* ActorClass, const FTransfo
 void UActorPoolSubsystem::ActivateActor(AActor* Actor, const FTransform& Transform)
 {
 	Actor->SetActorTransform(Transform, false, nullptr, ETeleportType::ResetPhysics);
+
+	TArray<FSuspendedComponentState> Saved;
+	if (SuspendedComponents.RemoveAndCopyValue(Actor, Saved))
+	{
+		for (const FSuspendedComponentState& State : Saved)
+		{
+			UActorComponent* Component = State.Component.Get();
+			if (!Component) continue;
+
+			if (State.bWasActive) Component->Activate();
+
+			// Activate() force-enables the tick, so the original tick state is applied afterwards.
+			Component->SetComponentTickEnabled(State.bTickWasEnabled);
+		}
+	}
+
 	Actor->SetActorHiddenInGame(false);
 	Actor->SetActorEnableCollision(true);
 	Actor->SetActorTickEnabled(true);
@@ -142,10 +161,7 @@ void UActorPoolSubsystem::ActivateActor(AActor* Actor, const FTransform& Transfo
 
 void UActorPoolSubsystem::DeactivateActor(AActor* Actor)
 {
-	Actor->SetActorHiddenInGame(true);
-	Actor->SetActorEnableCollision(false);
-	Actor->SetActorTickEnabled(false);
-	
+	// Before collision is disabled, because a body with no collision may stop reporting as simulating.
 	TArray<UPrimitiveComponent*> Primitives;
 	Actor->GetComponents<UPrimitiveComponent>(Primitives);
 	for (UPrimitiveComponent* Primitive : Primitives)
@@ -156,4 +172,28 @@ void UActorPoolSubsystem::DeactivateActor(AActor* Actor)
 			Primitive->SetPhysicsAngularVelocityInDegrees(FVector::ZeroVector);
 		}
 	}
+
+	TArray<UActorComponent*> Components;
+	Actor->GetComponents<UActorComponent>(Components);
+
+	TArray<FSuspendedComponentState>& Saved = SuspendedComponents.FindOrAdd(Actor);
+	Saved.Reset();
+	for (UActorComponent* Component : Components)
+	{
+		FSuspendedComponentState& State = Saved.AddDefaulted_GetRef();
+		State.Component = Component;
+		State.bWasActive = Component->IsActive();
+		State.bTickWasEnabled = Component->IsComponentTickEnabled();
+
+		if (State.bWasActive)
+		{
+			if (UMovementComponent* Movement = Cast<UMovementComponent>(Component)) Movement->StopMovementImmediately();
+			Component->Deactivate();
+		}
+		Component->SetComponentTickEnabled(false);
+	}
+
+	Actor->SetActorHiddenInGame(true);
+	Actor->SetActorEnableCollision(false);
+	Actor->SetActorTickEnabled(false);
 }

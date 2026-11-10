@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Components/ActorComponent.h"
 #include "Subsystems/WorldSubsystem.h"
 #include "ActorPoolSubsystem.generated.h"
 
@@ -34,6 +35,14 @@ struct FPooledActorList
 	TArray<TObjectPtr<AActor>> Actors;
 	
 	int32 MaxIdle = 0;
+};
+
+// Component state captured on release so reuse restores it instead of forcing everything on.
+struct FSuspendedComponentState
+{
+	TWeakObjectPtr<UActorComponent> Component;
+	bool bWasActive = false;
+	bool bTickWasEnabled = false;
 };
 
 /** World-scoped pool for arbitrary actors. Pooled actors keep their own class; nothing needs to inherit from a special base.
@@ -81,11 +90,13 @@ public:
 private:
 	FPooledActorList& GetPool(const FActorPoolSettings& Settings);
 	AActor* SpawnPooledActor(UClass* ActorClass, const FTransform& Transform) const;
-	static void ActivateActor(AActor* Actor, const FTransform& Transform);
-	static void DeactivateActor(AActor* Actor);
+	void ActivateActor(AActor* Actor, const FTransform& Transform);
+	void DeactivateActor(AActor* Actor);
 	
 	UPROPERTY()
 	TMap<TSubclassOf<AActor>, FPooledActorList> Pools;
 	
 	TMap<TWeakObjectPtr<AActor>, FTimerHandle> PendingReleases;
+
+	TMap<TWeakObjectPtr<AActor>, TArray<FSuspendedComponentState>> SuspendedComponents;
 };

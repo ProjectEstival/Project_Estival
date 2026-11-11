@@ -17,6 +17,7 @@
 #include "DrawDebugHelpers.h"
 #include "EnvironmentQuery/EnvQueryManager.h"
 #include "StateTreeAsyncExecutionContext.h"
+#include "EngineUtils.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
 
@@ -524,3 +525,39 @@ void FCompanionReadTacticsTask::Read(FInstanceDataType& InstanceData)
 	
 	InstanceData.AttackSpotQuery = Tactics ? Tactics->AttackSpotQuery.Get() : nullptr;
 }
+
+void ACompanionAIController::NextTactics()
+{
+	if (TacticsPresets.IsEmpty())
+	{
+		return;
+	}
+
+	// IndexOfByKey gives INDEX_NONE (-1) if the current style isn't a preset, so we start at 0
+	const int32 Current = TacticsPresets.IndexOfByKey(Tactics);
+
+	// through SetTactics, so OnTacticsChanged fires and Blueprint hears about it
+	SetTactics(TacticsPresets[(Current + 1) % TacticsPresets.Num()]);
+}
+
+#if !UE_BUILD_SHIPPING
+// Estival.Bots.NextTactics: every bot switches to its next style
+static void NextTacticsForAllBots(const TArray<FString>& Args, UWorld* World)
+{
+	if (!World)
+	{
+		return;
+	}
+
+	for (TActorIterator<ACompanionAIController> It(World); It; ++It)
+	{
+		It->NextTactics();
+	}
+}
+
+// registers the command when the game module loads
+static FAutoConsoleCommandWithWorldAndArgs NextTacticsCommand(
+	TEXT("Estival.Bots.NextTactics"),
+	TEXT("Switches every companion bot to its next Bot Tactics preset."),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&NextTacticsForAllBots));
+#endif

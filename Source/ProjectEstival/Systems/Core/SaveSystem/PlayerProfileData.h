@@ -9,10 +9,10 @@ struct FProfileSummary
 {
 	GENERATED_BODY()
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	FGuid ProfileId;
 
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 	FString ProfileName;
 };
 

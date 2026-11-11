@@ -7,6 +7,8 @@
 #include "FMODAudioComponent.h"
 #include "AudioTestbedActor.generated.h"
 
+class UFMODSnapshot;
+
 UCLASS()
 class PROJECTESTIVAL_API AAudioTestbedActor : public AActor
 {
@@ -65,4 +67,7 @@ private:
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFMODAudioComponent> SecondaryAudioComponent;
+	
+	UPROPERTY(EditAnywhere, Category="Audio Test|Snapshots")
+	TObjectPtr<UFMODSnapshot> TestSnapshot;
 };

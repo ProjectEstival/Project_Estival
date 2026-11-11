@@ -7,6 +7,7 @@
 #include "FMODBlueprintStatics.h"
 #include "FMODAudioComponent.h"
 #include "FMODEvent.h"
+#include "FMODSnapshot.h"
 #include "MusicPlayer.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
@@ -22,6 +23,7 @@ void UAudioManager::Initialize(FSubsystemCollectionBase& Collection)
 void UAudioManager::Deinitialize()
 {
 	ParameterTweener.StopAll();
+	StopAllSnapshots(true);
 
 	if (IsValid(MusicPlayer))
 	{
@@ -184,12 +186,12 @@ bool UAudioManager::PlayMusic(UFMODEvent* Event)
 	return MusicPlayer->Play(Event);
 }
 
-void UAudioManager::StopMusic()
+void UAudioManager::StopMusic(bool bAllowFadeOut)
 {
 	if (!IsValid(MusicPlayer)) return;
 
 	ParameterTweener.StopAllForObject(MusicPlayer->GetComponent());
-	MusicPlayer->Stop();
+	MusicPlayer->Stop(bAllowFadeOut);
 }
 
 UFMODAudioComponent* UAudioManager::GetMusicComponent() const
@@ -385,4 +387,105 @@ void UAudioManager::ResetAudioListener(APlayerController* PlayerController)
 	if (!IsValid(PlayerController) || !PlayerController->IsLocalController()) return;
 
 	PlayerController->ClearAudioListenerOverride();
+}
+
+bool UAudioManager::PlaySnapshot(UFMODSnapshot* Snapshot)
+{
+	if (!IsValid(Snapshot) || !Snapshot->AssetGuid.IsValid()) return false;
+	if (!IFMODStudioModule::IsAvailable()) return false;
+
+	const FGuid Key = Snapshot->AssetGuid;
+
+	if (FMOD::Studio::EventInstance** Existing = ActiveSnapshots.Find(Key))
+	{
+		if (*Existing && (*Existing)->isValid())
+		{
+			FMOD_STUDIO_PLAYBACK_STATE State = FMOD_STUDIO_PLAYBACK_STOPPED;
+
+			if ((*Existing)->getPlaybackState(&State) == FMOD_OK && State != FMOD_STUDIO_PLAYBACK_STOPPED)
+				return true;
+
+			(*Existing)->release();
+		}
+
+		ActiveSnapshots.Remove(Key);
+	}
+
+	FMOD::Studio::EventDescription* Description = IFMODStudioModule::Get().GetEventDescription(Snapshot, EFMODSystemContext::Runtime);
+	if (!Description) return false;
+
+	bool bIsSnapshot = false;
+	if (Description->isSnapshot(&bIsSnapshot) != FMOD_OK || !bIsSnapshot) return false;
+
+	FMOD::Studio::EventInstance* Instance = nullptr;
+	FMOD_RESULT Result = Description->createInstance(&Instance);
+
+	if (Result != FMOD_OK || !Instance) return false;
+
+	Result = Instance->start();
+
+	if (Result != FMOD_OK)
+	{
+		Instance->release();
+
+		if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.f, FColor::Blue,
+			FString::Printf(TEXT("[AudioManager] Failed to play snapshot: %s (FMOD: %d)"), *Snapshot->GetName(), static_cast<int32>(Result)));
+
+		return false;
+	}
+
+	ActiveSnapshots.Add(Key, Instance);
+	return true;
+}
+
+bool UAudioManager::StopSnapshot(UFMODSnapshot* Snapshot, bool bImmediate)
+{
+	if (!IsValid(Snapshot)) return false;
+
+	FMOD::Studio::EventInstance** Found = ActiveSnapshots.Find(Snapshot->AssetGuid);
+	if (!Found) return false;
+
+	FMOD::Studio::EventInstance* Instance = *Found;
+	ActiveSnapshots.Remove(Snapshot->AssetGuid);
+
+	if (!Instance || !Instance->isValid()) return false;
+
+	const FMOD_STUDIO_STOP_MODE Mode = bImmediate ? FMOD_STUDIO_STOP_IMMEDIATE : FMOD_STUDIO_STOP_ALLOWFADEOUT;
+
+	const FMOD_RESULT StopResult = Instance->stop(Mode);
+	const FMOD_RESULT ReleaseResult = Instance->release();
+
+	return StopResult == FMOD_OK && ReleaseResult == FMOD_OK;
+}
+
+bool UAudioManager::IsSnapshotActive(UFMODSnapshot* Snapshot) const
+{
+	if (!IsValid(Snapshot)) return false;
+
+	FMOD::Studio::EventInstance* const* Found = ActiveSnapshots.Find(Snapshot->AssetGuid);
+	if (!Found || !*Found || !(*Found)->isValid()) return false;
+
+	FMOD_STUDIO_PLAYBACK_STATE State = FMOD_STUDIO_PLAYBACK_STOPPED;
+
+	return (*Found)->getPlaybackState(&State) == FMOD_OK && State != FMOD_STUDIO_PLAYBACK_STOPPED;
+}
+
+void UAudioManager::StopAllSnapshots(bool bImmediate)
+{
+	if (IFMODStudioModule::IsAvailable() && IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime))
+	{
+		const FMOD_STUDIO_STOP_MODE Mode = bImmediate ? FMOD_STUDIO_STOP_IMMEDIATE : FMOD_STUDIO_STOP_ALLOWFADEOUT;
+
+		for (const auto& Pair : ActiveSnapshots)
+		{
+			FMOD::Studio::EventInstance* Instance = Pair.Value;
+
+			if (!Instance || !Instance->isValid()) continue;
+
+			Instance->stop(Mode);
+			Instance->release();
+		}
+	}
+
+	ActiveSnapshots.Empty();
 }

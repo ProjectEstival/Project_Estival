@@ -31,7 +31,7 @@ bool UMusicPlayer::Play(UFMODEvent* Event)
 		return true;
 	}
 
-	Stop();
+	Stop(true);
 
 	CurrentEvent = Event;
 	MusicComponent->SetEvent(Event);
@@ -40,11 +40,17 @@ bool UMusicPlayer::Play(UFMODEvent* Event)
 	return true;
 }
 
-void UMusicPlayer::Stop()
+void UMusicPlayer::Stop(bool bAllowFadeOut)
 {
 	if (IsValid(MusicComponent))
 	{
-		MusicComponent->Stop();
+		FMOD::Studio::EventInstance* Instance = MusicComponent->StudioInstance;
+
+		if (Instance && Instance->isValid())
+		{
+			Instance->stop(bAllowFadeOut ? FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE);
+		}
+
 		MusicComponent->Release();
 	}
 

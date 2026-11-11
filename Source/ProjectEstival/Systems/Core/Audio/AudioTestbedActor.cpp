@@ -6,6 +6,7 @@
 #include "GameFramework/PlayerController.h"
 #include "Engine/Engine.h"
 #include "InputCoreTypes.h"
+#include "FMODSnapshot.h"
 
 AAudioTestbedActor::AAudioTestbedActor()
 {
@@ -114,7 +115,7 @@ void AAudioTestbedActor::Tick(float DeltaTime)
 
     if (Pressed(EKeys::Three))
     {
-        AudioManager->StopMusic();
+        AudioManager->StopMusic(true);
         PrintTest(TEXT("Music stopped."));
     }
 
@@ -292,25 +293,21 @@ void AAudioTestbedActor::Tick(float DeltaTime)
             PrintTest(FString::Printf(TEXT("Loop B %s = %.3f"), *LoopParameterName.ToString(), Value));
     }
 
-    // -----------------------------------------
-    // BUS VOLUME TESTS
-    // -----------------------------------------
-
+    // SNAPSHOTS
     if (Pressed(EKeys::Z))
-        ToggleVolume(TEXT("Master"), AudioManager->GetMasterVolume(), [this](float V) { return AudioManager->SetMasterVolume(V); });
+    {
+        const bool bSuccess = AudioManager->PlaySnapshot(TestSnapshot);
+        PrintTest(bSuccess ? TEXT("Snapshot started.") : TEXT("FAILED: Snapshot start."));
+    }
 
     if (Pressed(EKeys::X))
-        ToggleVolume(TEXT("Music"), AudioManager->GetMusicVolume(), [this](float V) { return AudioManager->SetMusicVolume(V); });
+    {
+        const bool bSuccess = AudioManager->StopSnapshot(TestSnapshot);
+        PrintTest(bSuccess ? TEXT("Snapshot stopping with fadeout.") : TEXT("FAILED: Snapshot stop."));
+    }
 
     if (Pressed(EKeys::C))
-        ToggleVolume(TEXT("SFX"), AudioManager->GetSFXVolume(), [this](float V) { return AudioManager->SetSFXVolume(V); });
-
-    if (Pressed(EKeys::V))
-        ToggleVolume(TEXT("Ambience"), AudioManager->GetAmbienceVolume(), [this](float V) { return AudioManager->SetAmbienceVolume(V); });
-
-    if (Pressed(EKeys::B))
-        ToggleVolume(TEXT("UI"), AudioManager->GetUIVolume(), [this](float V) { return AudioManager->SetUIVolume(V); });
-
-    if (Pressed(EKeys::N))
-        ToggleVolume(TEXT("Dialogue"), AudioManager->GetDialogueVolume(), [this](float V) { return AudioManager->SetDialogueVolume(V); });
+    {
+        PrintTest(AudioManager->IsSnapshotActive(TestSnapshot) ? TEXT("Snapshot ACTIVE.") : TEXT("Snapshot INACTIVE."));
+    }
 }

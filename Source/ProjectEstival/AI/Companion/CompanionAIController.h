@@ -10,6 +10,9 @@
 class UStateTreeAIComponent;
 class UAIPerceptionComponent;  
 
+// fires when a bot's style changes so a menu can update itself
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnTacticsChanged, UCompanionTactics*, NewTactics);
+
 UCLASS(Abstract)
 class PROJECTESTIVAL_API ACompanionAIController : public AAIController
 {
@@ -38,6 +41,10 @@ class PROJECTESTIVAL_API ACompanionAIController : public AAIController
 	// Set it in BP_CompanionAIController
 	UPROPERTY(EditAnywhere, Category="Companion|Tactics")
 	TObjectPtr<UCompanionTactics> Tactics;
+	
+	// the styles Estival.Bots.NextTactics cycles through.
+	UPROPERTY(EditAnywhere, Category="Companion|Tactics")
+	TArray<TObjectPtr<UCompanionTactics>> TacticsPresets;
 
 public:
 	ACompanionAIController(const FObjectInitializer& ObjectInitializer);
@@ -58,9 +65,24 @@ public:
 	UFUNCTION(BlueprintPure, Category="Companion")
 	UCompanionTactics* GetTactics() const { return Tactics; }
 
-	// swaps the style while playing. A menu or whoever can call it from a Blueprint later
+	// swaps the style while playing. A menu, a spawner or the debug command might call it
 	UFUNCTION(BlueprintCallable, Category="Companion")
-	void SetTactics(UCompanionTactics* NewTactics) { Tactics = NewTactics; }
+	void SetTactics(UCompanionTactics* NewTactics)
+	{
+		if (NewTactics == Tactics)
+		{
+			return;
+		}
+		Tactics = NewTactics;
+		OnTacticsChanged.Broadcast(NewTactics);
+	}
+
+	// a menu binds to this and SetTactics fires it
+	UPROPERTY(BlueprintAssignable, Category="Companion")
+	FOnTacticsChanged OnTacticsChanged;
+
+	// switches to the next style in TacticsPresets. The debug command calls it
+	void NextTactics();
 	
 	// how fast the pawn turns to face when it walks. this is fix for the snapping issue on rotation. 
 	UPROPERTY(EditAnywhere, Category = "Companion", meta=(ClampMin=0))

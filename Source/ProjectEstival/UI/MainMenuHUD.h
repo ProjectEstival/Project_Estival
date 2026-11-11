@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Systems/Core/SaveSystem/PlayerProfileSubsystem.h"
+#include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "CoreMinimal.h"
 #include "HUDBase.h"
+
 #include "MainMenuHUD.generated.h"
 
 class UProfileSelectionPopup;
@@ -34,4 +35,10 @@ private:
 	void HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid ProfileId);
 	UFUNCTION()
 	void HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer);
+	UFUNCTION()
+	void HandlePlayerDisconnected(ULocalPlayer* LocalPlayer);
+	UFUNCTION()
+	void HandleProfileReleased(ULocalPlayer* LocalPlayer) const;
+	UFUNCTION()
+	void HandleProfileNameCommitRequested(ULocalPlayer* LocalPlayer) const;
 };

@@ -2,11 +2,14 @@
 
 #include "Blueprint/UserWidget.h"
 #include "CoreMinimal.h"
+
 #include "PlayerProfileCard.generated.h"
 
-class UButton;
-class UEditableText;
 class APlayerController;
+class UEditableText;
+class ULocalPlayer;
+class UWidget;
+class UButton;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnPlayerProfileCardClicked, class UPlayerProfileCard*, Card);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPlayerProfileNameCommitted, UPlayerProfileCard*, Card, FText, EnteredName);
@@ -34,9 +37,12 @@ public:
 	// Naming
 	void BeginNameEntry();
 	void RejectNameEntry() const;
+	void CancelNameEdit();
 	bool IsNamingProfile() const { return bIsNamingProfile; }
-	void FocusNameEntry() const;
+	void FocusNameEntry(APlayerController* PlayerController) const;
 	void BeginNameEdit();
+	bool CommitNameEntry();
+	void EndNameEntry();
 	
 protected:
 	// Initialization
@@ -53,6 +59,9 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UEditableText> ProfileNameText;
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Input")
+	float LongPressTimerInterval = 0.6f;
+	
 private:
 	// Input
 	UFUNCTION()
@@ -68,6 +77,12 @@ private:
 	// Naming
 	UPROPERTY(Transient)
 	bool bIsNamingProfile = false;
+	UPROPERTY(Transient)
+	FText OriginalProfileName;
+	TWeakObjectPtr<ULocalPlayer> KeyboardFocusPlayer;
+	TWeakObjectPtr<UWidget> KeyboardPreviousFocusWidget;
+	bool bKeyboardFocusCaptured = false;
+	void RestoreKeyboardTextFocus();
 	UFUNCTION()
 	void HandleNameCommitted(const FText& Text, ETextCommit::Type CommitMethod);
 };

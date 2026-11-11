@@ -73,7 +73,7 @@ struct FRoomRow : public FTableRowBase
 	TArray<FActorVariant> ActorVariants;
 
 	/**
-	 *Puts the four bools into the mask, one bit per EDungeonDirection
+	 *Puts the four bools into the mask, one bit per EDirection
 	 */
 	uint8 GetDoorMask() const
 	{

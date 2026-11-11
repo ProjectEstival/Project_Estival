@@ -46,7 +46,7 @@ namespace Direction {
 		uint8 Rotated = 0;
 		for (EDirection Direction : All) {
 			if (HasDoor(DoorMask, Direction)) {
-				Rotated |= ToBit(Direction);
+				Rotated |= ToBit(Opposite(Direction));
 			}
 		}
 		return Rotated;

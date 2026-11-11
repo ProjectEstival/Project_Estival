@@ -24,7 +24,7 @@ private:
 public:
 	bool Initialize(UWorld* World);
 	bool Play(UFMODEvent* Event);
-	void Stop();
+	void Stop(bool bAllowFadeOut = true);
 	void Deinitialize();
 
 	UFMODAudioComponent* GetComponent() const { return MusicComponent; }

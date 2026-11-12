@@ -7,6 +7,7 @@
 #include "GameFramework/Actor.h"
 #include "GameFramework/MovementComponent.h"
 #include "TimerManager.h"
+#include "Systems/Core/EstivalGameInstance.h"
 
 void UActorPoolSubsystem::Deinitialize()
 {
@@ -17,11 +18,11 @@ void UActorPoolSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
-AActor* UActorPoolSubsystem::AcquireActor(const FActorPoolSettings& Settings, const FTransform& Transform)
+AActor* UActorPoolSubsystem::AcquireActorFromSettings(TSubclassOf<AActor> ActorClass, FActorPoolSettings Settings, const FTransform& Transform)
 {
-	if (!Settings.ActorClass) return nullptr;
+	if (!ActorClass) return nullptr;
 	
-	FPooledActorList& Pool = GetPool(Settings);
+	FPooledActorList& Pool = GetPool(ActorClass, Settings);
 	
 	AActor* Actor = nullptr;
 	while (!Actor && Pool.Actors.Num() > 0)
@@ -34,16 +35,36 @@ AActor* UActorPoolSubsystem::AcquireActor(const FActorPoolSettings& Settings, co
 		}
 	}
 	
-	if (!Actor) Actor = SpawnPooledActor(Settings.ActorClass, Transform);
+	if (!Actor) Actor = SpawnPooledActor(ActorClass, Transform);
 	
 	if (Actor && Settings.Lifetime > 0.f) ReleaseActorAfterDelay(Actor, Settings.Lifetime);
 	
 	return Actor;
 }
 
-AActor* UActorPoolSubsystem::AcquireActorAtLocation(const FActorPoolSettings& Settings, FVector Location, FRotator Rotation)
+AActor* UActorPoolSubsystem::AcquireActor(const TSubclassOf<AActor> ActorClass, const FTransform& Transform)
 {
-	return AcquireActor(Settings, FTransform(Rotation, Location));
+	if (const auto GI = GetWorld()->GetGameInstance<UEstivalGameInstance>())
+	{
+		return AcquireActorFromSettings(ActorClass, GI->GetActorPoolSettings(ActorClass), Transform);
+	}
+	
+	return SpawnPooledActor(ActorClass, Transform);
+}
+
+AActor* UActorPoolSubsystem::AcquireActorAtLocation(TSubclassOf<AActor> ActorClass, FVector Location, FRotator Rotation)
+{
+	if (const auto GI = GetWorld()->GetGameInstance<UEstivalGameInstance>())
+	{
+		return AcquireActorAtLocationFromSettings(ActorClass, GI->GetActorPoolSettings(ActorClass), Location, Rotation);
+	}
+	
+	return SpawnPooledActor(ActorClass, FTransform(Rotation, Location));
+}
+
+AActor* UActorPoolSubsystem::AcquireActorAtLocationFromSettings(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings, FVector Location, FRotator Rotation)
+{
+	return AcquireActorFromSettings(ActorClass, Settings, FTransform(Rotation, Location));
 }
 
 void UActorPoolSubsystem::ReleaseActor(AActor* Actor)
@@ -96,15 +117,15 @@ void UActorPoolSubsystem::ReleaseActorAfterDelay(AActor* Actor, float Delay)
 		false);
 }
 
-void UActorPoolSubsystem::Prewarm(const FActorPoolSettings& Settings, int32 Count)
+void UActorPoolSubsystem::Prewarm(const TSubclassOf<AActor> ActorClass, FActorPoolSettings& Settings, int32 Count)
 {
-	if (!Settings.ActorClass) return;
+	if (!ActorClass) return;
 	
-	FPooledActorList& Pool = GetPool(Settings);
+	FPooledActorList& Pool = GetPool(ActorClass, Settings);
 	const int32 ToSpawn = FMath::Min(Count, FMath::Min(Settings.MaxPoolSize, Pool.MaxIdle - Pool.Actors.Num()));
 	for (int32 i = 0; i< ToSpawn; ++i)
 	{
-		if (AActor* Actor = SpawnPooledActor(Settings.ActorClass, FTransform::Identity))
+		if (AActor* Actor = SpawnPooledActor(ActorClass, FTransform::Identity))
 		{
 			DeactivateActor(Actor);
 			Pool.Actors.Add(Actor);
@@ -112,9 +133,9 @@ void UActorPoolSubsystem::Prewarm(const FActorPoolSettings& Settings, int32 Coun
 	}
 }
 
-FPooledActorList& UActorPoolSubsystem::GetPool(const FActorPoolSettings& Settings)
+FPooledActorList& UActorPoolSubsystem::GetPool(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings)
 {
-	FPooledActorList& Pool = Pools.FindOrAdd(Settings.ActorClass);
+	FPooledActorList& Pool = Pools.FindOrAdd(ActorClass);
 	
 	// Data assets may list the same class with different caps; the largest wins.
 	Pool.MaxIdle = FMath::Max(Pool.MaxIdle, Settings.MaxPoolSize);

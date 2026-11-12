@@ -13,10 +13,6 @@ struct FActorPoolSettings
 {
 	GENERATED_BODY()
 	
-	// The actor class this pool hands out.
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pooling")
-	TSubclassOf<AActor> ActorClass;
-	
 	// Maximum number of idle actors kept for this class. Actors released beyond this are destroyed.
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Pooling", meta = (ClampMin = "0"))
 	int32 MaxPoolSize = 10;
@@ -63,11 +59,18 @@ public:
 	 A reused actor does not get BeginPlay again, so the caller resets any gameplay state.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
-	AActor* AcquireActor(const FActorPoolSettings& Settings, const FTransform& Transform);
+	AActor* AcquireActorFromSettings(TSubclassOf<AActor> ActorClass, FActorPoolSettings Settings, const FTransform& Transform);
+	
+	UFUNCTION(BlueprintCallable, Category = "Pooling")
+	AActor* AcquireActor(TSubclassOf<AActor> ActorClass, const FTransform& Transform);
+	
+	UFUNCTION(BlueprintCallable, Category = "Pooling")
+	AActor* AcquireActorAtLocation(TSubclassOf<AActor> ActorClass, FVector Location, FRotator Rotation = FRotator::ZeroRotator);
 	
 	/** Same as AcquireActor, but takes a location and optional rotation instead of a full transform. Scale stays at 1. */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
-	AActor* AcquireActorAtLocation(const FActorPoolSettings& Settings, FVector Location, FRotator Rotation = FRotator::ZeroRotator);
+	AActor* AcquireActorAtLocationFromSettings(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings, FVector Location, FRotator Rotation =
+		                                           FRotator::ZeroRotator);
 
 	/**
 	 * Deactivates the actor and returns it to the pool of its class. If that pool already holds its
@@ -85,10 +88,10 @@ public:
 	
 	/**Spawns up to Count inactive actors (never more than Settings.MaxPoolSize) to avoid spawn hitches later. */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
-	void Prewarm(const FActorPoolSettings& Settings, int32 Count);
+	void Prewarm(TSubclassOf<AActor> ActorClass, FActorPoolSettings& Settings, int32 Count);
 	
 private:
-	FPooledActorList& GetPool(const FActorPoolSettings& Settings);
+	FPooledActorList& GetPool(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings);
 	AActor* SpawnPooledActor(UClass* ActorClass, const FTransform& Transform) const;
 	void ActivateActor(AActor* Actor, const FTransform& Transform);
 	void DeactivateActor(AActor* Actor);

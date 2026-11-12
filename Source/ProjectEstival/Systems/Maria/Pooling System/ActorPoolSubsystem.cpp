@@ -117,7 +117,7 @@ void UActorPoolSubsystem::ReleaseActorAfterDelay(AActor* Actor, float Delay)
 		false);
 }
 
-void UActorPoolSubsystem::Prewarm(const TSubclassOf<AActor> ActorClass, FActorPoolSettings& Settings, int32 Count)
+void UActorPoolSubsystem::Prewarm(const TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings, int32 Count)
 {
 	if (!ActorClass) return;
 	

@@ -88,7 +88,7 @@ public:
 	
 	/**Spawns up to Count inactive actors (never more than Settings.MaxPoolSize) to avoid spawn hitches later. */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
-	void Prewarm(TSubclassOf<AActor> ActorClass, FActorPoolSettings& Settings, int32 Count);
+	void Prewarm(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings, int32 Count);
 	
 private:
 	FPooledActorList& GetPool(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings);

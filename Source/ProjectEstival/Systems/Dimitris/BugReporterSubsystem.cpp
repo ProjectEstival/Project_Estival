@@ -55,6 +55,19 @@ FString UBugReporterSubsystem::GetScreenshotPath() const
 
 void UBugReporterSubsystem::SubmitBugReport(EBugReportCategory Category,const FString& Description)
 {
+    if(bIsSubmitting)
+    {
+        UE_LOG(LogTemp,Warning,TEXT("Bug report already submitting"));
+        return;
+    }
+
+    if(Category == EBugReportCategory::None)
+    {
+        UE_LOG(LogTemp,Warning,TEXT("Bug report category not selected"));
+        OnReportFailed.Broadcast();
+        return;
+    }
+    
     if(Description.TrimStartAndEnd().IsEmpty())
     {
         UE_LOG(LogTemp,Warning,TEXT("Bug report description is empty"));
@@ -86,6 +99,7 @@ void UBugReporterSubsystem::SubmitBugReport(EBugReportCategory Category,const FS
     UE_LOG(LogTemp,Warning,TEXT("Stack Trace:\n%s"),*Report.StackTrace);
     UE_LOG(LogTemp,Warning,TEXT("Screenshot: %s"),*ScreenshotPath);
 
+    bIsSubmitting = true;
     SendToDiscord(Report);
     SendToEmail(Report);
 }
@@ -114,7 +128,7 @@ void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
     if(WebhookURL.IsEmpty())
     {
         UE_LOG(LogTemp,Error,TEXT("Discord webhook URL not configured"));
-        OnReportFailed.Broadcast();
+        FinishSubmission(false);
         return;
     }
 
@@ -145,7 +159,7 @@ void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
     if(!FFileHelper::LoadFileToArray(ImageData,*Report.ScreenshotPath))
     {
         UE_LOG(LogTemp,Error,TEXT("Failed to load screenshot"));
-        OnReportFailed.Broadcast();
+        FinishSubmission(false);
         return;
     }
 
@@ -190,7 +204,7 @@ void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
             if(bSuccess && Response.IsValid() && EHttpResponseCodes::IsOk(Response->GetResponseCode()))
             {
                 UE_LOG(LogTemp,Warning,TEXT("Discord report sent!"));
-                OnReportSubmitted.Broadcast();
+                FinishSubmission(true);
             }
             else
             {
@@ -198,11 +212,15 @@ void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
                 const FString ErrorMessage = Response.IsValid() ? Response->GetContentAsString() : TEXT("No HTTP response");
 
                 UE_LOG(LogTemp,Error,TEXT("Discord report failed! HTTP Code: %d | Response: %s"),StatusCode,*ErrorMessage);
-                OnReportFailed.Broadcast();
+                FinishSubmission(false);
             }
         });
 
-    Request->ProcessRequest();
+    if(!Request->ProcessRequest())
+    {
+        UE_LOG(LogTemp,Error,TEXT("Failed to start Discord request"));
+        FinishSubmission(false);
+    }
 }
 
 void UBugReporterSubsystem::SendToEmail(const FBugReportData& Report)
@@ -320,4 +338,17 @@ void UBugReporterSubsystem::SendToEmail(const FBugReportData& Report)
             curl_slist_free_all(Headers);
             curl_easy_cleanup(Curl);
         });
+}
+void UBugReporterSubsystem::FinishSubmission(bool bSuccess)
+{
+    bIsSubmitting = false;
+
+    if(bSuccess)
+    {
+        OnReportSubmitted.Broadcast();
+    }
+    else
+    {
+        OnReportFailed.Broadcast();
+    }
 }

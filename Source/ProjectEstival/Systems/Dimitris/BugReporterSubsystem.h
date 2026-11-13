@@ -7,7 +7,7 @@
 UENUM(BlueprintType)
 enum class EBugReportCategory : uint8
 {
-    Bug,Feedback,Balance
+   None UMETA(DisplayName="Select Category"), Bug,Feedback,Balance
 };
 
 USTRUCT(BlueprintType)
@@ -16,7 +16,7 @@ struct FBugReportData
     GENERATED_BODY()
 
     UPROPERTY(BlueprintReadOnly)
-    EBugReportCategory Category = EBugReportCategory::Bug;
+    EBugReportCategory Category = EBugReportCategory::None;
 
     UPROPERTY(BlueprintReadOnly)
     FString Description;
@@ -42,6 +42,9 @@ class PROJECTESTIVAL_API UBugReporterSubsystem
 public:
     void SendToDiscord(const FBugReportData& Report);
     void SendToEmail(const FBugReportData& Report);
+    
+    UPROPERTY(BlueprintReadOnly,Category="Bug Reporter")
+    bool bIsSubmitting = false;
     
     UPROPERTY(BlueprintAssignable)
     FBugReportEvent OnReportSubmitted;
@@ -70,4 +73,5 @@ public:
 private:
 
     FString ScreenshotPath;
+    void FinishSubmission(bool bSuccess);
 };

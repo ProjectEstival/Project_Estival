@@ -5,6 +5,15 @@
 #include "Engine/LocalPlayer.h"
 #include "Components/Widget.h"
 
+ULocalPlayerSessionDirectory::ULocalPlayerSessionDirectory()
+{
+	PlayerColorSlotOrder = { 0, 1, 2, 3 };
+	PlayerSlotColors.Add(0, FLinearColor(0.05f, 0.25f, 1.0f));
+	PlayerSlotColors.Add(1, FLinearColor(1.0f, 0.05f, 0.05f));
+	PlayerSlotColors.Add(2, FLinearColor(0.05f, 0.8f, 0.12f));
+	PlayerSlotColors.Add(3, FLinearColor(1.0f, 0.78f, 0.02f));
+}
+
 void ULocalPlayerSessionDirectory::RegisterPlayer(ULocalPlayer* LocalPlayer)
 {
 	if (!IsValid(LocalPlayer)) return;
@@ -14,10 +23,16 @@ void ULocalPlayerSessionDirectory::RegisterPlayer(ULocalPlayer* LocalPlayer)
 	Record.PlatformUserId = LocalPlayer->GetPlatformUserId();
 	Record.SlateUser = LocalPlayer->GetSlateUser();
 	Record.PlayerController = LocalPlayer->GetPlayerController(GetWorld());
+	if (Record.PlayerColorSlot == INDEX_NONE) Record.PlayerColorSlot = FindAvailableColorSlot();
+	ApplyPlayerLightColor(LocalPlayer);
 }
 void ULocalPlayerSessionDirectory::UnregisterPlayer(ULocalPlayer* LocalPlayer)
 {
 	if (!IsValid(LocalPlayer)) return;
+	if (const FLocalPlayerSessionRecord* Record = FindPlayer(LocalPlayer))
+	{
+		if (APlayerController* PC = Record->PlayerController.Get()) PC->ResetControllerLightColor();
+	}
 	const TWeakObjectPtr<ULocalPlayer> PlayerKey(LocalPlayer);
 	for (auto It = DeviceOwners.CreateIterator(); It; ++It)
 	{
@@ -79,7 +94,7 @@ const FLocalPlayerSessionRecord* ULocalPlayerSessionDirectory::FindPlayer(const 
 {
 	return IsValid(LocalPlayer) ? Players.Find(TWeakObjectPtr<ULocalPlayer>(const_cast<ULocalPlayer*>(LocalPlayer))) : nullptr;
 }
-const FLocalPlayerSessionRecord* ULocalPlayerSessionDirectory::FindPlayerForDevice(FInputDeviceId InputDeviceId) const
+const FLocalPlayerSessionRecord* ULocalPlayerSessionDirectory::FindPlayerForDevice(const FInputDeviceId InputDeviceId) const
 {
 	const TWeakObjectPtr<ULocalPlayer>* Owner = DeviceOwners.Find(InputDeviceId);
 	return Owner && Owner->IsValid() ? FindPlayer(Owner->Get()) : nullptr;
@@ -89,6 +104,59 @@ FGuid ULocalPlayerSessionDirectory::GetProfileId(const ULocalPlayer* LocalPlayer
 {
 	const FLocalPlayerSessionRecord* Record = FindPlayer(LocalPlayer);
 	return Record ? Record->ProfileId : FGuid();
+}
+int32 ULocalPlayerSessionDirectory::GetPlayerColorSlot(const ULocalPlayer* LocalPlayer) const
+{
+	const FLocalPlayerSessionRecord* Record = FindPlayer(LocalPlayer);
+	return Record ? Record->PlayerColorSlot : INDEX_NONE;
+}
+
+FLinearColor ULocalPlayerSessionDirectory::GetPlayerColor(const ULocalPlayer* LocalPlayer) const
+{
+	const int32 Slot = GetPlayerColorSlot(LocalPlayer);
+	if (const FLinearColor* Color = PlayerSlotColors.Find(Slot)) return *Color;
+	return FLinearColor::White;
+}
+void ULocalPlayerSessionDirectory::SetPlayerSlotColor(const int32 Slot, const FLinearColor Color)
+{
+	if (Slot == INDEX_NONE) return;
+	PlayerSlotColors.Add(Slot, Color);
+	if (!PlayerColorSlotOrder.Contains(Slot)) PlayerColorSlotOrder.Add(Slot);
+	SaveConfig();
+	for (const TPair<TWeakObjectPtr<ULocalPlayer>, FLocalPlayerSessionRecord>& Entry : Players)
+	{
+		if (Entry.Key.IsValid() && Entry.Value.PlayerColorSlot == Slot) ApplyPlayerLightColor(Entry.Key.Get());
+	}
+}
+void ULocalPlayerSessionDirectory::ApplyPlayerLightColor(const ULocalPlayer* LocalPlayer) const
+{
+	// I can't get Unreal to see my DualShock controllers to test this, but if we ever set up the dlls from Sony, this should work(?)
+	const FLocalPlayerSessionRecord* Record = FindPlayer(LocalPlayer);
+	APlayerController* PC = Record ? Record->PlayerController.Get() : nullptr;
+	if (!IsValid(PC)) PC = LocalPlayer ? LocalPlayer->GetPlayerController(GetWorld()) : nullptr;
+	if (IsValid(PC)) PC->SetControllerLightColor(GetPlayerColor(LocalPlayer).ToFColor(true));
+}
+
+int32 ULocalPlayerSessionDirectory::FindAvailableColorSlot() const
+{
+	auto IsSlotInUse = [this](const int32 Slot)
+	{
+		for (const TPair<TWeakObjectPtr<ULocalPlayer>, FLocalPlayerSessionRecord>& Entry : Players)
+		{
+			if (Entry.Key.IsValid() && Entry.Value.PlayerColorSlot == Slot) return true;
+		}
+		return false;
+	};
+	
+	for (const int32 CandidateSlot : PlayerColorSlotOrder)
+	{
+		if (!IsSlotInUse(CandidateSlot)) return CandidateSlot;
+	}
+	
+	int32 OverflowSlot = 0;
+	for (const int32 CandidateSlot : PlayerColorSlotOrder) OverflowSlot = FMath::Max(OverflowSlot, CandidateSlot + 1);
+	while (IsSlotInUse(OverflowSlot)) ++OverflowSlot;
+	return OverflowSlot;
 }
 bool ULocalPlayerSessionDirectory::IsProfileAssigned(const FGuid& ProfileId, const ULocalPlayer* ExceptPlayer) const
 {

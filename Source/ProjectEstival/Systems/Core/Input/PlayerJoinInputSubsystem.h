@@ -22,17 +22,20 @@ class PROJECTESTIVAL_API UPlayerJoinInputSubsystem : public UGameInstanceSubsyst
 public:
 	virtual void Initialize(FSubsystemCollectionBase& Collection) override;
 	virtual void Deinitialize() override;
-	void SetInputEnabled(bool bEnabled) { bInputEnabled = bEnabled; }
+	void SetInputEnabled(bool bEnabled);
 	bool IsInputEnabled() const { return bInputEnabled; }
 	UFUNCTION(BlueprintCallable, Category = "Players|Input")
-	void SetDeviceJoinPolicy(ELocalDeviceJoinPolicy Policy) { DeviceJoinPolicy = Policy; }
+	void SetDeviceJoinPolicy(const ELocalDeviceJoinPolicy Policy) { DeviceJoinPolicy = Policy; }
 	bool JoinDevice(FInputDeviceId InputDeviceId) const;
+	bool ShouldBlockInputForModal(FInputDeviceId InputDeviceId) const;
+	void HandleJoinKeyForBlockedModal(FInputDeviceId InputDeviceId) const;
 	
 private:
 	friend class FPlayerJoinInputProcessor;
 	TSharedPtr<class FPlayerJoinInputProcessor> InputProcessor;
 	bool bInputEnabled = false;
 	bool HandleKeyDown(const FKeyEvent& Event) const;
+	void AssociateConnectedDevices() const;
 	int32 MaxLocalPlayers = 4;
 	ELocalDeviceJoinPolicy DeviceJoinPolicy = ELocalDeviceJoinPolicy::RespectPlatformUser;
 	FDelegateHandle ConnectionChangeHandle;

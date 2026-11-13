@@ -1,8 +1,9 @@
 #pragma once
 
-#include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GameFramework/HUD.h"
+#include "CoreMinimal.h"
+
 #include "HUDBase.generated.h"
 
 class ULocalPlayer;
@@ -37,6 +38,9 @@ struct FWidgetContext
 	
 	UPROPERTY()
 	bool bIsBaseContext = false;
+	
+	UPROPERTY()
+	int32 ZOrder = 0;
 	
 	UPROPERTY()
 	TObjectPtr<UWidget> PreviousFocusWidget = nullptr;
@@ -81,6 +85,8 @@ public:
 	// Retrieve only an existing widget
 	UFUNCTION(BlueprintPure, Category = "UI Manager")
 	UUserWidget* GetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC = nullptr) const;
+	static APlayerController* GetTopmostModalOwner(const UWorld* World);
+	static bool HandleBackForPlayer(const UWorld* World, APlayerController* RequestingPlayer); // Handles back for the topmost modal, only when it belongs to RequestingPlayer
 	
 	// Retrieve the top widget's input mode
 	UFUNCTION(BlueprintPure, Category = "UI Manager")
@@ -98,7 +104,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = "UI Manager")
 	bool bBaseShowCursor;
 	
-	// Each local player owns an independent modal stack and input state.
+	// Each local player owns an independent modal stack and input state
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<ULocalPlayer>, FPlayerWidgetStack> PlayerModalStacks;
 	
@@ -106,5 +112,7 @@ protected:
 	UUserWidget* GetSharedBaseWidget() const;
 	static UWidget* FindFocusedWidgetIn(const UUserWidget* Scope, const APlayerController* PC);
 	static UWidget* FindDefaultFocusableWidget(const UUserWidget* Scope);
+	static bool FindTopmostModal(const UWorld* World, APlayerController*& OutOwner, EManagedUIInputMode& OutInputMode);
 	void ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode InputMode, const bool bShowMouseCursor, APlayerController* PC = nullptr) const;
+	static void EnforceModalInputPolicy(const UWorld* World);
 };

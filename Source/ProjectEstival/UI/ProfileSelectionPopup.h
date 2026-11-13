@@ -5,6 +5,7 @@
 #include "Components/Button.h"
 #include "Blueprint/UserWidget.h"
 #include "PlayerProfileCard.h"
+#include "UI/UIBackHandler.h"
 #include "CoreMinimal.h"
 
 #include "ProfileSelectionPopup.generated.h"
@@ -18,7 +19,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FProfilePopupPlayerEvent, ULocalPlay
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnProfileSelected, ULocalPlayer*, LocalPlayer, FGuid, ProfileId);
 
 UCLASS()
-class PROJECTESTIVAL_API UProfileSelectionPopup : public UUserWidget
+class PROJECTESTIVAL_API UProfileSelectionPopup : public UUserWidget, public IUIBackHandler
 {
 	GENERATED_BODY()
 	
@@ -42,6 +43,10 @@ public:
 	void CancelSelection(); // Optional flow for closing the popup from the UI
 	void CompleteSelection(); // Accessible from MainMenuHUD
 	void RefreshAvailableProfiles();
+	
+	// Stop 'back' button from closing popup while in transient state (options open / mandatory popup) 
+	virtual bool HandleBack_Implementation(APlayerController* Instigator) override;
+	virtual void OnBackPopped_Implementation(APlayerController* Instigator) override;
 	
 	// Details menu
 	UFUNCTION()

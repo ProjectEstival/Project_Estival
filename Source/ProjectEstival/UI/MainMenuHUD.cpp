@@ -70,7 +70,7 @@ void AMainMenuHUD::HandleOnboardingPlayerChanged(ULocalPlayer* LocalPlayer)
     ActivePopup->OnProfileSelected.AddDynamic(this, &AMainMenuHUD::HandleProfileSelected);
     ActivePopup->OnProfileSelectionCancelled.AddDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
 }
-void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid ProfileId)
+void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, const FGuid ProfileId)
 {
     if (!IsValid(PlayerProfileSubsystem) || !IsValid(ActivePopup) || ActivePopup->GetTargetLocalPlayer() != LocalPlayer) return;
     
@@ -108,7 +108,8 @@ void AMainMenuHUD::HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer)
         ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
         ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
         
-        PopWidget(LocalPlayer->GetPlayerController(GetWorld()));
+		// UIBackHandler may already have popped the popup before notifying this cleanup path
+		if (ActivePopup->IsInViewport()) PopWidget(LocalPlayer->GetPlayerController(GetWorld()));
         ActivePopup = nullptr;
     }
     PlayerProfileSubsystem->CancelProfileSelection(LocalPlayer);

@@ -274,6 +274,26 @@ void UProfileSelectionPopup::CancelSelection()
 	CompleteSelection();
 	OnProfileSelectionCancelled.Broadcast(TargetLocalPlayer);
 }
+bool UProfileSelectionPopup::HandleBack_Implementation(APlayerController* Instigator)
+{
+	// Handles transient states; the HUD will pop the popup when this returns false
+	if (!IsValid(Instigator) || !IsValid(TargetLocalPlayer) || Instigator->GetLocalPlayer() != TargetLocalPlayer) return false;
+	
+	if (HasPendingNameEdit() || IsCardOptionsOpen())
+	{
+		OnProfileSelectionCancelled.Broadcast(TargetLocalPlayer);
+		return true;
+	}
+	
+	// The first player's profile is mandatory and its popup must remain open until selection
+	const UPlayerProfileSubsystem* Profiles = GetGameInstance() ? GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>() : nullptr;
+	return Profiles && Profiles->IsMandatoryProfilePlayer(TargetLocalPlayer);
+}
+void UProfileSelectionPopup::OnBackPopped_Implementation(APlayerController* Instigator)
+{
+	// Let MainMenuHUD clean up the onboarding queue after the HUD has popped this widget
+	if (IsValid(Instigator) && IsValid(TargetLocalPlayer) && Instigator->GetLocalPlayer() == TargetLocalPlayer) OnProfileSelectionCancelled.Broadcast(TargetLocalPlayer);
+}
 void UProfileSelectionPopup::CompleteSelection()
 {
 	bSelectionCompleted = true;

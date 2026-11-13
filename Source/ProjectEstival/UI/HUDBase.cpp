@@ -1,15 +1,20 @@
 #include "HUDBase.h"
 
+#include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "Framework/Application/SlateApplication.h"
 #include "Framework/Application/SlateUser.h"
 #include "GameFramework/PlayerController.h"
-#include "Blueprint/UserWidget.h"
-#include "Blueprint/WidgetTree.h"
+#include "Engine/GameViewportClient.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
+#include "Blueprint/UserWidget.h"
+#include "Blueprint/WidgetTree.h"
+#include "UI/UIBackHandler.h"
 
-#include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
-
+namespace
+{
+	int32 HighestManagedWidgetZOrder = 0;
+}
 void AHUDBase::BeginPlay()
 {
 	Super::BeginPlay();
@@ -19,8 +24,7 @@ void AHUDBase::BeginPlay()
 	if (!IsValid(PC)) return;
 	
 	// The root presentation is shared-screen UI. Create it once, for player 0
-	const UGameInstance* GI = GetGameInstance();
-	if (!GI || PC->GetLocalPlayer() != GI->GetLocalPlayerByIndex(0)) return;
+	if (const UGameInstance* GI = GetGameInstance(); !GI || PC->GetLocalPlayer() != GI->GetLocalPlayerByIndex(0)) return;
 	
 	BaseWidget = CreateWidget<UUserWidget>(PC, BaseWidgetClass);
 	if (!BaseWidget) return;
@@ -61,6 +65,8 @@ UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, const in
 	
 	UUserWidget* Widget = CreateOrGetWidget(WidgetClass, PC);
 	if (!Widget) return nullptr;
+	const int32 EffectiveZOrder = FMath::Max(ZOrder, HighestManagedWidgetZOrder + 1);
+	HighestManagedWidgetZOrder = EffectiveZOrder;
 	
 	FWidgetContext Entry;
 	Entry.WidgetClass = WidgetClass;
@@ -68,6 +74,7 @@ UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, const in
 	Entry.InputMode = InputMode;
 	Entry.bShowMouseCursor = bShowMouseCursor;
 	Entry.PC = PC;
+	Entry.ZOrder = EffectiveZOrder;
 	check(!Stack.IsEmpty()); // The per-player base context must remain below every modal.
 	const FWidgetContext& Previous = Stack.Last();
 	Entry.PreviousFocusWidget = FindFocusedWidgetIn(Previous.Widget, PC);
@@ -77,7 +84,8 @@ UUserWidget* AHUDBase::PushWidget(TSubclassOf<UUserWidget> WidgetClass, const in
 	Entry.bPreviousShowMouseCursor = Previous.bShowMouseCursor;
 	Stack.Add(Entry);
 	
-	if (!Widget->IsInViewport()) Widget->AddToViewport(ZOrder);
+	if (Widget->IsInViewport()) Widget->RemoveFromParent();
+	Widget->AddToViewport(EffectiveZOrder);
 	Widget->SetVisibility(ESlateVisibility::Visible);
 	ApplyInputMode(Widget, InputMode, bShowMouseCursor, PC);
 	return Widget;
@@ -88,9 +96,9 @@ UUserWidget* AHUDBase::PopWidget(APlayerController* PC)
 	if (!IsValid(PC) || !IsValid(PC->GetLocalPlayer())) return nullptr;
 	
 	FPlayerWidgetStack* FoundStack = PlayerModalStacks.Find(PC->GetLocalPlayer());
-	if (!FoundStack || FoundStack->Contexts.Num() <= 1) return nullptr; // The base context cannot be popped.
+	if (!FoundStack || FoundStack->Contexts.Num() <= 1) return nullptr; // The base context cannot be popped
 	TArray<FWidgetContext>& Stack = FoundStack->Contexts;
-
+	
 	const FWidgetContext Closed = Stack.Pop();
 	if (IsValid(Closed.Widget)) Closed.Widget->RemoveFromParent();
 	while (!Stack.IsEmpty())
@@ -104,7 +112,7 @@ UUserWidget* AHUDBase::PopWidget(APlayerController* PC)
 		return Top.Widget.Get();
 	}
 	
-	// Restore the exact element focused before this modal was pushed.
+	// Restore the exact element focused before this modal was pushed
 	ApplyInputMode(Closed.PreviousFocusWidget, Closed.PreviousInputMode, Closed.bPreviousShowMouseCursor, PC);
 	PlayerModalStacks.Remove(PC->GetLocalPlayer());
 	return nullptr;
@@ -178,10 +186,46 @@ UWidget* AHUDBase::FindDefaultFocusableWidget(const UUserWidget* Scope)
 		return SlateWidget.IsValid() && SlateWidget->SupportsKeyboardFocus();
 	};
 	if (IsUsableFocusTarget(DesiredFocusWidget)) return DesiredFocusWidget;
-
+	
 	UWidget* FirstFocusableWidget = nullptr;
 	Scope->WidgetTree->ForEachWidget([&](UWidget* Candidate) { if (!FirstFocusableWidget && IsUsableFocusTarget(Candidate)) FirstFocusableWidget = Candidate; });
 	return FirstFocusableWidget;
+}
+bool AHUDBase::FindTopmostModal(const UWorld* World, APlayerController*& OutOwner, EManagedUIInputMode& OutInputMode)
+{
+	OutOwner = nullptr;
+	OutInputMode = EManagedUIInputMode::GameOnly;
+	const UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
+	if (!GI) return false;
+	
+	TSet<const AHUDBase*> VisitedHuDs;
+	int32 HighestZ = MIN_int32;
+	for (const ULocalPlayer* LocalPlayer : GI->GetLocalPlayers())
+	{
+		const APlayerController* PlayerController = LocalPlayer ? LocalPlayer->GetPlayerController(World) : nullptr;
+		const AHUDBase* HUD = PlayerController ? Cast<AHUDBase>(PlayerController->GetHUD()) : nullptr;
+		if (!IsValid(HUD) || VisitedHuDs.Contains(HUD)) continue;
+		VisitedHuDs.Add(HUD);
+		
+		// A shared HUD can own modal stacks for players whose own HUD is not the UI host
+		for (const TPair<TObjectPtr<ULocalPlayer>, FPlayerWidgetStack>& StackPair : HUD->PlayerModalStacks)
+		{
+			const TArray<FWidgetContext>& Contexts = StackPair.Value.Contexts;
+			for (int32 Index = Contexts.Num() - 1; Index >= 0; --Index)
+			{
+				const FWidgetContext& Context = Contexts[Index];
+				if (Context.bIsBaseContext || !IsValid(Context.Widget)) continue;
+				if (Context.ZOrder > HighestZ)
+				{
+					HighestZ = Context.ZOrder;
+					OutOwner = IsValid(Context.PC) ? Context.PC.Get() : (StackPair.Key ? StackPair.Key->GetPlayerController(World) : nullptr);
+					OutInputMode = Context.InputMode;
+				}
+				break;
+			}
+		}
+	}
+	return IsValid(OutOwner);
 }
 
 void AHUDBase::ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode InputMode, const bool bShowMouseCursor, APlayerController* PC) const
@@ -220,4 +264,62 @@ void AHUDBase::ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode In
 			break;
 		}
 	}
+	EnforceModalInputPolicy(PC->GetWorld());
+}
+void AHUDBase::EnforceModalInputPolicy(const UWorld* World)
+{
+	EManagedUIInputMode InputMode = EManagedUIInputMode::GameOnly;
+	if (APlayerController* Owner = nullptr; !FindTopmostModal(World, Owner, InputMode) || InputMode == EManagedUIInputMode::GameOnly) return;
+	if (UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr) Viewport->SetIgnoreInput(true);
+}
+
+APlayerController* AHUDBase::GetTopmostModalOwner(const UWorld* World)
+{
+	APlayerController* Owner = nullptr;
+	EManagedUIInputMode InputMode = EManagedUIInputMode::GameOnly;
+	FindTopmostModal(World, Owner, InputMode);
+	return Owner;
+}
+bool AHUDBase::HandleBackForPlayer(const UWorld* World, APlayerController* RequestingPlayer)
+{
+	if (!IsValid(World) || !IsValid(RequestingPlayer) || !IsValid(RequestingPlayer->GetLocalPlayer())) return false;
+	// A back press from a player underneath another player's modal must not affect either stack
+	if (GetTopmostModalOwner(World) != RequestingPlayer) return false;
+	
+	const UGameInstance* GI = World->GetGameInstance();
+	if (!GI) return false;
+	
+	TSet<AHUDBase*> VisitedHUDs;
+	AHUDBase* ModalHost = nullptr;
+	UUserWidget* ModalWidget = nullptr;
+	int32 HighestZ = MIN_int32;
+	for (const ULocalPlayer* LocalPlayer : GI->GetLocalPlayers())
+	{
+		const APlayerController* PC = LocalPlayer ? LocalPlayer->GetPlayerController(World) : nullptr;
+		AHUDBase* HUD = PC ? Cast<AHUDBase>(PC->GetHUD()) : nullptr;
+		if (!IsValid(HUD) || VisitedHUDs.Contains(HUD)) continue;
+		VisitedHUDs.Add(HUD);
+		
+		const FPlayerWidgetStack* PlayerStack = HUD->PlayerModalStacks.Find(RequestingPlayer->GetLocalPlayer());
+		if (!PlayerStack) continue;
+		for (int32 Index = PlayerStack->Contexts.Num() - 1; Index >= 0; --Index)
+		{
+			const FWidgetContext& Context = PlayerStack->Contexts[Index];
+			if (Context.bIsBaseContext || !IsValid(Context.Widget)) continue;
+			if (Context.ZOrder > HighestZ)
+			{
+				HighestZ = Context.ZOrder;
+				ModalHost = HUD;
+				ModalWidget = Context.Widget;
+			}
+			break;
+		}
+	}
+	if (!IsValid(ModalHost) || !IsValid(ModalWidget)) return false;
+	
+	if (ModalWidget->GetClass()->ImplementsInterface(UUIBackHandler::StaticClass()) && IUIBackHandler::Execute_HandleBack(ModalWidget, RequestingPlayer)) return true;
+	
+	ModalHost->PopWidget(RequestingPlayer);
+	if (ModalWidget->GetClass()->ImplementsInterface(UUIBackHandler::StaticClass())) IUIBackHandler::Execute_OnBackPopped(ModalWidget, RequestingPlayer);
+	return true;
 }

@@ -41,29 +41,33 @@ bool UPlayerProfileSubsystem::HandlePreprocessorJoinKeyDown(const FKeyEvent& Key
     UGameInstance* GI = GetGameInstance();
     if (!GI) return false;
 	
-    // Let the active player's controller input operate its popup
-    ULocalPlayer* CurrentPlayer = OnboardingQueue ? OnboardingQueue->GetCurrentPlayer() : nullptr;
-    if (IsValid(CurrentPlayer))
+    ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>();
+    const FLocalPlayerSessionRecord* DeviceRecord = Directory ? Directory->FindPlayerForDevice(DeviceId) : nullptr;
+    ULocalPlayer* InputPlayer = DeviceRecord ? DeviceRecord->LocalPlayer.Get() : (GEngine ? GEngine->GetLocalPlayerFromInputDevice(GetWorld(), DeviceId) : nullptr);
+
+    // Existing players keep using A/Enter for focused UI after onboarding. The join service only consumes the key for devices that still haven't joined yet
+    if (const ULocalPlayer* CurrentPlayer = OnboardingQueue ? OnboardingQueue->GetCurrentPlayer() : nullptr; IsValid(CurrentPlayer))
     {
-		ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>();
-		const FLocalPlayerSessionRecord* DeviceRecord = Directory ? Directory->FindPlayerForDevice(DeviceId) : nullptr;
-		ULocalPlayer* InputPlayer = DeviceRecord ? DeviceRecord->LocalPlayer.Get() : (GEngine ? GEngine->GetLocalPlayerFromInputDevice(GetWorld(), DeviceId) : nullptr);
         if (InputPlayer == CurrentPlayer)
         {
             if (Directory) Directory->AssociateInputDevice(InputPlayer, DeviceId);
             return false;
         }
+
+        // A different, already-onboarded player's A press must not interact with either the onboarding popup or UI beneath it
+        if (IsValid(InputPlayer) && Directory && Directory->GetProfileId(InputPlayer).IsValid()) return true;
     }
+    else if (IsValid(InputPlayer) && Directory && Directory->GetProfileId(InputPlayer).IsValid()) return false;
 	
     // A non-owner's join press is routed to the dedicated local-player join service
-    if (UPlayerJoinInputSubsystem* Input = GI->GetSubsystem<UPlayerJoinInputSubsystem>()) return Input->JoinDevice(DeviceId);
+    if (const UPlayerJoinInputSubsystem* Input = GI->GetSubsystem<UPlayerJoinInputSubsystem>()) return Input->JoinDevice(DeviceId);
     return false;
 }
 void UPlayerProfileSubsystem::HandlePlayerJoined(ULocalPlayer* LocalPlayer, const FInputDeviceId InputDeviceId, const bool bCreatedForJoin)
 {
     if (!IsValid(LocalPlayer)) return;
     if (bCreatedForJoin && !TemporaryPlayers.Contains(LocalPlayer)) TemporaryPlayers.Add(LocalPlayer);
-    if (UGameInstance* GI = GetGameInstance())
+    if (const UGameInstance* GI = GetGameInstance())
     {
         if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>()) Directory->AssociateInputDevice(LocalPlayer, InputDeviceId);
     }

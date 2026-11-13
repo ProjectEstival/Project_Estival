@@ -34,13 +34,16 @@ struct FWidgetContext
 	
 	UPROPERTY()
 	TObjectPtr<APlayerController> PC = nullptr;
-
+	
 	UPROPERTY()
-	TObjectPtr<UUserWidget> PreviousFocusWidget = nullptr;
-
+	bool bIsBaseContext = false;
+	
+	UPROPERTY()
+	TObjectPtr<UWidget> PreviousFocusWidget = nullptr;
+	
 	UPROPERTY()
 	EManagedUIInputMode PreviousInputMode = EManagedUIInputMode::GameAndUI;
-
+	
 	UPROPERTY()
 	bool bPreviousShowMouseCursor = false;
 };
@@ -100,5 +103,8 @@ protected:
 	TMap<TObjectPtr<ULocalPlayer>, FPlayerWidgetStack> PlayerModalStacks;
 	
 	UUserWidget* CreateOrGetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC) const;
-	void ApplyInputMode(UUserWidget* Widget, const EManagedUIInputMode InputMode, const bool bShowMouseCursor, APlayerController* PC = nullptr) const;
+	UUserWidget* GetSharedBaseWidget() const;
+	static UWidget* FindFocusedWidgetIn(const UUserWidget* Scope, const APlayerController* PC);
+	static UWidget* FindDefaultFocusableWidget(const UUserWidget* Scope);
+	void ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode InputMode, const bool bShowMouseCursor, APlayerController* PC = nullptr) const;
 };

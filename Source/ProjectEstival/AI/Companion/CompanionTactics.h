@@ -54,4 +54,8 @@ public:
 	// where to stand around the enemy: the formation
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Formation")
 	TObjectPtr<UEnvQuery> AttackSpotQuery;
+	
+	// color of this style's debug line to the attack target
+	UPROPERTY(EditAnywhere, Category="Debug")
+	FColor DebugColor = FColor::Red;
 };

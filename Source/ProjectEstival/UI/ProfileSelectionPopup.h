@@ -1,17 +1,18 @@
 #pragma once
 
-#include "Blueprint/UserWidget.h"
-#include "CoreMinimal.h"
-#include "PlayerProfileCard.h"
-#include "Components/Button.h"
 #include "Components/ScrollBoxSlot.h"
 #include "Components/TextBlock.h"
+#include "Components/Button.h"
+#include "Blueprint/UserWidget.h"
+#include "PlayerProfileCard.h"
+#include "CoreMinimal.h"
+
 #include "ProfileSelectionPopup.generated.h"
 
+class UPlayerProfileSubsystem;
+class ULocalPlayer;
 class UCanvasPanel;
 class UScrollBox;
-class ULocalPlayer;
-class UPlayerProfileSubsystem;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FProfilePopupPlayerEvent, ULocalPlayer*, LocalPlayer);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnProfileSelected, ULocalPlayer*, LocalPlayer, FGuid, ProfileId);
@@ -36,15 +37,19 @@ public:
 	
 	// Selection flow
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")
-	void ConfirmSelection(const FGuid& ProfileId);
+	void ConfirmSelection(const FGuid& ProfileId) const;
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")
 	void CancelSelection(); // Optional flow for closing the popup from the UI
 	void CompleteSelection(); // Accessible from MainMenuHUD
+	void RefreshAvailableProfiles();
 	
 	// Details menu
 	UFUNCTION()
 	void CloseCardOptions();
 	bool IsCardOptionsOpen() const { return IsValid(ActiveOptionsCard); }
+	bool HasPendingNameEdit() const { return IsValid(PendingNameCard); }
+	bool CancelPendingNameEdit();
+	bool CommitPendingNameEntry() const;
 	
 protected:
 	// Popup creation
@@ -63,6 +68,8 @@ protected:
 	// Cards
 	UPROPERTY(EditDefaultsOnly, Category = "Profile Selection")
 	TSubclassOf<UPlayerProfileCard> ProfileCardClass;
+	UPROPERTY(EditDefaultsOnly, Category = "Profile Selection")
+	float HorizontalMargin = 20.0f;
 private:
 	// Object references
 	UPROPERTY(Transient)
@@ -104,7 +111,8 @@ private:
 	void HandleNameCommitted(UPlayerProfileCard* Card, FText EnteredName);
 	void BeginCreatingProfile();
 	bool bPendingNameFocus = false;
+	bool bPendingProfileListRefresh = false;
 	
 	// Helpers
-	static UScrollBoxSlot* InsertWidgetAt(UScrollBox* ScrollBox, UWidget* NewWidget, int32 Index);
+	UScrollBoxSlot* InsertWidgetAt(UScrollBox* ScrollBox, UWidget* NewWidget, int32 Index) const;
 };

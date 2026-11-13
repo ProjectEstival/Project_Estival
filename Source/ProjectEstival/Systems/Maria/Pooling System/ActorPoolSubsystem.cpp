@@ -6,9 +6,11 @@
 #include "Engine/World.h"
 #include "GameFramework/Actor.h"
 #include "GameFramework/MovementComponent.h"
+#include "Poolable.h"
 #include "TimerManager.h"
 #include "Systems/Core/EstivalGameInstance.h"
 
+#pragma region Public Methods
 void UActorPoolSubsystem::Deinitialize()
 {
 	// The world destroys the actors itself; only the references need dropping.
@@ -37,7 +39,12 @@ AActor* UActorPoolSubsystem::AcquireActorFromSettings(TSubclassOf<AActor> ActorC
 	
 	if (!Actor) Actor = SpawnPooledActor(ActorClass, Transform);
 	
-	if (Actor && Settings.Lifetime > 0.f) ReleaseActorAfterDelay(Actor, Settings.Lifetime);
+	if (!Actor) return nullptr;
+
+	if (Settings.Lifetime > 0.f) ReleaseActorAfterDelay(Actor, Settings.Lifetime);
+
+	// After the lifetime is scheduled, so a release from inside the hook cancels the timer.
+	if (Actor->Implements<UPoolable>()) IPoolable::Execute_OnAcquired(Actor);
 	
 	return Actor;
 }
@@ -80,6 +87,9 @@ void UActorPoolSubsystem::ReleaseActor(AActor* Actor)
 	FPooledActorList* Pool = Pools.Find(Actor->GetClass());
 	if (Pool && Pool->Actors.Contains(Actor)) return;
 	
+	// Runs before the destroy branch too, so cleanup happens however the release ends.
+	if (Actor->Implements<UPoolable>()) IPoolable::Execute_OnReleased(Actor);
+
 	// A class that was never acquired through settings has no pool and therefore no capacity.
 	if (!Pool || Pool->Actors.Num() >= Pool->MaxIdle)
 	{
@@ -132,7 +142,9 @@ void UActorPoolSubsystem::Prewarm(const TSubclassOf<AActor> ActorClass, const FA
 		}
 	}
 }
+#pragma endregion
 
+#pragma region Private Methods
 FPooledActorList& UActorPoolSubsystem::GetPool(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings)
 {
 	FPooledActorList& Pool = Pools.FindOrAdd(ActorClass);
@@ -218,3 +230,4 @@ void UActorPoolSubsystem::DeactivateActor(AActor* Actor)
 	Actor->SetActorEnableCollision(false);
 	Actor->SetActorTickEnabled(false);
 }
+#pragma endregion

@@ -7,6 +7,8 @@
 #include "Subsystems/WorldSubsystem.h"
 #include "ActorPoolSubsystem.generated.h"
 
+#pragma region Data Types
+
 //Per-class pool configuration. Embed this in a data asset so each use case sets its own values.
 USTRUCT(BlueprintType)
 struct FActorPoolSettings
@@ -40,6 +42,7 @@ struct FSuspendedComponentState
 	bool bWasActive = false;
 	bool bTickWasEnabled = false;
 };
+#pragma endregion
 
 /** World-scoped pool for arbitrary actors. Pooled actors keep their own class; nothing needs to inherit from a special base.
  * Each class has its own list, capacity and lifetime, taken from FActorPoolSettings.
@@ -51,12 +54,13 @@ class PROJECTESTIVAL_API UActorPoolSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 	
 public:
+#pragma region Public Methods
 	virtual void Deinitialize() override;
 	
 	/**
 	 * Returns an actor placed at Transform, reusing an idle pooled one if available and spawning otherwise.
 	 If Settings.Lifetime is above 0 the actor is released automatically once it elapses.
-	 A reused actor does not get BeginPlay again, so the caller resets any gameplay state.
+	 A reused actor does not get BeginPlay again, so reset gameplay state in IPoolable::OnAcquired, which runs on every acquire.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
 	AActor* AcquireActorFromSettings(TSubclassOf<AActor> ActorClass, FActorPoolSettings Settings, const FTransform& Transform);
@@ -74,7 +78,7 @@ public:
 
 	/**
 	 * Deactivates the actor and returns it to the pool of its class. If that pool already holds its
-	 * maximum number of idle actors, the actor is destroyed instead.
+	 * maximum number of idle actors, the actor is destroyed instead. IPoolable::OnReleased runs first in both cases.
 	 */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
 	void ReleaseActor(AActor* Actor);
@@ -89,17 +93,22 @@ public:
 	/**Spawns up to Count inactive actors (never more than Settings.MaxPoolSize) to avoid spawn hitches later. */
 	UFUNCTION(BlueprintCallable, Category = "Pooling")
 	void Prewarm(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings, int32 Count);
+#pragma endregion
 	
 private:
+#pragma region Private Methods
 	FPooledActorList& GetPool(TSubclassOf<AActor> ActorClass, const FActorPoolSettings& Settings);
 	AActor* SpawnPooledActor(UClass* ActorClass, const FTransform& Transform) const;
 	void ActivateActor(AActor* Actor, const FTransform& Transform);
 	void DeactivateActor(AActor* Actor);
+#pragma endregion
 	
+#pragma region Private Fields
 	UPROPERTY()
 	TMap<TSubclassOf<AActor>, FPooledActorList> Pools;
 	
 	TMap<TWeakObjectPtr<AActor>, FTimerHandle> PendingReleases;
 
 	TMap<TWeakObjectPtr<AActor>, TArray<FSuspendedComponentState>> SuspendedComponents;
+#pragma endregion
 };

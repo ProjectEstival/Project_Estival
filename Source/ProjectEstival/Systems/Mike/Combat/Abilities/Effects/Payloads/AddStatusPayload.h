@@ -6,7 +6,8 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "AddStatusPayload.generated.h"
 
-UCLASS()
+/** Adds statuses to the receiver for their durations. */
+UCLASS(meta = (DisplayName = "Add Status"))
 class PROJECTESTIVAL_API UAddStatusPayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()
@@ -15,6 +16,5 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Status", meta = (Categories = "Status", ClampMin = 0))
 	TMap<FGameplayTag, float> StatusDurations;
 	
-public:
-	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const override;
+	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

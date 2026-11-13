@@ -4,15 +4,18 @@
 
 #include "CoreMinimal.h"
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "DamagePayload.generated.h"
-UCLASS()
+
+/** Damages the receiver by the caster's damage stat, randomised and multiplied. */
+UCLASS(meta = (DisplayName = "Damage"))
 class PROJECTESTIVAL_API UDamagePayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()
 	
 protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, meta = (Categories = "Stats."))
-	FGameplayTag DamageTag = FGameplayTag::RequestGameplayTag(FName("Stats.Damage"));
+	FGameplayTag DamageTag = TagDefinitions::Stats_Damage;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (ClampMin = 0, ClampMax = 1, UIMin = 0, UIMax = 1))
 	float DamageRandomization = 0.25f;
@@ -23,6 +26,5 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Damage")
 	TSubclassOf<UDamageType> DamageType = UDamageType::StaticClass();
 	
-public:
-	virtual bool TryApply_Implementation(const FAbilityContext& Context, AActor* Target) const override;
+	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const override;
 };

@@ -1,8 +1,9 @@
 #pragma once
 
-#include "PlayerProfileSubsystem.h"
+#include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "CoreMinimal.h"
 #include "HUDBase.h"
+
 #include "MainMenuHUD.generated.h"
 
 class UProfileSelectionPopup;
@@ -17,21 +18,27 @@ protected:
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	
+	// Player popup
 	UPROPERTY(EditDefaultsOnly, Category = "Onboarding")
 	TSubclassOf<UProfileSelectionPopup> ProfilePopupClass;
 private:
+	// Object references
 	UPROPERTY(Transient)
-	TObjectPtr<UPlayerProfileSubsystem> PlayerSubsystem;
-	
+	TObjectPtr<UPlayerProfileSubsystem> PlayerProfileSubsystem;
 	UPROPERTY(Transient)
 	TObjectPtr<UProfileSelectionPopup> ActivePopup;
 	
+	// Player popup
 	UFUNCTION()
 	void HandleOnboardingPlayerChanged(ULocalPlayer* LocalPlayer);
-	
 	UFUNCTION()
-	void HandleProfileSelected(ULocalPlayer* LocalPlayer, int32 ProfileIndex);
-	
+	void HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid ProfileId);
 	UFUNCTION()
 	void HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer);
+	UFUNCTION()
+	void HandlePlayerDisconnected(ULocalPlayer* LocalPlayer);
+	UFUNCTION()
+	void HandleProfileReleased(ULocalPlayer* LocalPlayer) const;
+	UFUNCTION()
+	void HandleProfileNameCommitRequested(ULocalPlayer* LocalPlayer) const;
 };

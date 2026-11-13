@@ -11,9 +11,7 @@
 #include "GameFramework/PlayerController.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "Kismet/GameplayStatics.h"
-
-// adding this to be able to filter the logs
-DEFINE_LOG_CATEGORY_STATIC(LogEstivalCamera, Log, All);
+#include "Systems/Core/Camera/EstivalOffscreenBlipsWidget.h"
 
 // Sets default values
 AEstivalSharedCamera::AEstivalSharedCamera()
@@ -38,9 +36,8 @@ AEstivalSharedCamera::AEstivalSharedCamera()
 	Camera->SetupAttachment(CameraBoom, USpringArmComponent::SocketName);
 	
 	// DistanceToFit treats FieldOfView as the horizontal angle so keep it horizontal on every screen shape
-	// (the project default in DefaultEngine.ini keeps the vertical angle fixed instead from what I saw)
+	// (the engine's default in DefaultEngine.ini keeps the vertical angle instead, from what I saw)
 	Camera->bOverrideAspectRatioAxisConstraint = true;
-	Camera->SetAspectRatioAxisConstraint(AspectRatio_MaintainXFOV);
 
 }
 
@@ -61,6 +58,14 @@ void AEstivalSharedCamera::BeginPlay()
 	
 	// starting camera already framed.
 	UpdateCamera(0.f, true);
+	
+	// one BLIP WIDGET for the shared screen owned by player 1 
+	APlayerController* FirstPlayer = UGameplayStatics::GetPlayerController(this, 0);
+	if (OffscreenBlipsWidgetClass && FirstPlayer)
+	{
+		BlipsWidget = CreateWidget<UEstivalOffscreenBlipsWidget>(FirstPlayer, OffscreenBlipsWidgetClass);
+		BlipsWidget->AddToViewport();
+	}
 }
 
 // Called every frame
@@ -74,6 +79,13 @@ void AEstivalSharedCamera::Tick(float DeltaTime)
 void AEstivalSharedCamera::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	FGameModeEvents::GameModePostLoginEvent.Remove(PostLoginHandle);
+	
+	// the blips belong to this camera, so remove them with it
+	if (BlipsWidget)
+	{
+		BlipsWidget->RemoveFromParent();
+	}
+	
 	Super::EndPlay(EndPlayReason);
 }
 
@@ -109,7 +121,7 @@ void AEstivalSharedCamera::GatherFramedActors(TArray<AActor*>& OutActors) const
 {
 	OutActors.Reset();
 	
-	// filtering through controllers to make sure only human characters are framed
+	// filtering through controllers to make sure only humanoid characters are framed (and not enemies)
 	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 	{
 		const APlayerController* PlayerController = It->Get();
@@ -122,23 +134,22 @@ void AEstivalSharedCamera::GatherFramedActors(TArray<AActor*>& OutActors) const
 
 FVector AEstivalSharedCamera::ComputeFocusLocation(const TArray<AActor*>& Actors) const
 {
-	if (IsValid(FocusTarget))
-	{
-		return FocusTarget->GetActorLocation();
-	}
-
-	// nobody to frame, stay where we are
 	if (Actors.IsEmpty())
 	{
-		return GetActorLocation();
+		return IsValid(FocusTarget) ? FocusTarget->GetActorLocation() : GetActorLocation();
 	}
 
-	FVector Sum = FVector::ZeroVector;
-	for (const AActor* Actor : Actors)
+	const FVector PlayersCentre = UGameplayStatics::GetActorArrayAverageLocation(Actors);
+
+	if (IsValid(FocusTarget))
 	{
-		Sum += Actor->GetActorLocation();
+		// follow the target on the ground, but keep the players' height
+		// (Baldr's Light keeps its own height at 0)
+		const FVector TargetLocation = FocusTarget->GetActorLocation();
+		return FVector(TargetLocation.X, TargetLocation.Y, PlayersCentre.Z);
 	}
-	return Sum / Actors.Num();
+
+	return PlayersCentre;
 }
 
 float AEstivalSharedCamera::DistanceToFit(const FVector& FocusLocation, const FVector& WorldLocation) const
@@ -164,8 +175,8 @@ float AEstivalSharedCamera::ComputeRequiredDistance(const FVector& FocusLocation
 		Required = FMath::Max(Required, DistanceToFit(FocusLocation, Actor->GetActorLocation()));
 	}
 
-	// Max wins over Min if a designer sets them the wrong way round
-	return FMath::Min(Required, FMath::Max(MinDistance, MaxDistance));
+	// safeguard: if a designer sets Min bigger than Max, Min wins (the camera never gets closer than Min)
+	return FMath::Clamp(Required, MinDistance, MaxDistance);
 }
 
 
@@ -202,7 +213,7 @@ void AEstivalSharedCamera::UpdateCamera(float DeltaSeconds, bool bSnap)
 	const float ZoomSpeed = TargetDistance > CurrentDistance ? ZoomOutSpeed : ZoomInSpeed;
 	CameraBoom->TargetArmLength = bSnap ? TargetDistance : FMath::FInterpTo(CurrentDistance, TargetDistance, DeltaSeconds, ZoomSpeed);
 
-	// --- DEBUGGING - TODELETE ---
+	// --- DEBUGGING ---
 	if (bDrawDebug)
 	{
 		// yellow = where the camera looks, green = fits at Max Distance, red = doesn't

@@ -40,7 +40,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")
 	void ConfirmSelection(const FGuid& ProfileId) const;
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")
-	void CancelSelection(); // Optional flow for closing the popup from the UI
 	void CompleteSelection(); // Accessible from MainMenuHUD
 	void RefreshAvailableProfiles();
 	

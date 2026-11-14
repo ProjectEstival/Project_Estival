@@ -91,7 +91,7 @@ void UPlayerJoinInputSubsystem::AssociateConnectedDevices() const
 	const UGameInstance* GI = GetGameInstance();
 	ULocalPlayerSessionDirectory* Directory = GI ? GI->GetSubsystem<ULocalPlayerSessionDirectory>() : nullptr;
 	if (!GI || !Directory) return;
-
+	
 	for (ULocalPlayer* LocalPlayer : GI->GetLocalPlayers())
 	{
 		if (!IsValid(LocalPlayer)) continue;
@@ -100,8 +100,8 @@ void UPlayerJoinInputSubsystem::AssociateConnectedDevices() const
 		IPlatformInputDeviceMapper::Get().GetAllConnectedInputDevicesForUser(LocalPlayer->GetPlatformUserId(), Devices);
 		for (const FInputDeviceId DeviceId : Devices) Directory->AssociateInputDevice(LocalPlayer, DeviceId);
 	}
-
-	// Keyboard and mouse share the platform's default input device and belong to player 0.
+	
+	// Keyboard and mouse share the platform's default input device and belong to player 0
 	if (const FInputDeviceId DefaultInputDevice = IPlatformInputDeviceMapper::Get().GetDefaultInputDevice(); DefaultInputDevice.IsValid())
 	{
 		if (ULocalPlayer* FirstPlayer = GI->GetLocalPlayerByIndex(0)) Directory->AssociateInputDevice(FirstPlayer, DefaultInputDevice);

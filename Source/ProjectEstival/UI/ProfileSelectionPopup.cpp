@@ -268,12 +268,6 @@ void UProfileSelectionPopup::ConfirmSelection(const FGuid& ProfileId) const
 	if (!IsValid(TargetLocalPlayer)) return;
 	OnProfileSelected.Broadcast(TargetLocalPlayer, ProfileId);
 }
-void UProfileSelectionPopup::CancelSelection()
-{
-	if (bSelectionCompleted || !IsValid(TargetLocalPlayer)) return;
-	CompleteSelection();
-	OnProfileSelectionCancelled.Broadcast(TargetLocalPlayer);
-}
 bool UProfileSelectionPopup::HandleBack_Implementation(APlayerController* Instigator)
 {
 	// Handles transient states; the HUD will pop the popup when this returns false

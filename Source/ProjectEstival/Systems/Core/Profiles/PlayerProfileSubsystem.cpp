@@ -5,12 +5,13 @@
 #include "Systems/Core/Profiles/PlayerOnboardingQueue.h"
 #include "Systems/Core/Input/PlayerJoinInputSubsystem.h"
 #include "GameFramework/PlayerController.h"
+#include "Components/EditableText.h"
+#include "Components/Widget.h"
 #include "PlayerProfileSaveGame.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "InputCoreTypes.h"
-#include "Components/EditableText.h"
-#include "Components/Widget.h"
+#include "UI/HUDBase.h"
 
 // Init / cleanup
 void UPlayerProfileSubsystem::Initialize(FSubsystemCollectionBase& Collection)
@@ -82,17 +83,21 @@ void UPlayerProfileSubsystem::HandleInputDeviceDisconnected(const FInputDeviceId
 	ULocalPlayer* LocalPlayer = Record ? Record->LocalPlayer.Get() : nullptr;
 	if (!IsValid(LocalPlayer)) return;
 	const bool bHasOtherInputDevices = Record->InputDevices.Num() > 1;
+	const bool bIsFirstLocalPlayer = GI->GetLocalPlayerByIndex(0) == LocalPlayer;
 	Directory->RemoveInputDevice(InputDeviceId);
 	
 	if (!bHasOtherInputDevices)
 	{
 		// No device can control this local player now, so remove it rather than opening another popup
 		OnPlayerDisconnected.Broadcast(LocalPlayer);
+		// Clear orphaned modal widgets before destroying the player's controller and HUD
+		AHUDBase::ClearPlayerModalWidgets(GI->GetWorld(), LocalPlayer);
 		ReleaseProfile(LocalPlayer);
 		Directory->UnregisterPlayer(LocalPlayer);
 		if (OnboardingQueue) OnboardingQueue->RemovePlayer(LocalPlayer);
 		TemporaryPlayers.Remove(LocalPlayer);
-		GI->RemoveLocalPlayer(LocalPlayer);
+		// Keep player 0's HUD alive because it owns the shared base menu widget
+		if (!bIsFirstLocalPlayer) GI->RemoveLocalPlayer(LocalPlayer);
 	}
 }
 bool UPlayerProfileSubsystem::HandleCancelInput(const FInputDeviceId InputDeviceId) const
@@ -151,10 +156,10 @@ bool UPlayerProfileSubsystem::TryCommitProfileNameFromDevice(const FInputDeviceI
     OnProfileNameCommitRequested.Broadcast(InputPlayer);
     return true;
 }
-void UPlayerProfileSubsystem::SetJoinInputEnabled(bool bEnabled)
+void UPlayerProfileSubsystem::SetJoinInputEnabled(const bool bEnabled)
 {
     bJoinInputEnabled = bEnabled;
-    if (UGameInstance* GI = GetGameInstance())
+    if (const UGameInstance* GI = GetGameInstance())
     {
         if (UPlayerJoinInputSubsystem* Input = GI->GetSubsystem<UPlayerJoinInputSubsystem>()) Input->SetInputEnabled(bEnabled);
     }

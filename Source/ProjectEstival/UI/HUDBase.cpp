@@ -172,7 +172,7 @@ UWidget* AHUDBase::FindFocusedWidgetIn(const UUserWidget* Scope, const APlayerCo
 	const TSharedPtr<SWidget> FocusedSlateWidget = FSlateApplication::Get().GetUserFocusedWidget(SlateUser->GetUserIndex());
 	if (!FocusedSlateWidget.IsValid()) return nullptr;
 	UWidget* Result = nullptr;
-	Scope->WidgetTree->ForEachWidget([&](UWidget* Candidate) { if (IsValid(Candidate) && Candidate->GetCachedWidget() == FocusedSlateWidget) Result = Candidate; });
+	Scope->WidgetTree->ForEachWidgetAndDescendants([&](UWidget* Candidate) { if (IsValid(Candidate) && Candidate->GetCachedWidget() == FocusedSlateWidget) Result = Candidate; });
 	return Result;
 }
 UWidget* AHUDBase::FindDefaultFocusableWidget(const UUserWidget* Scope)
@@ -188,7 +188,7 @@ UWidget* AHUDBase::FindDefaultFocusableWidget(const UUserWidget* Scope)
 	if (IsUsableFocusTarget(DesiredFocusWidget)) return DesiredFocusWidget;
 	
 	UWidget* FirstFocusableWidget = nullptr;
-	Scope->WidgetTree->ForEachWidget([&](UWidget* Candidate) { if (!FirstFocusableWidget && IsUsableFocusTarget(Candidate)) FirstFocusableWidget = Candidate; });
+	Scope->WidgetTree->ForEachWidgetAndDescendants([&](UWidget* Candidate) { if (!FirstFocusableWidget && IsUsableFocusTarget(Candidate)) FirstFocusableWidget = Candidate; });
 	return FirstFocusableWidget;
 }
 bool AHUDBase::FindTopmostModal(const UWorld* World, APlayerController*& OutOwner, EManagedUIInputMode& OutInputMode)
@@ -269,8 +269,9 @@ void AHUDBase::ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode In
 void AHUDBase::EnforceModalInputPolicy(const UWorld* World)
 {
 	EManagedUIInputMode InputMode = EManagedUIInputMode::GameOnly;
-	if (APlayerController* Owner = nullptr; !FindTopmostModal(World, Owner, InputMode) || InputMode == EManagedUIInputMode::GameOnly) return;
-	if (UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr) Viewport->SetIgnoreInput(true);
+	APlayerController* Owner = nullptr;
+	const bool bHasModal = FindTopmostModal(World, Owner, InputMode);
+	if (UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr) Viewport->SetIgnoreInput(bHasModal && InputMode == EManagedUIInputMode::UIOnly);
 }
 
 APlayerController* AHUDBase::GetTopmostModalOwner(const UWorld* World)
@@ -322,4 +323,54 @@ bool AHUDBase::HandleBackForPlayer(const UWorld* World, APlayerController* Reque
 	ModalHost->PopWidget(RequestingPlayer);
 	if (ModalWidget->GetClass()->ImplementsInterface(UUIBackHandler::StaticClass())) IUIBackHandler::Execute_OnBackPopped(ModalWidget, RequestingPlayer);
 	return true;
+}
+
+void AHUDBase::ClearPlayerModalWidgets(const UWorld* World, ULocalPlayer* LocalPlayer)
+{
+	if (!IsValid(World) || !IsValid(LocalPlayer)) return;
+	
+	const UGameInstance* GI = World->GetGameInstance();
+	if (!GI) return;
+	const bool bIsFirstLocalPlayer = GI->GetLocalPlayerByIndex(0) == LocalPlayer;
+	
+	TSet<AHUDBase*> VisitedHUDs;
+	for (const ULocalPlayer* IteratedPlayer : GI->GetLocalPlayers())
+	{
+		const APlayerController* PC = IteratedPlayer ? IteratedPlayer->GetPlayerController(World) : nullptr;
+		AHUDBase* HUD = PC ? Cast<AHUDBase>(PC->GetHUD()) : nullptr;
+		if (!IsValid(HUD) || VisitedHUDs.Contains(HUD)) continue;
+		VisitedHUDs.Add(HUD);
+		
+		FPlayerWidgetStack* PlayerStack = HUD->PlayerModalStacks.Find(LocalPlayer);
+		if (!PlayerStack) continue;
+		
+		FWidgetContext BaseContext;
+		bool bFoundBaseContext = false;
+		for (const FWidgetContext& Context : PlayerStack->Contexts)
+		{
+			if (!Context.bIsBaseContext) continue;
+			BaseContext = Context;
+			bFoundBaseContext = true;
+			break;
+		}
+		
+		for (const FWidgetContext& Context : PlayerStack->Contexts)
+		{
+			if (!Context.bIsBaseContext && IsValid(Context.Widget)) Context.Widget->RemoveFromParent();
+		}
+		
+		// Discard the departing player's stack without removing its shared root widget
+		HUD->PlayerModalStacks.Remove(LocalPlayer);
+		if (bIsFirstLocalPlayer && bFoundBaseContext && IsValid(BaseContext.Widget))
+		{
+			if (APlayerController* BasePC = IsValid(BaseContext.PC) ? BaseContext.PC.Get() : LocalPlayer->GetPlayerController(World); IsValid(BasePC))
+			{
+				UWidget* BaseFocus = FindDefaultFocusableWidget(BaseContext.Widget);
+				if (!IsValid(BaseFocus)) BaseFocus = BaseContext.Widget;
+				HUD->ApplyInputMode(BaseFocus, BaseContext.InputMode, BaseContext.bShowMouseCursor, BasePC);
+			}
+		}
+	}
+	
+	EnforceModalInputPolicy(World);
 }

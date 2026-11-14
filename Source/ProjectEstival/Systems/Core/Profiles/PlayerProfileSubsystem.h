@@ -69,7 +69,7 @@ public:
     // Saving / loading
     UFUNCTION(BlueprintCallable, Category = "Profiles")
     UPlayerProfileSaveGame* GetProfile(ULocalPlayer* LocalPlayer) const;
-    UFUNCTION(BlueprintCallable, Category = "Profiles")
+    UFUNCTION(BlueprintCallable, BlueprintPure = false, Category = "Profiles")
     bool SaveProfile(ULocalPlayer* LocalPlayer) const;
     
 private:

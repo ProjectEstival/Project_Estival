@@ -12,9 +12,9 @@ void USpawnZoneEffect::Execute_Implementation(const FAbilityContext& Context) co
 	if (!Zone) return;
 
 	Zone->SetLifetime(Duration);
-	FinishSpawn(Context, Zone, SpawnTransform);
+	FinishSpawn(Context, Zone);
 
-	if (bAttachToCaster && IsValid(Context.Instigator) && IsValid(Zone)) Zone->AttachToActor(Context.Instigator, FAttachmentTransformRules::KeepWorldTransform);
+	if (bAttachToCaster && IsValid(Context.Instigator) && !Zone->IsExpired()) Zone->AttachToActor(Context.Instigator, FAttachmentTransformRules::KeepWorldTransform);
 }
 
 void USpawnZoneEffect::CollectOccupants(const FAbilityContext& ZoneContext, TArray<AActor*>& OutActors) const

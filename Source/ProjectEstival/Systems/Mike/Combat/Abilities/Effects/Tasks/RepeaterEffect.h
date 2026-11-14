@@ -5,7 +5,7 @@
 #include "RepeaterEffect.generated.h"
 
 /** Runs its effects a number of times with a delay before and between runs. With one repeat it's a plain delay. */
-UCLASS(meta = (DisplayName = "Repeat / Delay"))
+UCLASS(meta = (DisplayName = "Repeat / Delay"), HideFunctions = (OnStart, OnInputReleased))
 class PROJECTESTIVAL_API URepeaterEffect : public UAbilityTask
 {
 	GENERATED_BODY()

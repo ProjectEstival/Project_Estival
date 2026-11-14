@@ -1,13 +1,28 @@
 ﻿#include "AbilityActor.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
+#include "GameFramework/Pawn.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 #include "Systems/Mike/Combat/Abilities/Effects/Targeting/Indirect/SpawnAbilityActorEffect.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "Systems/Mike/Combat/Loadouts/RuntimeAbilities.h"
 
 void AAbilityActor::InitializeAbilityActor(const FAbilityContext& InContext, const USpawnAbilityActorEffect* InSource)
 {
 	Context = InContext;
 	Source = InSource;
+	Hits = FTargetHitTracker();
+	bExpired = false;
 
-	if (IsValid(Context.Loadout)) Context.Loadout->OnAbilityEvent.AddDynamic(this, &AAbilityActor::HandleAbilityEvent);
+	SetOwner(Context.Instigator);
+	SetInstigator(Cast<APawn>(Context.Instigator));
+
+	if (IsValid(Context.Loadout)) Context.Loadout->OnAbilityEvent.AddUniqueDynamic(this, &AAbilityActor::HandleAbilityEvent);
+}
+
+void AAbilityActor::StartAbilityActor()
+{
+	OnStarted();
 }
 
 FGenericTeamId AAbilityActor::GetGenericTeamId() const
@@ -23,8 +38,13 @@ void AAbilityActor::LifeSpanExpired()
 
 void AAbilityActor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
-	if (IsValid(Context.Loadout)) Context.Loadout->OnAbilityEvent.RemoveDynamic(this, &AAbilityActor::HandleAbilityEvent);
+	CleanUp();
 	Super::EndPlay(EndPlayReason);
+}
+
+void AAbilityActor::OnReleased_Implementation()
+{
+	CleanUp();
 }
 
 void AAbilityActor::Expire()
@@ -57,7 +77,23 @@ void AAbilityActor::Finish(const bool bCancelled)
 	}
 
 	OnExpired(bCancelled);
-	Destroy();
+
+	CleanUp();
+
+	if (UActorPoolSubsystem* Pool = UWorld::GetSubsystem<UActorPoolSubsystem>(GetWorld())) Pool->ReleaseActor(this);
+	else Destroy();
+}
+
+void AAbilityActor::CleanUp()
+{
+	if (IsValid(Context.Loadout)) Context.Loadout->OnAbilityEvent.RemoveDynamic(this, &AAbilityActor::HandleAbilityEvent);
+	if (UAbilityActivation* Activation = Context.Activation.Get()) Activation->OnInterrupted.RemoveAll(this);
+
+	GetWorldTimerManager().ClearAllTimersForObject(this);
+	DetachFromActor(FDetachmentTransformRules::KeepWorldTransform);
+
+	Context = FAbilityContext();
+	Source = nullptr;
 }
 
 FAbilityContext AAbilityActor::MakeActorContext() const

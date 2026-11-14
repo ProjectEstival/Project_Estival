@@ -25,7 +25,7 @@ struct FHoldTier
  * Waits while the ability's button is held (charge, aim), then runs the highest tier reached on release.
  * Released before any tier: the ability cancels.
  */
-UCLASS(meta = (DisplayName = "Hold (Charge / Aim)"))
+UCLASS(meta = (DisplayName = "Hold (Charge / Aim)"), HideFunctions = (OnStart, OnInputReleased))
 class PROJECTESTIVAL_API UHoldTask : public UAbilityTask
 {
 	GENERATED_BODY()

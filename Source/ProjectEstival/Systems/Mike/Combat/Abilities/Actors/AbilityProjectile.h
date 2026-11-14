@@ -17,9 +17,10 @@ class PROJECTESTIVAL_API AAbilityProjectile : public AAbilityActor
 public:
 	AAbilityProjectile();
 
-	/** Call before FinishSpawning. */
+	/** Call before StartAbilityActor. */
 	void SetupProjectile(float Speed, float Range);
 
+	virtual void StartAbilityActor() override;
 	virtual void PostInitializeComponents() override;
 
 protected:

@@ -6,7 +6,7 @@
 #include "WaitEventTask.generated.h"
 
 /** Runs its effects when the ability receives an event, usually an Ability Event notify in the montage (hit frame). Stops when the ability ends. */
-UCLASS(meta = (DisplayName = "Wait Event"))
+UCLASS(meta = (DisplayName = "Wait Event"), HideFunctions = (OnStart, OnAbilityEvent))
 class PROJECTESTIVAL_API UWaitEventTask : public UAbilityTask
 {
 	GENERATED_BODY()

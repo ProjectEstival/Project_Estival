@@ -12,7 +12,7 @@ class PROJECTESTIVAL_API UEstivalGameInstance : public UGameInstance
 {
 	GENERATED_BODY()
 protected:
-	UPROPERTY(EditDefaultsOnly)
+	UPROPERTY(EditDefaultsOnly, meta = (MustImplement = "/Script/ProjectEstival.Poolable"))
 	TMap<TSubclassOf<AActor>, FActorPoolSettings> ActorPoolSettings;
 	
 public:

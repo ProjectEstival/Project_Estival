@@ -16,6 +16,8 @@ class PROJECTESTIVAL_API AAbilityZone : public AAbilityActor
 public:
 	AAbilityZone();
 
+	virtual void StartAbilityActor() override;
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USceneComponent> Root;
@@ -26,8 +28,6 @@ protected:
 	/** How often the zone checks what is inside it. */
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Zone", meta = (ClampMin = 0.02, Units = "s"))
 	float OccupantUpdateInterval = 0.1f;
-
-	virtual void BeginPlay() override;
 
 private:
 	const USpawnZoneEffect* GetZoneEffect() const;

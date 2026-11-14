@@ -36,7 +36,9 @@ protected:
 
 	FTransform GetSpawnTransform(const FAbilityContext& Context) const;
 
-	/** Deferred spawn with the context set. Configure the actor, then call FinishSpawn. */
+	/** Takes an actor from the pool, new or reused, and gives it the context. Configure it, then call FinishSpawn. */
 	AAbilityActor* BeginSpawn(const FAbilityContext& Context, TSubclassOf<AAbilityActor> ActorClass, const FTransform& Transform) const;
-	void FinishSpawn(const FAbilityContext& Context, AAbilityActor* Actor, const FTransform& Transform) const;
+
+	/** Starts the actor. */
+	void FinishSpawn(const FAbilityContext& Context, AAbilityActor* Actor) const;
 };

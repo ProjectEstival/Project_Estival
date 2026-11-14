@@ -99,4 +99,4 @@ Plugins/FMODStudio/Binaries/**/UnrealEditor-*.pdb
 !Content/FMOD/
 !Content/FMOD/Desktop/
 !Content/FMOD/Desktop/**
-**/BugReporter.ini
+**/*BugReporter.ini

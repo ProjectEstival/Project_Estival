@@ -13,7 +13,6 @@
 #include "Misc/Paths.h"
 #include "Misc/DateTime.h"
 #include "Misc/Guid.h"
-#include "Misc/ConfigCacheIni.h"
 #include "Misc/FileHelper.h"
 #if PLATFORM_MICROSOFT
 #include "Microsoft/AllowMicrosoftPlatformTypes.h"
@@ -115,17 +114,7 @@ FString UBugReporterSubsystem::GetStackTrace() const
 
 void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
 {
-    // Read Discord webhook
-    FString WebhookURL;
-    const FString ConfigPath = FPaths::Combine(FPaths::ProjectSavedDir(),TEXT("BugReporter.ini"));
-
-    GConfig->LoadFile(ConfigPath);
-    UE_LOG(LogTemp,Warning,TEXT("Config Path: %s"),*ConfigPath);
-    UE_LOG(LogTemp,Warning,TEXT("File Exists: %s"),IFileManager::Get().FileExists(*ConfigPath) ? TEXT("YES") : TEXT("NO"));
-
-    GConfig->GetString(TEXT("BugReporter"),TEXT("DiscordWebhookURL"),WebhookURL,ConfigPath);
-
-    if(WebhookURL.IsEmpty())
+    if(DiscordWebhookURL.IsEmpty())
     {
         UE_LOG(LogTemp,Error,TEXT("Discord webhook URL not configured"));
         FinishSubmission(false);
@@ -133,7 +122,7 @@ void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
     }
 
     TSharedRef<IHttpRequest,ESPMode::ThreadSafe> Request = FHttpModule::Get().CreateRequest();
-    Request->SetURL(WebhookURL);
+    Request->SetURL(DiscordWebhookURL);
     Request->SetVerb(TEXT("POST"));
 
     const UEnum* CategoryEnum = StaticEnum<EBugReportCategory>();
@@ -226,13 +215,7 @@ void UBugReporterSubsystem::SendToDiscord(const FBugReportData& Report)
 void UBugReporterSubsystem::SendToEmail(const FBugReportData& Report)
 {
     const FString Email = TEXT("saeathenssteambuilds@gmail.com");
-
-    // Read Gmail password
-    const FString EmailConfigPath = FPaths::Combine(FPaths::ProjectSavedDir(),TEXT("BugReporter.ini"));
-    GConfig->LoadFile(EmailConfigPath);
-
-    FString AppPassword;
-    GConfig->GetString(TEXT("Email"),TEXT("AppPassword"),AppPassword,EmailConfigPath);
+    const FString AppPassword = EmailAppPassword;
 
     if(AppPassword.IsEmpty())
     {

@@ -33,7 +33,7 @@ struct FBugReportData
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FBugReportEvent);
 
-UCLASS()
+UCLASS(Config=BugReporter)
 class PROJECTESTIVAL_API UBugReporterSubsystem
     : public UGameInstanceSubsystem
 {
@@ -71,6 +71,12 @@ public:
     FString GetScreenshotPath() const;
 
 private:
+
+    UPROPERTY(Config)
+    FString DiscordWebhookURL;
+
+    UPROPERTY(Config)
+    FString EmailAppPassword;
 
     FString ScreenshotPath;
     void FinishSubmission(bool bSuccess);

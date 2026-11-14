@@ -17,4 +17,8 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "State Tree")
 	TObjectPtr<UStateTree> StateTreeAsset;
 	
+	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "Death check")
+	bool bIsDead = false;
+	
+	virtual void Tick(float DeltaTime) override;
 };

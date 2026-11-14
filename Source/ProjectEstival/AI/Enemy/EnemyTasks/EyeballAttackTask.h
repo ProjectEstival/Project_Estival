@@ -14,7 +14,6 @@ struct FEyeballAttackTaskInstanceData
 	
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
 	FGameplayTag AbilityTag;
-	
 
 };
 

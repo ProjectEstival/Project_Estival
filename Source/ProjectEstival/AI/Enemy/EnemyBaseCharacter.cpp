@@ -2,4 +2,14 @@
 
 
 #include "AI/Enemy/EnemyBaseCharacter.h"
+#include "Systems/Mike/Stats/StatisticsComponent.h"
 
+void AEnemyBaseCharacter::Tick(float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	if (this->GetStatistics()->GetFloat(TagDefinitions::Stats_Resources_Health) <= 0.f)
+	{
+		bIsDead = true;
+	}
+}

@@ -17,10 +17,7 @@ void UReviveComponent::BeginPlay()
 #pragma endregion
 
 #pragma region Interactable
-bool UReviveComponent::CanInteract_Implementation(AActor* Interactor) const
-{
-	return CanBeRevived();
-}
+bool UReviveComponent::CanInteract_Implementation(AActor* Interactor) const { return CanBeRevived(); }
 
 void UReviveComponent::Interact_Implementation(AActor* Interactor)
 {

@@ -35,7 +35,7 @@ public:
 	UPROPERTY(BlueprintAssignable) FOnInteractionEvent OnInteracted;
 
 protected:
-	UPROPERTY(EditAnywhere, Category = "Interaction", meta = (ClampMin = "o"))
+	UPROPERTY(EditAnywhere, Category = "Interaction", meta = (ClampMin = "0"))
 	float InteractRange = 200.f;
 	
 	UPROPERTY(EditAnywhere, Category = "Interaction")

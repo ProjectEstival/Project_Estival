@@ -269,9 +269,42 @@ void AHUDBase::ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode In
 void AHUDBase::EnforceModalInputPolicy(const UWorld* World)
 {
 	EManagedUIInputMode InputMode = EManagedUIInputMode::GameOnly;
-	APlayerController* Owner = nullptr;
-	const bool bHasModal = FindTopmostModal(World, Owner, InputMode);
-	if (UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr) Viewport->SetIgnoreInput(bHasModal && InputMode == EManagedUIInputMode::UIOnly);
+	if (APlayerController* Owner = nullptr; !FindTopmostModal(World, Owner, InputMode))
+	{
+		const UGameInstance* GI = World ? World->GetGameInstance() : nullptr;
+		TSet<const AHUDBase*> VisitedHUDs;
+		bool bFoundBaseInputMode = false;
+		for (const ULocalPlayer* LocalPlayer : GI ? GI->GetLocalPlayers() : TArray<ULocalPlayer*>())
+		{
+			const APlayerController* PC = LocalPlayer ? LocalPlayer->GetPlayerController(World) : nullptr;
+			const AHUDBase* HUD = PC ? Cast<AHUDBase>(PC->GetHUD()) : nullptr;
+			if (!IsValid(HUD) || VisitedHUDs.Contains(HUD)) continue;
+			VisitedHUDs.Add(HUD);
+			
+			if (IsValid(HUD->BaseWidget))
+			{
+				InputMode = HUD->BaseInputMode;
+				bFoundBaseInputMode = true;
+			}
+			
+			for (const TPair<TObjectPtr<ULocalPlayer>, FPlayerWidgetStack>& StackPair : HUD->PlayerModalStacks)
+			{
+				for (int32 Index = StackPair.Value.Contexts.Num() - 1; Index >= 0; --Index)
+				{
+					const FWidgetContext& Context = StackPair.Value.Contexts[Index];
+					if (!Context.bIsBaseContext) continue;
+					InputMode = Context.InputMode;
+					bFoundBaseInputMode = true;
+					break;
+				}
+				if (bFoundBaseInputMode) break;
+			}
+			if (bFoundBaseInputMode) break;
+		}
+	}
+	
+	// Modal UIOnly keeps game input blocked; without a modal, retain the shared base widget's policy
+	if (UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr) Viewport->SetIgnoreInput(InputMode == EManagedUIInputMode::UIOnly);
 }
 
 APlayerController* AHUDBase::GetTopmostModalOwner(const UWorld* World)

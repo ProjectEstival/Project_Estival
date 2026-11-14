@@ -174,7 +174,8 @@ void UPlayerProfileSubsystem::RequireProfileForPlayer(ULocalPlayer* LocalPlayer)
 		Directory->RegisterPlayer(LocalPlayer);
 		if (const FInputDeviceId KeyboardDeviceId = IPlatformInputDeviceMapper::Get().GetDefaultInputDevice(); KeyboardDeviceId.IsValid()) Directory->AssociateInputDevice(LocalPlayer, KeyboardDeviceId);
 	}
-    OnboardingQueue->SetMandatoryPlayer(LocalPlayer);
+	// Keep the retained first local player mandatory after it rejoins
+    if (OnboardingQueue && GetGameInstance() && GetGameInstance()->GetLocalPlayerByIndex(0) == LocalPlayer) OnboardingQueue->SetMandatoryPlayer(LocalPlayer);
     EnqueuePlayer(LocalPlayer);
 }
 bool UPlayerProfileSubsystem::IsMandatoryProfilePlayer(const ULocalPlayer* LocalPlayer) const

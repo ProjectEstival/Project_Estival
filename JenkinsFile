@@ -201,7 +201,7 @@ pipeline {
                     }
                 }
                 withCredentials([file(credentialsId: 'PROJECT_ESTIVAL_BUGREPORTER_INI', variable: 'BUGREPORTER_INI')]) {
-                bat 'copy /Y "%BUGREPORTER_INI%" "Config\DefaultBugReporter.ini"'
+                bat 'copy /Y "%BUGREPORTER_INI%" "%WORKSPACE%\\Config\\DefaultBugReporter.ini"'
                 }
                 bat """
                 "${UE_UAT_PATH}" ^

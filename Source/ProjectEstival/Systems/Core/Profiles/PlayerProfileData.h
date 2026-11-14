@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
+
 #include "PlayerProfileData.generated.h"
 
 // Summary for profile selection cards
@@ -8,10 +9,10 @@ USTRUCT(BlueprintType)
 struct FProfileSummary
 {
 	GENERATED_BODY()
-
+	
 	UPROPERTY(BlueprintReadOnly)
 	FGuid ProfileId;
-
+	
 	UPROPERTY(BlueprintReadOnly)
 	FString ProfileName;
 };
@@ -40,7 +41,7 @@ struct FClassProgressionData
 	
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite)
 	FName ClassId = NAME_None;
-		
+	
 	UPROPERTY(SaveGame, EditAnywhere, BlueprintReadWrite)
 	TArray<FProfileUpgradeData> Upgrades;
 };

@@ -1,8 +1,12 @@
 #include "UI/PlayerProfileCard.h"
 
+#include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
+#include "Framework/Application/SlateApplication.h"
+#include "Framework/Application/SlateUser.h"
 #include "GameFramework/PlayerController.h"
 #include "Components/EditableText.h"
 #include "Components/Button.h"
+#include "Engine/GameInstance.h"
 
 // Initialization
 void UPlayerProfileCard::NativeOnInitialized()
@@ -24,11 +28,13 @@ void UPlayerProfileCard::NativeOnInitialized()
 void UPlayerProfileCard::NativeDestruct()
 {
 	if (UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(LongPressTimerHandle);
+	RestoreKeyboardTextFocus();
 	
 	Super::NativeDestruct();
 }
 void UPlayerProfileCard::SetProfile(const FGuid& InProfileId, const FString& InProfileName)
 {
+	RestoreKeyboardTextFocus();
 	ProfileId = InProfileId;
 	bIsCreateCard = false;
 	bIsNamingProfile = false;
@@ -58,15 +64,26 @@ void UPlayerProfileCard::SetCreateCard()
 	if (CardButton) CardButton->SetVisibility(ESlateVisibility::Visible);
 }
 
+// Input
 void UPlayerProfileCard::FocusCard(APlayerController* PlayerController) const
 {
-	if (IsValid(PlayerController) && IsValid(CardButton)) CardButton->SetUserFocus(PlayerController);
+	if (!IsValid(PlayerController) || !IsValid(CardButton)) return;
+	const_cast<UPlayerProfileCard*>(this)->RestoreKeyboardTextFocus();
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
+		{
+			Directory->FocusWidget(PlayerController->GetLocalPlayer(), CardButton);
+			return;
+		}
+	}
+	CardButton->SetUserFocus(PlayerController);
 }
 void UPlayerProfileCard::HandleCardPressed()
 {
 	if (bIsCreateCard || bIsNamingProfile) return;
 	bLongPressTriggered = false;
-	if (UWorld* World = GetWorld()) World->GetTimerManager().SetTimer(LongPressTimerHandle, this, &UPlayerProfileCard::HandleLongPressTriggered, 0.6f, false);
+	if (const UWorld* World = GetWorld()) World->GetTimerManager().SetTimer(LongPressTimerHandle, this, &UPlayerProfileCard::HandleLongPressTriggered, LongPressTimerInterval, false);
 }
 void UPlayerProfileCard::HandleCardReleased()
 {
@@ -99,6 +116,7 @@ void UPlayerProfileCard::BeginNameEntry()
 {
 	bIsCreateCard = false;
 	bIsNamingProfile = true;
+	OriginalProfileName = FText::GetEmpty();
 	ProfileId.Invalidate();
 	
 	if (CardButton) CardButton->SetVisibility(ESlateVisibility::HitTestInvisible);
@@ -108,19 +126,39 @@ void UPlayerProfileCard::BeginNameEntry()
 		ProfileNameText->SetText(FText::GetEmpty());
 		ProfileNameText->SetIsReadOnly(false);
 		ProfileNameText->SetVisibility(ESlateVisibility::Visible);
-		ProfileNameText->SetKeyboardFocus();
 	}
 }
 void UPlayerProfileCard::BeginNameEdit()
 {
 	bIsNamingProfile = true;
+	if (IsValid(ProfileNameText)) OriginalProfileName = ProfileNameText->GetText();
 	if (CardButton) CardButton->SetVisibility(ESlateVisibility::HitTestInvisible);
 	if (ProfileNameText)
 	{
 		ProfileNameText->SetIsReadOnly(false);
 		ProfileNameText->SetVisibility(ESlateVisibility::Visible);
-		ProfileNameText->SetKeyboardFocus();
 	}
+}
+void UPlayerProfileCard::CancelNameEdit()
+{
+	if (!bIsNamingProfile || !IsValid(ProfileNameText)) return;
+	RestoreKeyboardTextFocus();
+	bIsNamingProfile = false;
+	ProfileNameText->SetText(OriginalProfileName);
+	ProfileNameText->SetIsReadOnly(true);
+	ProfileNameText->SetVisibility(ESlateVisibility::HitTestInvisible);
+	if (IsValid(CardButton)) CardButton->SetVisibility(ESlateVisibility::Visible);
+}
+bool UPlayerProfileCard::CommitNameEntry()
+{
+	if (!bIsNamingProfile || !IsValid(ProfileNameText)) return false;
+	HandleNameCommitted(ProfileNameText->GetText(), ETextCommit::OnEnter);
+	return true;
+}
+void UPlayerProfileCard::EndNameEntry()
+{
+	bIsNamingProfile = false;
+	RestoreKeyboardTextFocus();
 }
 void UPlayerProfileCard::HandleNameCommitted(const FText& Text, ETextCommit::Type CommitMethod)
 {
@@ -133,13 +171,55 @@ void UPlayerProfileCard::RejectNameEntry() const
 	
 	ProfileNameText->SetIsReadOnly(false);
 	ProfileNameText->SetVisibility(ESlateVisibility::Visible);
-	ProfileNameText->SetKeyboardFocus();
+	if (APlayerController* PC = GetOwningPlayer()) FocusNameEntry(PC);
 }
-void UPlayerProfileCard::FocusNameEntry() const
+void UPlayerProfileCard::FocusNameEntry(APlayerController* PlayerController) const
 {
-	if (bIsNamingProfile && IsValid(ProfileNameText))
+	if (!bIsNamingProfile || !IsValid(ProfileNameText) || !IsValid(PlayerController)) return;
+	if (UGameInstance* GI = GetGameInstance())
 	{
-		ProfileNameText->SetKeyboardFocus();
-		if (APlayerController* PC = GetOwningPlayer()) FocusCard(PC);
+		if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
+		{
+			Directory->FocusWidget(PlayerController->GetLocalPlayer(), ProfileNameText);
+			ULocalPlayer* KeyboardPlayer = GI->GetLocalPlayerByIndex(0);
+			ULocalPlayer* TargetPlayer = PlayerController->GetLocalPlayer();
+			if (IsValid(KeyboardPlayer) && KeyboardPlayer != TargetPlayer)
+			{
+				UPlayerProfileCard* MutableThis = const_cast<UPlayerProfileCard*>(this);
+				if (!MutableThis->bKeyboardFocusCaptured)
+				{
+					const FLocalPlayerSessionRecord* KeyboardRecord = Directory->FindPlayer(KeyboardPlayer);
+					MutableThis->KeyboardFocusPlayer = KeyboardPlayer;
+					MutableThis->KeyboardPreviousFocusWidget = KeyboardRecord ? KeyboardRecord->FocusedWidget : nullptr;
+					MutableThis->bKeyboardFocusCaptured = true;
+				}
+				Directory->FocusWidget(KeyboardPlayer, ProfileNameText);
+			}
+			return;
+		}
 	}
+	ProfileNameText->SetUserFocus(PlayerController);
+}
+void UPlayerProfileCard::RestoreKeyboardTextFocus()
+{
+	if (!bKeyboardFocusCaptured) return;
+	if (UGameInstance* GI = GetGameInstance())
+	{
+		if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
+		{
+			if (KeyboardFocusPlayer.IsValid())
+			{
+				if (KeyboardPreviousFocusWidget.IsValid()) Directory->FocusWidget(KeyboardFocusPlayer.Get(), KeyboardPreviousFocusWidget.Get());
+				else if (FSlateApplication::IsInitialized())
+				{
+					const TSharedPtr<FSlateUser> SlateUser = KeyboardFocusPlayer->GetSlateUser();
+					if (SlateUser.IsValid()) FSlateApplication::Get().ClearUserFocus(SlateUser->GetUserIndex());
+					Directory->SetFocusedWidget(KeyboardFocusPlayer.Get(), nullptr);
+				}
+			}
+		}
+	}
+	KeyboardFocusPlayer.Reset();
+	KeyboardPreviousFocusWidget.Reset();
+	bKeyboardFocusCaptured = false;
 }

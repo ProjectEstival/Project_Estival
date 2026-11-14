@@ -24,7 +24,7 @@ struct FActiveStatModifier
 	FStatModifier Modifier;
  
 	UPROPERTY(VisibleAnywhere, Category = "Stats")
-	TObjectPtr<UObject> Source = nullptr;
+	TObjectPtr<const UObject> Source = nullptr;
 };
  
 USTRUCT(BlueprintType)
@@ -50,7 +50,7 @@ struct FStat : public FStatDefinition
 	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Stats|Runtime")
 	float CachedValue = 0;
 
-	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Stats|Runtime")
+	UPROPERTY(VisibleInstanceOnly, Transient, Category = "Stats|Runtime", meta = (TitleProperty = "{Source}"))
 	TArray<FActiveStatModifier> Modifiers;
 
 	float Calculate() const

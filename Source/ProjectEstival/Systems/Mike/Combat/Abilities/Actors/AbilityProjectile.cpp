@@ -2,7 +2,6 @@
 #include "Components/SphereComponent.h"
 #include "Components/ArrowComponent.h"
 #include "GameFramework/ProjectileMovementComponent.h"
-#include "Systems/Mike/Combat/Abilities/Effects/Targeting/Abstract/TargetingEffectBase.h"
 
 AAbilityProjectile::AAbilityProjectile()
 {
@@ -33,22 +32,30 @@ AAbilityProjectile::AAbilityProjectile()
 	Movement->bRotationFollowsVelocity = true;
 }
 
-void AAbilityProjectile::Initialize(const FAbilityContext& InContext, const UTargetingEffectBase* InEffect, const float Speed, const float Range)
+void AAbilityProjectile::SetupProjectile(const float Speed, const float Range)
 {
-	Context = InContext;
-	Effect = InEffect;
-	
 	Movement->InitialSpeed = Speed;
 	Movement->MaxSpeed = Speed;
-	if (Speed > 0.f) InitialLifeSpan = Range / Speed;
-	
-	if (AActor* Caster = Context.Instigator) Collision->IgnoreActorWhenMoving(Caster, true);
+	if (Speed > 0.f) SetLifetime(Range / Speed);
+
+	Collision->ClearMoveIgnoreActors();
+	if (AActor* Caster = GetAbilityContext().Instigator) Collision->IgnoreActorWhenMoving(Caster, true);
 }
 
-FGenericTeamId AAbilityProjectile::GetGenericTeamId() const
+void AAbilityProjectile::StartAbilityActor()
 {
-	const IGenericTeamAgentInterface* TeamAgent = Cast<IGenericTeamAgentInterface>(Context.Instigator.Get());
-	return TeamAgent ? TeamAgent->GetGenericTeamId() : FGenericTeamId::NoTeam;
+	Movement->SetUpdatedComponent(Collision);
+	Movement->Velocity = GetActorForwardVector() * Movement->InitialSpeed;
+
+	Super::StartAbilityActor();
+
+	TArray<AActor*> Touching;
+	Collision->GetOverlappingActors(Touching);
+
+	for (AActor* Actor : Touching)
+	{
+		if (CanHit(Actor)) TryHit(Actor);
+	}
 }
 
 void AAbilityProjectile::PostInitializeComponents()
@@ -59,43 +66,28 @@ void AAbilityProjectile::PostInitializeComponents()
 	Movement->OnProjectileStop.AddDynamic(this, &AAbilityProjectile::HandleStop);
 }
 
-void AAbilityProjectile::Expire(const bool bHitWorld)
+FAbilityContext AAbilityProjectile::MakeActorContext() const
 {
-	if (bExpired) return;
-	bExpired = true;
-	
-	OnExpired(bHitWorld);
-	Destroy();
+	FAbilityContext ProjectileContext = Super::MakeActorContext();
+
+	const FVector Travel = Movement->Velocity.GetSafeNormal2D();
+	if (!Travel.IsNearlyZero()) ProjectileContext.Direction = Travel;
+
+	return ProjectileContext;
 }
 
-bool AAbilityProjectile::CanHit(AActor* Other) const
+bool AAbilityProjectile::CanHit(const AActor* Other) const
 {
-	if (bExpired || !IsValid(Other) || Other == Context.Instigator) return false;
-	return true;
+	return !IsExpired() && IsValid(Other) && Other != GetAbilityContext().Instigator.Get();
 }
 
 void AAbilityProjectile::HandleOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
 	int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
 {
-	const UTargetingEffectBase* Source = Effect.Get();
-	if (!Source || !CanHit(OtherActor)) return;
-	
-	FAbilityContext HitContext = Context;
-	HitContext.Origin = GetActorLocation();
-	HitContext.Direction = Movement->Velocity.GetSafeNormal2D();
-	
-	if (!Source->TryApplyOnTarget(HitContext, OtherActor, Hits)) return;
-	
-	OnHitActor(OtherActor);
-	if (Source->IsExhausted(Hits)) Expire(false);
-}
-
-void AAbilityProjectile::LifeSpanExpired()
-{
-	Expire(false);
+	if (CanHit(OtherActor)) TryHit(OtherActor);
 }
 
 void AAbilityProjectile::HandleStop(const FHitResult& ImpactResult)
 {
-	Expire(true);
+	Expire();
 }

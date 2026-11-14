@@ -1,28 +1,28 @@
 ﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "GenericTeamAgentInterface.h"
-#include "Systems/Mike/Combat/Abilities/AbilityContext.h"
-#include "Systems/Mike/Combat/Abilities/Effects/Targeting/Abstract/TargetingEffectBase.h"
+#include "AbilityActor.h"
 #include "AbilityProjectile.generated.h"
 
 class USphereComponent;
 class UProjectileMovementComponent;
 class UArrowComponent;
 
+/** Ability actor that flies forward and hits what it overlaps. Expires on world hit or at max range. */
 UCLASS(Abstract, Blueprintable)
-class PROJECTESTIVAL_API AAbilityProjectile : public AActor, public IGenericTeamAgentInterface
+class PROJECTESTIVAL_API AAbilityProjectile : public AAbilityActor
 {
 	GENERATED_BODY()
 	
 public:
 	AAbilityProjectile();
-	void Initialize(const FAbilityContext& InContext, const UTargetingEffectBase* InEffect, float Speed, float Range);
-	virtual FGenericTeamId GetGenericTeamId() const override;
+
+	/** Call before StartAbilityActor. */
+	void SetupProjectile(float Speed, float Range);
+
+	virtual void StartAbilityActor() override;
 	virtual void PostInitializeComponents() override;
-	virtual void LifeSpanExpired() override;
-	
+
 protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Components")
 	TObjectPtr<USphereComponent> Collision;
@@ -32,15 +32,9 @@ protected:
 	
 	UPROPERTY(VisibleAnywhere, Category = "Components")
 	TObjectPtr<UArrowComponent> Arrow;
-	
-	UFUNCTION(BlueprintImplementableEvent, Category = "Projectile")
-	void OnHitActor(AActor* Target);
-	
-	UFUNCTION(BlueprintImplementableEvent, Category = "Projectile")
-	void OnExpired(bool bHitWorld);
-	
-	virtual void Expire(bool bHitWorld);
-	
+
+	virtual FAbilityContext MakeActorContext() const override;
+
 private:
 	UFUNCTION()
 	void HandleOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp,
@@ -48,15 +42,6 @@ private:
 	
 	UFUNCTION()
 	void HandleStop(const FHitResult& ImpactResult);
-	
-	bool CanHit(AActor* Other) const;
-	
-	UPROPERTY(Transient)
-	FAbilityContext Context;
-	
-	UPROPERTY(Transient)
-	FTargetHitTracker Hits;
-	
-	TWeakObjectPtr<const UTargetingEffectBase> Effect;
-	bool bExpired = false;
+
+	bool CanHit(const AActor* Other) const;
 };

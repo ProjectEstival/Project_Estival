@@ -53,7 +53,7 @@ public:
     bool IsPlayerRegistered(ULocalPlayer* LocalPlayer) const;
 	
 	// Mandatory onboarding 
-    void RequireProfileForPlayer(ULocalPlayer* LocalPlayer) const;
+    void RequireProfileForFirstPlayer(ULocalPlayer* LocalPlayer) const;
     bool IsMandatoryProfilePlayer(const ULocalPlayer* LocalPlayer) const;
     
 	// Input

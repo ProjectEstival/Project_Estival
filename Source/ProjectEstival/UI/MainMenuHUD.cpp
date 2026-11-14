@@ -27,7 +27,7 @@ void AMainMenuHUD::BeginPlay()
     PlayerProfileSubsystem->OnPlayerDisconnected.AddDynamic(this, &AMainMenuHUD::HandlePlayerDisconnected);
     PlayerProfileSubsystem->OnProfileReleased.AddDynamic(this, &AMainMenuHUD::HandleProfileReleased);
     
-    PlayerProfileSubsystem->RequireProfileForPlayer(FirstPlayer);
+    PlayerProfileSubsystem->RequireProfileForFirstPlayer(FirstPlayer);
 }
 void AMainMenuHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {

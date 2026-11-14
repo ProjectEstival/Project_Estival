@@ -123,7 +123,7 @@ bool UPlayerProfileSubsystem::HandleCancelInput(const FInputDeviceId InputDevice
 	// A back press outside onboarding releases this device's current profile
 	if (!Directory || !Directory->GetProfileId(InputPlayer).IsValid()) return false;
 	ReleaseProfile(InputPlayer);
-	if (IsMandatoryProfilePlayer(InputPlayer)) RequireProfileForPlayer(InputPlayer);
+	if (IsMandatoryProfilePlayer(InputPlayer)) RequireProfileForFirstPlayer(InputPlayer);
 	else EnqueuePlayer(InputPlayer);
 	if (ULocalPlayerSessionDirectory* MutableDirectory = GI ? GI->GetSubsystem<ULocalPlayerSessionDirectory>() : nullptr) MutableDirectory->AssociateInputDevice(InputPlayer, InputDeviceId);
 	return true;
@@ -166,7 +166,7 @@ void UPlayerProfileSubsystem::SetJoinInputEnabled(const bool bEnabled)
 }
 
 // Mandatory profile
-void UPlayerProfileSubsystem::RequireProfileForPlayer(ULocalPlayer* LocalPlayer) const
+void UPlayerProfileSubsystem::RequireProfileForFirstPlayer(ULocalPlayer* LocalPlayer) const
 {
     if (!IsPlayerRegistered(LocalPlayer)) return;
     if (ULocalPlayerSessionDirectory* Directory = GetGameInstance()->GetSubsystem<ULocalPlayerSessionDirectory>())

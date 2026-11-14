@@ -24,10 +24,11 @@ reviews:
         - Missing IsValid checks where an object can be destroyed
         - Replicated properties missing from GetLifetimeReplicatedProps
         - Hardcoded asset paths
+        - Check for linker errors with the includes.
+        - In the review suggest changes that will help the script with integration like ("use inline here")
         Do not flag UCLASS, USTRUCT, UPROPERTY or GENERATED_BODY macros as
         unknown, or the .generated.h include being last.
   auto_review:
     description_keyword: ""
     base_branches:
       - .*
-

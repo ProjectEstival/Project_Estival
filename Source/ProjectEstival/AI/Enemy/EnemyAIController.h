@@ -21,10 +21,6 @@ public:
 
 	AEnemyAIController(const FObjectInitializer& ObjectInitializer);
 	
-	void OnPossess(APawn* InPawn) override;
-	
-	void OnUnPossess() override;
-	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AI Senses")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComp;
 	
@@ -46,6 +42,10 @@ public:
 protected:
 	
 	virtual void BeginPlay() override;
+	
+	void OnPossess(APawn* InPawn) override;
+	
+	void OnUnPossess() override;
 	
 	FTimerHandle CheckDistanceTimerHandle;
 	

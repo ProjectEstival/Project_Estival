@@ -6,7 +6,7 @@
 #include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
-#include "Systems/Maria/Revivable.h"
+#include "Systems/Maria/Revive System/Revivable.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 #include "CharacterBase.generated.h"

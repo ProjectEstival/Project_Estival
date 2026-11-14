@@ -64,31 +64,3 @@ void ASpawnerBase::ResetSpawnedEnemies()
     }
 }
 
-/*
-ASpawnerBase::ASpawnerBase()
-{
-	PrimaryActorTick.bCanEverTick = false;
-
-	EnemySpawnerComponent =
-		CreateDefaultSubobject<UEnemySpawner>(
-			TEXT("EnemySpawnerComponent")
-		);
-}
-
-void ASpawnerBase::TestSpawnEnemies()
-{
-	if (EnemySpawnerComponent)
-	{
-		EnemySpawnerComponent->SpawnEnemies();
-	}
-}
-
-void ASpawnerBase::ResetSpawnedEnemies()
-{
-	if (EnemySpawnerComponent)
-	{
-		EnemySpawnerComponent->ClearSpawnedEnemies();
-	}
-}
-*/
-

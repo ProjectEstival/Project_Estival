@@ -29,30 +29,3 @@ public:
 	UFUNCTION(CallInEditor, Category = "Spawning")
 	void ResetSpawnedEnemies();
 };
-
-
-
-/* Old logic 
- class UEnemySpawner;
-
-UCLASS()
-class PROJECTESTIVAL_API ASpawnerBase : public AActor
-{
-	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
-	ASpawnerBase();
-
-protected:
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Spawning")
-	TObjectPtr<UEnemySpawner> EnemySpawnerComponent;
-
-public:	
-	UFUNCTION(CallInEditor, Category = "Spawning")
-	void TestSpawnEnemies();
-	UFUNCTION(CallInEditor, Category = "Spawning")
-	void ResetSpawnedEnemies();
-
-};
-*/

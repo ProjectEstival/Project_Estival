@@ -23,6 +23,8 @@ public:
 	
 	void OnPossess(APawn* InPawn) override;
 	
+	void OnUnPossess() override;
+	
 	UPROPERTY(BlueprintReadOnly, VisibleAnywhere, Category = "AI Senses")
 	TObjectPtr<UAIPerceptionComponent> AIPerceptionComp;
 	

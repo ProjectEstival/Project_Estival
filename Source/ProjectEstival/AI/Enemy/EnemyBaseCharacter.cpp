@@ -1,14 +1,17 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "AI/Enemy/EnemyBaseCharacter.h"
-#include "Systems/Mike/Stats/StatisticsComponent.h"
 
-void AEnemyBaseCharacter::Tick(float DeltaTime)
+void AEnemyBaseCharacter::BeginPlay()
 {
-	Super::Tick(DeltaTime);
+	Super::BeginPlay();
 	
-	if (this->GetStatistics()->GetFloat(TagDefinitions::Stats_Resources_Health) <= 0.0f)
-	{
-		bIsDead = true;
-	}
+	this->OnDeath.AddDynamic(this, &AEnemyBaseCharacter::Dead);
+}
+
+void AEnemyBaseCharacter::Dead()
+{
+	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Red, TEXT("DEAD"));
+	
+	this->Destroy();
 }

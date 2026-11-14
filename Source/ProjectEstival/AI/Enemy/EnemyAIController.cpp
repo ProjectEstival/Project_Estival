@@ -75,6 +75,10 @@ void AEnemyAIController::DistCheck()
 {
 	if (Players.IsEmpty()) return;
 
+	APawn* ControlledPawn = GetPawn();
+	
+	if (!ControlledPawn) return;
+	
 	float MinDist = FLT_MAX;
 	AEstivalBaseCharacter* PlayerToTarget = nullptr;
 	
@@ -82,7 +86,7 @@ void AEnemyAIController::DistCheck()
 	{
 		if (!Player) continue;
 		
-		float Dist = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
+		float Dist = FVector::Distance(Player->GetActorLocation(), ControlledPawn->GetActorLocation());
 		
 		if (Dist < MinDist)
 		{
@@ -118,4 +122,11 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 			StateTree->StartLogic();
 		}
 	}
+}
+
+void AEnemyAIController::OnUnPossess()
+{
+	Super::OnUnPossess();
+	
+	if (StateTree) StateTree->StartLogic();
 }

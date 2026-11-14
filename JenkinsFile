@@ -33,7 +33,7 @@ pipeline {
     }
 
     parameters {
-        choice(name: 'BUILD_TYPE', choices: ['Shipping', 'Development'], description: 'Build configuration for Unreal Engine')
+        choice(name: 'BUILD_TYPE', choices: ['Development', 'Shipping'], description: 'Build configuration for Unreal Engine')
         string(name: 'UE_VERSION', defaultValue: '5.8', description: 'Unreal Engine Version')
         string(name: 'GITHUB_REPO_LINK', defaultValue: 'https://github.com/thanostham/Project_Estival.git', description: 'Link of Github Repository')
         string(name: 'STEAM_BRANCH', defaultValue: 'internal_testing', description: 'Branch which the build will be deployed to')

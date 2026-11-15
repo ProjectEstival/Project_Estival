@@ -1,4 +1,4 @@
-#include "UI/PlayerProfileCard.h"
+#include "UI/Profiles/PlayerProfileCard.h"
 
 #include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "Framework/Application/SlateApplication.h"

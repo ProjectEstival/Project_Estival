@@ -11,7 +11,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "InputCoreTypes.h"
-#include "UI/HUDBase.h"
+#include "UI/HUDs/HUDBase.h"
 
 // Init / cleanup
 void UPlayerProfileSubsystem::Initialize(FSubsystemCollectionBase& Collection)

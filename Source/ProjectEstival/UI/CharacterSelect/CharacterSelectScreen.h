@@ -1,0 +1,82 @@
+#pragma once
+
+#include "Blueprint/UserWidget.h"
+#include "UI/UIBackHandler.h"
+#include "CoreMinimal.h"
+#include "UI/CharacterSelect/CharacterSelectCard.h"
+
+#include "CharacterSelectScreen.generated.h"
+
+class APlayerController;
+class UPanelWidget;
+class ULocalPlayer;
+
+USTRUCT(BlueprintType)
+struct FCharacterSelectPlayerChoice
+{
+	GENERATED_BODY()
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<ULocalPlayer> LocalPlayer = nullptr;
+	UPROPERTY(BlueprintReadOnly) FText CharacterTitle;
+};
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterSelectCompleted, const TArray<FCharacterSelectPlayerChoice>&, PlayerChoices);
+
+USTRUCT(BlueprintType)
+struct FCharacterSelectAbilitySet
+{
+	GENERATED_BODY()
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly) TArray<FCharacterSelectAbilityInfo> Abilities;
+};
+
+UCLASS()
+class PROJECTESTIVAL_API UCharacterSelectScreen : public UUserWidget, public IUIBackHandler
+{
+	GENERATED_BODY()
+	
+public:
+	UPROPERTY(BlueprintAssignable, Category="Character Select")
+	FCharacterSelectCompleted OnAllPlayersSelected;
+	UFUNCTION(BlueprintCallable, Category="Character Select")
+	void ConfirmCharacter(int32 CharacterIndex, APlayerController* PlayerController);
+	UFUNCTION(BlueprintCallable, Category="Character Select")
+	bool HandlePlayerSubmit(ULocalPlayer* LocalPlayer);
+	UFUNCTION(BlueprintCallable, Category="Character Select")
+	void NavigateCharacter(APlayerController* PlayerController, int32 Direction);
+	void NavigateAbility(APlayerController* PlayerController, int32 Direction);
+	UFUNCTION(BlueprintCallable, Category="Character Select")
+	bool HandlePlayerBack(APlayerController* PlayerController);
+	virtual bool HandleBack_Implementation(APlayerController* Instigator) override;
+	virtual void OnBackPopped_Implementation(APlayerController* Instigator) override;
+	bool HandlePlayerInput(ULocalPlayer* LocalPlayer, const FKey& Key);
+	
+protected:
+	virtual void NativeOnInitialized() override;
+	UPROPERTY(EditDefaultsOnly, Category="Character Select")
+	TSubclassOf<UCharacterSelectCard> CharacterSelectCardClass;
+	UPROPERTY(EditDefaultsOnly, Category="Character Select")
+	TArray<FText> CharacterTitles;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
+	TArray<FCharacterSelectAbilitySet> CharacterAbilitySets;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
+	float CharacterCardPadding = 20.0f;
+	UPROPERTY(meta=(BindWidget))
+	TObjectPtr<UPanelWidget> CharacterCardsPanel;
+	
+private:
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UCharacterSelectCard>> CharacterSelectCards;
+	UPROPERTY(Transient)
+	TArray<int32> AvailableCharacters;
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<ULocalPlayer>, int32> FocusedCharacterByPlayer;
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<ULocalPlayer>, int32> ConfirmedCharacterByPlayer;
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<ULocalPlayer>, int32> PlayerCardSlotByPlayer;
+	UPROPERTY(Transient)
+	TMap<TObjectPtr<ULocalPlayer>, int32> FocusedAbilityByPlayer;
+	void RefreshCardStates();
+	void RefreshPlayerCard(ULocalPlayer* Player);
+	void CompleteIfReady();
+	ULocalPlayer* ResolvePlayer(const APlayerController* PlayerController) const;
+};

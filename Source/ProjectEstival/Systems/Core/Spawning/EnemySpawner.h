@@ -45,7 +45,7 @@ public:
 
 	private:
     
-        UPROPERTY(Transient)
+        UPROPERTY()
         TArray<TObjectPtr<AActor>> SpawnedEnemies;
 
 protected:

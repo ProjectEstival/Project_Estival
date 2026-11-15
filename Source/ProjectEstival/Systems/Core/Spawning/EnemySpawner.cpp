@@ -1,7 +1,7 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "EnemySpawner.h"
+#include "Systems/Core/Spawning/EnemySpawner.h"
 #include "Systems/Stratos/SpawnerBase.h"
 
 

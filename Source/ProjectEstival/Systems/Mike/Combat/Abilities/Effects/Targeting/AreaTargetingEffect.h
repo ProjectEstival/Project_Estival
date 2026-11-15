@@ -5,7 +5,8 @@
 #include "Abstract/TargetShape.h"
 #include "AreaTargetingEffect.generated.h"
 
-UCLASS()
+/** Applies its payloads to everything inside a shape at the origin, turned toward the direction. */
+UCLASS(meta = (DisplayName = "Area"))
 class PROJECTESTIVAL_API UAreaTargetingEffect : public UTargetingEffect
 {
 	GENERATED_BODY()

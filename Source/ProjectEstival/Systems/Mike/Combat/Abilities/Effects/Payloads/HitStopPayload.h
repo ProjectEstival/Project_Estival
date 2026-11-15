@@ -6,10 +6,8 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "HitStopPayload.generated.h"
 
-/**
- * 
- */
-UCLASS()
+/** Freezes the caster and the receiver for a moment to sell the impact. */
+UCLASS(meta = (DisplayName = "Hit Stop"))
 class PROJECTESTIVAL_API UHitStopPayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()

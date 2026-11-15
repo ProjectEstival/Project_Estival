@@ -79,8 +79,23 @@ DerivedDataCache/*
 # Ignore the rider workplace xml file
 .idea/.idea.ProjectEstival/.idea/workspace.xml
 
-# FMOD - Keep required native libraries
+# FMOD plugin essentials
+!Plugins/FMODStudio/
+!Plugins/FMODStudio/Source/
+!Plugins/FMODStudio/Content/
+!Plugins/FMODStudio/*.uplugin
+
+# Required FMOD native libraries (Windows)
 !Plugins/FMODStudio/Binaries/
 !Plugins/FMODStudio/Binaries/Win64/
-!Plugins/FMODStudio/Binaries/Win64/*.lib
-!Plugins/FMODStudio/Binaries/Win64/*.dll
+!Plugins/FMODStudio/Binaries/Win64/fmod*.dll
+!Plugins/FMODStudio/Binaries/Win64/fmod*.lib
+
+# Ignore generated Unreal plugin binaries
+Plugins/FMODStudio/Binaries/**/UnrealEditor-*.dll
+Plugins/FMODStudio/Binaries/**/UnrealEditor-*.pdb
+
+# FMOD generated banks
+!Content/FMOD/
+!Content/FMOD/Desktop/
+!Content/FMOD/Desktop/**

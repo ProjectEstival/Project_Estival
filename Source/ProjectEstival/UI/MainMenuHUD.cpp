@@ -14,21 +14,32 @@ void AMainMenuHUD::BeginPlay()
     if (!GI || !OwningPC) return;
     
     // Only local player 0's HUD manages global onboarding UI
-    if (OwningPC->GetLocalPlayer() != GI->GetLocalPlayerByIndex(0)) return;
+    ULocalPlayer* FirstPlayer = GI->GetLocalPlayerByIndex(0);
+    if (OwningPC->GetLocalPlayer() != FirstPlayer) return;
     
     // Player profile setup
     PlayerProfileSubsystem = GI->GetSubsystem<UPlayerProfileSubsystem>();
     if (!PlayerProfileSubsystem) return;
+    PlayerProfileSubsystem->SetJoinInputEnabled(true);
     PlayerProfileSubsystem->OnOnboardingPlayerChanged.AddDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
     PlayerProfileSubsystem->OnProfileSelectionCancelRequested.AddDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
+    PlayerProfileSubsystem->OnProfileNameCommitRequested.AddDynamic(this, &AMainMenuHUD::HandleProfileNameCommitRequested);
+    PlayerProfileSubsystem->OnPlayerDisconnected.AddDynamic(this, &AMainMenuHUD::HandlePlayerDisconnected);
+    PlayerProfileSubsystem->OnProfileReleased.AddDynamic(this, &AMainMenuHUD::HandleProfileReleased);
+    
+    PlayerProfileSubsystem->RequireProfileForFirstPlayer(FirstPlayer);
 }
 void AMainMenuHUD::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
     // Player profile cleanup
     if (PlayerProfileSubsystem)
     {
+        PlayerProfileSubsystem->SetJoinInputEnabled(false);
         PlayerProfileSubsystem->OnOnboardingPlayerChanged.RemoveDynamic(this, &AMainMenuHUD::HandleOnboardingPlayerChanged);
         PlayerProfileSubsystem->OnProfileSelectionCancelRequested.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
+        PlayerProfileSubsystem->OnProfileNameCommitRequested.RemoveDynamic(this, &AMainMenuHUD::HandleProfileNameCommitRequested);
+        PlayerProfileSubsystem->OnPlayerDisconnected.RemoveDynamic(this, &AMainMenuHUD::HandlePlayerDisconnected);
+        PlayerProfileSubsystem->OnProfileReleased.RemoveDynamic(this, &AMainMenuHUD::HandleProfileReleased);
     }
     if (IsValid(ActivePopup))
     {
@@ -59,7 +70,7 @@ void AMainMenuHUD::HandleOnboardingPlayerChanged(ULocalPlayer* LocalPlayer)
     ActivePopup->OnProfileSelected.AddDynamic(this, &AMainMenuHUD::HandleProfileSelected);
     ActivePopup->OnProfileSelectionCancelled.AddDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
 }
-void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid ProfileId)
+void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, const FGuid ProfileId)
 {
     if (!IsValid(PlayerProfileSubsystem) || !IsValid(ActivePopup) || ActivePopup->GetTargetLocalPlayer() != LocalPlayer) return;
     
@@ -69,7 +80,7 @@ void AMainMenuHUD::HandleProfileSelected(ULocalPlayer* LocalPlayer, FGuid Profil
     ActivePopup->CompleteSelection();
     ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
     ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
-    PopWidget();
+    PopWidget(LocalPlayer->GetPlayerController(GetWorld()));
     ActivePopup = nullptr;
     
     PlayerProfileSubsystem->ContinueOnboarding();
@@ -81,11 +92,43 @@ void AMainMenuHUD::HandleProfileSelectionCancelled(ULocalPlayer* LocalPlayer)
     // Close the current popup before advancing the queue
     if (IsValid(ActivePopup) && ActivePopup->GetTargetLocalPlayer() == LocalPlayer)
     {
+        // Back cancels a pending rename or profile creation before leaving the popup
+        if (ActivePopup->CancelPendingNameEdit()) return;
+        
+        // Close card options
+        if (ActivePopup->IsCardOptionsOpen())
+        {
+            ActivePopup->CloseCardOptions();
+            return;
+        }
+        
+        // Never close onboarding popup for the mandatory player
+        if (PlayerProfileSubsystem->IsMandatoryProfilePlayer(LocalPlayer)) return;
+        
         ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
         ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
         
-        PopWidget();
+		// UIBackHandler may already have popped the popup before notifying this cleanup path
+		if (ActivePopup->IsInViewport()) PopWidget(LocalPlayer->GetPlayerController(GetWorld()));
         ActivePopup = nullptr;
     }
     PlayerProfileSubsystem->CancelProfileSelection(LocalPlayer);
+}
+void AMainMenuHUD::HandlePlayerDisconnected(ULocalPlayer* LocalPlayer)
+{
+	if (!IsValid(ActivePopup) || ActivePopup->GetTargetLocalPlayer() != LocalPlayer) return;
+	ActivePopup->CompleteSelection();
+	ActivePopup->OnProfileSelected.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelected);
+	ActivePopup->OnProfileSelectionCancelled.RemoveDynamic(this, &AMainMenuHUD::HandleProfileSelectionCancelled);
+	PopWidget(LocalPlayer->GetPlayerController(GetWorld()));
+	ActivePopup = nullptr;
+}
+void AMainMenuHUD::HandleProfileReleased(ULocalPlayer*) const
+{
+	if (IsValid(ActivePopup)) ActivePopup->RefreshAvailableProfiles();
+}
+
+void AMainMenuHUD::HandleProfileNameCommitRequested(ULocalPlayer* LocalPlayer) const
+{
+	if (IsValid(ActivePopup) && ActivePopup->GetTargetLocalPlayer() == LocalPlayer) ActivePopup->CommitPendingNameEntry();
 }

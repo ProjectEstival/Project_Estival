@@ -1,0 +1,34 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: en-US
+reviews:
+  merge_risk_instructions: Always check the names of unreal engine objects that get added to not have merge conflicts with
+    other objects that share the same names or are renamed.
+
+    # yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+  path_filters:
+    - "!Content/**"
+    - "!Plugins/FMODStudio/**"
+    - "!Binaries/**"
+    - "!Intermediate/**"
+    - "!Saved/**"
+    - "!DerivedDataCache/**"
+  path_instructions:
+    - path: "Source/**/*.{h,cpp}"
+      instructions: |
+        This is Unreal Engine 5 C++. Check for:
+        - UObject pointers not visible to GC (missing UPROPERTY or TObjectPtr)
+        - Missing Super:: calls in overridden lifecycle functions
+        - Unnecessary Tick work or expensive per-frame lookups
+        - Blocking load or file operations on the game thread
+        - Missing IsValid checks where an object can be destroyed
+        - Replicated properties missing from GetLifetimeReplicatedProps
+        - Hardcoded asset paths
+        - Check for linker errors with the includes.
+        - In the review suggest changes that will help the script with integration like ("use inline here")
+        Do not flag UCLASS, USTRUCT, UPROPERTY or GENERATED_BODY macros as
+        unknown, or the .generated.h include being last.
+  auto_review:
+    description_keyword: ""
+    base_branches:
+      - .*

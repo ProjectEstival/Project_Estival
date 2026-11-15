@@ -23,3 +23,13 @@ class PROJECTESTIVAL_API UEnvQueryContext_OtherCompanions : public UEnvQueryCont
 public:
 	virtual void ProvideContext(FEnvQueryInstance& QueryInstance, FEnvQueryContextData& ContextData) const override;
 };
+
+/** The enemy this companion fights */
+UCLASS()
+class PROJECTESTIVAL_API UEnvQueryContext_CompanionAttackTarget : public UEnvQueryContext
+{
+	GENERATED_BODY()
+
+public:
+	virtual void ProvideContext(FEnvQueryInstance& QueryInstance, FEnvQueryContextData& ContextData) const override;
+};

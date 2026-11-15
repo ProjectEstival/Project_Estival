@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
+#include "AI/Enemy/EnemyBaseCharacter.h"
 #include "EyeballAttackTask.generated.h"
 
 USTRUCT()
@@ -10,7 +11,7 @@ struct FEyeballAttackTaskInstanceData
 	GENERATED_BODY()
 	
 	UPROPERTY(EditAnywhere, Category = "Context")
-	TObjectPtr<APawn> Pawn;
+	TObjectPtr<AEnemyBaseCharacter> Enemy;
 	
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
 	FGameplayTag AbilityTag;

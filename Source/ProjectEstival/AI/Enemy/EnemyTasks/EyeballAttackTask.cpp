@@ -6,18 +6,18 @@
 EStateTreeRunStatus FEyeballAttackTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	FEyeballAttackTaskInstanceData& InstanceData = Context.GetInstanceData<FEyeballAttackTaskInstanceData>(*this);
-	if (!IsValid(InstanceData.Pawn))
+	if (!IsValid(InstanceData.Enemy))
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 	
-	AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(InstanceData.Pawn);
+	AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(InstanceData.Enemy);
 	if (!EnemyChar || !InstanceData.AbilityTag.IsValid())
 	{
 		return EStateTreeRunStatus::Failed;
 	}
 	
-
+	InstanceData.Enemy->TryActivateAbility(InstanceData.AbilityTag);
 	
 	return EStateTreeRunStatus::Succeeded;
 }

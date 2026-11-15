@@ -53,9 +53,6 @@ protected:
 
 	UPROPERTY(EditAnywhere, Category = "Resurrection", meta = (ClampMin = "0", ClampMax = "1"))
 	float HealthPercent = 0.5f;
-
-	UPROPERTY(EditAnywhere, Category = "Resurrection", meta = (ClampMin = "0"))
-	float ReviveRange = 200.f;
 #pragma endregion
 
 private:

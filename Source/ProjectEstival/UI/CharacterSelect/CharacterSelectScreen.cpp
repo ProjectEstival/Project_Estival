@@ -71,17 +71,37 @@ ULocalPlayer* UCharacterSelectScreen::ResolvePlayer(const APlayerController* Pla
 	return IsValid(PlayerController) ? PlayerController->GetLocalPlayer() : GetOwningLocalPlayer();
 }
 
-bool UCharacterSelectScreen::HandlePlayerInput(ULocalPlayer* LocalPlayer, const FKey& Key)
+bool UCharacterSelectScreen::HandleUIInputAction_Implementation(const EUIInputAction Action, APlayerController* Instigator)
 {
-	if (!IsValid(LocalPlayer) || !FocusedCharacterByPlayer.Contains(LocalPlayer)) return false;
-	APlayerController* PC = LocalPlayer->GetPlayerController(GetWorld());
-	if (Key == EKeys::Left || Key == EKeys::A || Key == EKeys::Gamepad_DPad_Left) { NavigateAbility(PC, -1); return true; }
-	if (Key == EKeys::Right || Key == EKeys::D || Key == EKeys::Gamepad_DPad_Right) { NavigateAbility(PC, 1); return true; }
-	if (Key == EKeys::Q || Key == EKeys::Gamepad_LeftShoulder) { NavigateCharacter(PC, -1); return true; }
-	if (Key == EKeys::E || Key == EKeys::Gamepad_RightShoulder) { NavigateCharacter(PC, 1); return true; }
-	if (Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom) return HandlePlayerSubmit(LocalPlayer);
-	if (Key == EKeys::Escape || Key == EKeys::Gamepad_FaceButton_Right) return HandlePlayerBack(PC);
-	return false;
+	ULocalPlayer* Player = IsValid(Instigator) ? Instigator->GetLocalPlayer() : nullptr;
+	if (!IsValid(Player) || !FocusedCharacterByPlayer.Contains(Player)) return false;
+	switch (Action)
+	{
+		case EUIInputAction::Submit:
+			return HandlePlayerSubmit(Player);
+		
+		case EUIInputAction::Back:
+			return HandlePlayerBack(Instigator);
+		
+		case EUIInputAction::PreviousAbility:
+			NavigateAbility(Instigator, -1);
+			return true;
+		
+		case EUIInputAction::NextAbility:
+			NavigateAbility(Instigator, 1);
+			return true;
+		
+		case EUIInputAction::PreviousCharacter:
+			NavigateCharacter(Instigator, -1);
+			return true;
+		
+		case EUIInputAction::NextCharacter:
+			NavigateCharacter(Instigator, 1);
+			return true;
+		
+		default:
+			return false;
+	}
 }
 
 void UCharacterSelectScreen::NavigateCharacter(APlayerController* PlayerController, const int32 Direction)

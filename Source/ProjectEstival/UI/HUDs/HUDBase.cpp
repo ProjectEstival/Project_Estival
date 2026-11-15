@@ -227,6 +227,13 @@ bool AHUDBase::FindTopmostModal(const UWorld* World, APlayerController*& OutOwne
 	}
 	return IsValid(OutOwner);
 }
+APlayerController* AHUDBase::GetTopmostModalOwner(const UWorld* World)
+{
+	APlayerController* Owner = nullptr;
+	EManagedUIInputMode InputMode = EManagedUIInputMode::GameOnly;
+	FindTopmostModal(World, Owner, InputMode);
+	return Owner;
+}
 
 void AHUDBase::ApplyInputMode(UWidget* FocusWidget, const EManagedUIInputMode InputMode, const bool bShowMouseCursor, APlayerController* PC) const
 {
@@ -307,12 +314,44 @@ void AHUDBase::EnforceModalInputPolicy(const UWorld* World)
 	if (UGameViewportClient* Viewport = World ? World->GetGameViewport() : nullptr) Viewport->SetIgnoreInput(InputMode == EManagedUIInputMode::UIOnly);
 }
 
-APlayerController* AHUDBase::GetTopmostModalOwner(const UWorld* World)
+UUserWidget* AHUDBase::GetTopWidgetForPlayer(const UWorld* World, const APlayerController* PC)
 {
-	APlayerController* Owner = nullptr;
-	EManagedUIInputMode InputMode = EManagedUIInputMode::GameOnly;
-	FindTopmostModal(World, Owner, InputMode);
-	return Owner;
+	if (!IsValid(World) || !IsValid(PC) || !IsValid(PC->GetLocalPlayer())) return nullptr;
+	const UGameInstance* GI = World->GetGameInstance();
+	if (!GI) return nullptr;
+	
+	const AHUDBase* ModalHost = nullptr;
+	UUserWidget* TopModal = nullptr;
+	int32 HighestZOrder = MIN_int32;
+	TSet<const AHUDBase*> VisitedHUDs;
+	for (const ULocalPlayer* LocalPlayer : GI->GetLocalPlayers())
+	{
+		const APlayerController* IteratedPC = LocalPlayer ? LocalPlayer->GetPlayerController(World) : nullptr;
+		AHUDBase* HUD = IteratedPC ? Cast<AHUDBase>(IteratedPC->GetHUD()) : nullptr;
+		if (!IsValid(HUD) || VisitedHUDs.Contains(HUD)) continue;
+		VisitedHUDs.Add(HUD);
+	
+		const FPlayerWidgetStack* PlayerStack = HUD->PlayerModalStacks.Find(PC->GetLocalPlayer());
+		if (!PlayerStack) continue;
+		for (int32 Index = PlayerStack->Contexts.Num() - 1; Index >= 0; --Index)
+		{
+			const FWidgetContext& Context = PlayerStack->Contexts[Index];
+			if (Context.bIsBaseContext || !IsValid(Context.Widget)) continue;
+			if (Context.ZOrder > HighestZOrder)
+			{
+				HighestZOrder = Context.ZOrder;
+				ModalHost = HUD;
+				TopModal = Context.Widget;
+			}
+			break;
+		}
+	}
+	if (IsValid(ModalHost)) return TopModal;
+	
+	const ULocalPlayer* FirstPlayer = GI->GetLocalPlayerByIndex(0);
+	const APlayerController* FirstPC = FirstPlayer ? FirstPlayer->GetPlayerController(World) : nullptr;
+	const AHUDBase* SharedHUD = FirstPC ? Cast<AHUDBase>(FirstPC->GetHUD()) : nullptr;
+	return IsValid(SharedHUD) ? SharedHUD->BaseWidget.Get() : nullptr;
 }
 bool AHUDBase::HandleBackForPlayer(const UWorld* World, APlayerController* RequestingPlayer)
 {

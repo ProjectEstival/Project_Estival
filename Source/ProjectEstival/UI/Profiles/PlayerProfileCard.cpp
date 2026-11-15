@@ -6,7 +6,9 @@
 #include "GameFramework/PlayerController.h"
 #include "Components/EditableText.h"
 #include "Components/Button.h"
+#include "Components/ScrollBox.h"
 #include "Engine/GameInstance.h"
+#include "ProfileSelectionPopup.h"
 
 // Initialization
 void UPlayerProfileCard::NativeOnInitialized()
@@ -79,6 +81,7 @@ void UPlayerProfileCard::FocusCard(APlayerController* PlayerController) const
 	}
 	CardButton->SetUserFocus(PlayerController);
 }
+
 void UPlayerProfileCard::HandleCardPressed()
 {
 	if (bIsCreateCard || bIsNamingProfile) return;
@@ -176,6 +179,21 @@ void UPlayerProfileCard::RejectNameEntry() const
 void UPlayerProfileCard::FocusNameEntry(APlayerController* PlayerController) const
 {
 	if (!bIsNamingProfile || !IsValid(ProfileNameText) || !IsValid(PlayerController)) return;
+	UScrollBox* ProfileScrollBox = nullptr;
+	EScrollWhenFocusChanges PreviousScrollBehavior = EScrollWhenFocusChanges::InstantScroll;
+	if (const UProfileSelectionPopup* Popup = GetTypedOuter<UProfileSelectionPopup>())
+	{
+		ProfileScrollBox = Popup->GetProfileScrollBox();
+		if (IsValid(ProfileScrollBox))
+		{
+			PreviousScrollBehavior = ProfileScrollBox->GetScrollWhenFocusChanges();
+			ProfileScrollBox->SetScrollWhenFocusChanges(EScrollWhenFocusChanges::NoScroll);
+		}
+	}
+	auto RestoreScrollBehavior = [ProfileScrollBox, PreviousScrollBehavior]()
+	{
+		if (IsValid(ProfileScrollBox)) ProfileScrollBox->SetScrollWhenFocusChanges(PreviousScrollBehavior);
+	};
 	if (UGameInstance* GI = GetGameInstance())
 	{
 		if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
@@ -195,10 +213,12 @@ void UPlayerProfileCard::FocusNameEntry(APlayerController* PlayerController) con
 				}
 				Directory->FocusWidget(KeyboardPlayer, ProfileNameText);
 			}
+			RestoreScrollBehavior();
 			return;
 		}
 	}
 	ProfileNameText->SetUserFocus(PlayerController);
+	RestoreScrollBehavior();
 }
 void UPlayerProfileCard::RestoreKeyboardTextFocus()
 {

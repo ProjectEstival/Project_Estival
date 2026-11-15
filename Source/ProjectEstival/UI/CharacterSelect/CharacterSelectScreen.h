@@ -4,6 +4,7 @@
 #include "UI/UIBackHandler.h"
 #include "CoreMinimal.h"
 #include "UI/CharacterSelect/CharacterSelectCard.h"
+#include "UI/UIInputHandler.h"
 
 #include "CharacterSelectScreen.generated.h"
 
@@ -29,7 +30,7 @@ struct FCharacterSelectAbilitySet
 };
 
 UCLASS()
-class PROJECTESTIVAL_API UCharacterSelectScreen : public UUserWidget, public IUIBackHandler
+class PROJECTESTIVAL_API UCharacterSelectScreen : public UUserWidget, public IUIBackHandler, public IUIInputHandler
 {
 	GENERATED_BODY()
 	
@@ -47,7 +48,7 @@ public:
 	bool HandlePlayerBack(APlayerController* PlayerController);
 	virtual bool HandleBack_Implementation(APlayerController* Instigator) override;
 	virtual void OnBackPopped_Implementation(APlayerController* Instigator) override;
-	bool HandlePlayerInput(ULocalPlayer* LocalPlayer, const FKey& Key);
+	virtual bool HandleUIInputAction_Implementation(EUIInputAction Action, APlayerController* Instigator) override;
 	
 protected:
 	virtual void NativeOnInitialized() override;

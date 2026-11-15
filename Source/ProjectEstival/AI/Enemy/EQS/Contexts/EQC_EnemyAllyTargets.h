@@ -4,10 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "EnvironmentQuery/EnvQueryContext.h"
-#include "EyeballQueryContext.generated.h"
+#include "EQC_EnemyAllyTargets.generated.h"
 
 UCLASS()
-class PROJECTESTIVAL_API UEyeballQueryContext : public UEnvQueryContext
+class PROJECTESTIVAL_API UEQC_EnemyAllyTargets : public UEnvQueryContext
 {
 	GENERATED_BODY()
 	

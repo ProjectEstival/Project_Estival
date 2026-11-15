@@ -1,14 +1,14 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 
-#include "AI/Enemy/EyeballQueryContext.h"
+#include "EQC_EnemyPlayerTarget.h"
 
-#include "EnemyAIController.h"
+#include "AI/Enemy/EnemyAIController.h"
 #include "EnvironmentQuery/EnvQueryTypes.h"
 #include "EnvironmentQuery/Items/EnvQueryItemType_Actor.h"
 #include "Systems/Core/Characters/CharacterBase.h"
 
-void UEyeballQueryContext::ProvideContext(FEnvQueryInstance& QueryInstance, FEnvQueryContextData& ContextData) const
+void UEQC_EnemyPlayerTarget::ProvideContext(FEnvQueryInstance& QueryInstance, FEnvQueryContextData& ContextData) const
 {
 	UObject* QueryOwner = QueryInstance.Owner.Get();
 	if (!QueryOwner) return;

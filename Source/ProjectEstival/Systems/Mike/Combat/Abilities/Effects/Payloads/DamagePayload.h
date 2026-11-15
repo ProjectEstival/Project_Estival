@@ -7,7 +7,8 @@
 #include "Systems/Core/TagDefinitions.h"
 #include "DamagePayload.generated.h"
 
-UCLASS()
+/** Damages the receiver by the caster's damage stat, randomised and multiplied. */
+UCLASS(meta = (DisplayName = "Damage"))
 class PROJECTESTIVAL_API UDamagePayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()

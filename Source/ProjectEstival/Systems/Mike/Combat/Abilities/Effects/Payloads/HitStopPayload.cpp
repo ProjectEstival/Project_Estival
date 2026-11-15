@@ -1,4 +1,7 @@
 ﻿#include "HitStopPayload.h"
+#include "TimerManager.h"
+#include "Engine/World.h"
+#include "GameFramework/Actor.h"
 
 bool UHitStopPayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const
 {
@@ -20,16 +23,12 @@ bool UHitStopPayload::TryApplyHitStop(AActor* TargetActor, const float Duration)
 	const float OriginalDilation = TargetActor->CustomTimeDilation;
 	TargetActor->CustomTimeDilation = 0;
 
-	TWeakObjectPtr WeakChar(TargetActor);
 	FTimerHandle Handle;
 	World->GetTimerManager().SetTimer(
 		Handle,
-		FTimerDelegate::CreateWeakLambda(TargetActor, [WeakChar, OriginalDilation]()
+		FTimerDelegate::CreateWeakLambda(TargetActor, [TargetActor, OriginalDilation]()
 		{
-			if (AActor* C = WeakChar.Get())
-			{
-				C->CustomTimeDilation = OriginalDilation;
-			}
+			TargetActor->CustomTimeDilation = OriginalDilation;
 		}),
 		Duration,
 		false);

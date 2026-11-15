@@ -7,10 +7,8 @@
 #include "Systems/Mike/Combat/Abilities/AbilityBody.h"
 #include "AttitudeFilterPayload.generated.h"
 
-/**
- * 
- */
-UCLASS()
+/** Continues to its Success Chain only for receivers the caster sees as an allowed attitude (e.g. only enemies). */
+UCLASS(meta = (DisplayName = "Attitude Filter"))
 class PROJECTESTIVAL_API UAttitudeFilterPayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()

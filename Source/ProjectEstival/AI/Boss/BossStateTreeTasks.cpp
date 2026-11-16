@@ -7,6 +7,9 @@
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Systems/Core/TagDefinitions.h"
 #include "EngineUtils.h"
+#include "Algo/Sort.h"
+#include "DrawDebugHelpers.h"
+#include "EngineUtils.h"
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Systems/Core/TagDefinitions.h"
 
@@ -99,3 +102,72 @@ static FAutoConsoleCommandWithWorldAndArgs BossSetHealthCommand(
 	TEXT("Sets every boss's health to a percent, 0-100. Example: Estival.Boss.SetHealth 50"),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&BossSetHealth));
 #endif
+
+
+// ------------ Find Targets ----------
+EStateTreeRunStatus FBossFindTargetsTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	Update(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FBossFindTargetsTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	Update(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FBossFindTargetsTask::Update(FInstanceDataType& InstanceData)
+{
+	// start fresh every time so a dead hero never stays as a target
+	InstanceData.Targets.Reset();
+	InstanceData.NearestTarget = nullptr;
+	InstanceData.DistanceToNearest = 0.f;
+	InstanceData.bHasTarget = false;
+
+	const AEstivalBaseCharacter* Me = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
+	if (!Me)
+	{
+		return;
+	}
+
+	const FVector MyLocation = Me->GetActorLocation();
+
+	// a hero = any living character on a team that is hostile to me. Companions count too
+	for (TActorIterator<AEstivalBaseCharacter> It(Me->GetWorld()); It; ++It)
+	{
+		AEstivalBaseCharacter* Other = *It;
+		if (Other == Me || !Other->IsAlive() || Me->GetTeamAttitudeTowards(*Other) != ETeamAttitude::Hostile)
+		{
+			continue;
+		}
+
+		InstanceData.Targets.Add(Other);
+	}
+
+	if (InstanceData.Targets.IsEmpty())
+	{
+		return;
+	}
+
+	// nearest first
+	Algo::SortBy(InstanceData.Targets, [&MyLocation](const AActor* Target)
+	{
+		return FVector::DistSquared(MyLocation, Target->GetActorLocation());
+	});
+
+	InstanceData.NearestTarget = InstanceData.Targets[0];
+	InstanceData.NearestLocation = InstanceData.NearestTarget->GetActorLocation();
+	InstanceData.DistanceToNearest = static_cast<float>(FVector::Dist(MyLocation, InstanceData.NearestLocation));
+	InstanceData.bHasTarget = true;
+
+	if (InstanceData.bDrawDebug)
+	{
+		// red line: the nearest hero. Yellow balls: everyone the boss can attack
+		DrawDebugLine(Me->GetWorld(), MyLocation, InstanceData.NearestLocation, FColor::Red, false, -1.f, 0, 4.f);
+		for (const AActor* Target : InstanceData.Targets)
+		{
+			DrawDebugSphere(Me->GetWorld(), Target->GetActorLocation(), 60.f, 12, FColor::Yellow, false, -1.f, 0, 3.f);
+		}
+	}
+}

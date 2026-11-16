@@ -8,6 +8,7 @@
 
 class APawn;
 class AAIController;
+class AActor;
 
 
 // ------------ Wartch Phase ---------------
@@ -80,4 +81,51 @@ struct FBossAnnouncePhaseTask : public FStateTreeTaskCommonBase
 	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
 
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+};
+
+// ----------- Find Targets ------------
+USTRUCT()
+struct FBossFindTargetsInstanceData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	// draws a line to the nearest target and a ball on every target
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bDrawDebug = false;
+
+	// every living hero nearest first. 3 nearest = the first 3
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TArray<TObjectPtr<AActor>> Targets;
+
+	// Scratch, Leap and every other single or area attack aims at this hero
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TObjectPtr<AActor> NearestTarget;
+
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	FVector NearestLocation = FVector::ZeroVector;
+
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	float DistanceToNearest = 0.f;
+
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	bool bHasTarget = false;
+};
+
+// global task: finds who the boss can attack at every tick
+USTRUCT(meta=(DisplayName="Boss Find Targets", Category="Boss"))
+struct FBossFindTargetsTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FBossFindTargetsInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+
+private:
+	static void Update(FInstanceDataType& InstanceData);
 };

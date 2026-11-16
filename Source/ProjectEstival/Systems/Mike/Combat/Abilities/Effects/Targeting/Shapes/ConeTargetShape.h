@@ -4,7 +4,8 @@
 #include "Systems/Mike/Combat/Abilities/Effects/Targeting/Abstract/TargetShape.h"
 #include "ConeTargetShape.generated.h"
 
-UCLASS()
+/** A cone in front of the origin, Angle wide. */
+UCLASS(meta = (DisplayName = "Cone"))
 class PROJECTESTIVAL_API UConeTargetShape : public UTargetShape
 {
 	GENERATED_BODY()

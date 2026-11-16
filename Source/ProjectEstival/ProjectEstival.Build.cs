@@ -23,7 +23,8 @@ public class ProjectEstival : ModuleRules
 			"StateTreeModule",
 			"GameplayStateTreeModule",
 			"Niagara",
-			"UMG"
+			"UMG",
+			"DeveloperSettings"
 		});
 
 		// AssetTools depends on UnrealEd, which only exists for Editor targets -

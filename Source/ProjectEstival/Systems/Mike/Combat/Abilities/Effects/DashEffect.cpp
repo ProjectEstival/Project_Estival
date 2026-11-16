@@ -11,9 +11,9 @@ void UDashEffect::Execute_Implementation(const FAbilityContext& Context) const
 	{
 		FVector Direction = Character->GetLastMovementInputVector().GetSafeNormal();
 		
-		// Fallback to velocity
+		// Fallback to velocity, then forward
 		if (Direction.IsNearlyZero()) Direction = Character->GetVelocity().GetSafeNormal2D();
-		if (Direction.IsNearlyZero()) return;
+		if (Direction.IsNearlyZero()) Direction = Character->GetActorForwardVector().GetSafeNormal2D();
 		
 		Character->GetCharacterMovement()->Launch(Direction * DashDistance);
 	}

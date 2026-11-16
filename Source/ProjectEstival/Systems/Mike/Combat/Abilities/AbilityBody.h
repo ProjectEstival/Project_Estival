@@ -5,8 +5,17 @@
 #include "AbilityContext.h"
 #include "AbilityBody.generated.h"
  
+UCLASS(Abstract)
+class PROJECTESTIVAL_API UAbilityObject : public UObject
+{
+	GENERATED_BODY()
+
+public:
+	virtual UWorld* GetWorld() const override;
+};
+
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
-class PROJECTESTIVAL_API UAbilityEffect : public UObject
+class PROJECTESTIVAL_API UAbilityEffect : public UAbilityObject
 {
 	GENERATED_BODY()
  
@@ -14,39 +23,59 @@ public:
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
 	void Execute(const FAbilityContext& Context) const;
 	virtual void Execute_Implementation(const FAbilityContext& Context) const {}
+
+	template <typename ArrayType>
+	static void ExecuteAll(const ArrayType& Effects, const FAbilityContext& Context)
+	{
+		for (UAbilityEffect* Effect : Effects)
+		{
+			if (Effect) Effect->Execute(Context);
+		}
+	}
 };
 
-UENUM()
-enum EPayloadSuccess : uint8
+UENUM(BlueprintType)
+enum class EPayloadSuccess : uint8
 {
 	SelfOnly,
 	CompleteChain,
 	ChainPartial
 };
 
+UENUM(BlueprintType)
+enum class ETargetOrCaster : uint8
+{
+	Target,
+	Caster
+};
+
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
-class PROJECTESTIVAL_API UAbilityEffectPayload : public UObject
+class PROJECTESTIVAL_API UAbilityEffectPayload : public UAbilityObject
 {
 	GENERATED_BODY()
  
 protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
-	TEnumAsByte<EPayloadSuccess> SuccessRequirement = ChainPartial;
+	ETargetOrCaster ApplyTo = ETargetOrCaster::Target;
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
+	EPayloadSuccess SuccessRequirement = EPayloadSuccess::ChainPartial;
 	
 	UFUNCTION(BlueprintNativeEvent, Category = "Ability")
 	bool TryApplySelf(const FAbilityContext& Context, AActor* Target) const;
 	virtual bool TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const { return true;}
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Ability")
-	TArray<UAbilityEffectPayload*> SuccessChain;
+	TArray<TObjectPtr<UAbilityEffectPayload>> SuccessChain;
 	
 public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Ability")
 	bool TryApply(const FAbilityContext& Context, AActor* Target)
 	{
-		if (!TryApplySelf(Context, Target)) return false;
+		AActor* Receiver = ApplyTo == ETargetOrCaster::Caster ? Context.Instigator.Get() : Target;
+		if (!TryApplySelf(Context, Receiver)) return false;
 		
 		int SuccessfulChains = 0;
 		const int TotalChains = SuccessChain.Num();
@@ -59,16 +88,29 @@ public:
 		
 		switch (SuccessRequirement)
 		{
-			case SelfOnly: return true;
-			case CompleteChain: return SuccessfulChains == TotalChains;
-			case ChainPartial: return TotalChains == 0 || SuccessfulChains > 0;
+			case EPayloadSuccess::SelfOnly: return true;
+			case EPayloadSuccess::CompleteChain: return SuccessfulChains == TotalChains;
+			case EPayloadSuccess::ChainPartial: return TotalChains == 0 || SuccessfulChains > 0;
 			default: return false;
 		}
+	}
+
+	template <typename ArrayType>
+	static bool ApplyAll(const ArrayType& Payloads, const FAbilityContext& Context, AActor* Target)
+	{
+		bool bAnyApplied = false;
+
+		for (UAbilityEffectPayload* Payload : Payloads)
+		{
+			if (IsValid(Payload) && Payload->TryApply(Context, Target)) bAnyApplied = true;
+		}
+
+		return bAnyApplied;
 	}
 };
 
 UCLASS(Abstract, Blueprintable, EditInlineNew, DefaultToInstanced, CollapseCategories)
-class PROJECTESTIVAL_API UAbilityPredicate : public UObject
+class PROJECTESTIVAL_API UAbilityPredicate : public UAbilityObject
 {
 	GENERATED_BODY()
 	

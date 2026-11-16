@@ -14,7 +14,8 @@ enum class EPushDirection : uint8
 	TowardOrigin
 };
 
-UCLASS()
+/** Knocks the receiver away from the origin, along the direction or toward the origin. */
+UCLASS(meta = (DisplayName = "Push"))
 class PROJECTESTIVAL_API UPushCharacterPayload : public UAbilityEffectPayload
 {
 	GENERATED_BODY()

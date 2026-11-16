@@ -7,33 +7,32 @@
 #include "Interactable.generated.h"
 
 // This class does not need to be modified.
-UINTERFACE()
+UINTERFACE(MinimalAPI, Blueprintable)
 class UInteractable : public UInterface
 {
 	GENERATED_BODY()
 };
 
-/**
- * 
- */
 class PROJECTESTIVAL_API IInteractable
 {
 	GENERATED_BODY()
 
-	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
+	// Checked on start and every tick of a hold; returning false cancels it. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool CanInteract(AActor* Interactor) const;
-	
+
+	// 0 = instant, anything above = hold for that many seconds. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	float GetHoldDuration() const;
-	
+
+	// Returns whether the interaction succeeded. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
-	void Interact(AActor* Interactor);
-	
+	bool TryInteract(AActor* Interactor);
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnHoldStarted(AActor* Interactor);
-	
+
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	void OnHoldCancelled(AActor* Interactor);
 };

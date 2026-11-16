@@ -20,8 +20,8 @@ public:
 	UReviveComponent();
 	virtual void BeginPlay() override;
 	virtual bool CanInteract_Implementation(AActor* Interactor) const override;
-	virtual float GetHoldDuration_Implementation() const override {return Duration;}
-	virtual void Interact_Implementation(AActor* Interactor) override;
+	virtual float GetHoldDuration_Implementation() const override { return Duration; }
+	virtual bool TryInteract_Implementation(AActor* Interactor) override;
 	virtual void OnHoldStarted_Implementation(AActor* Interactor) override {OnStarted.Broadcast();}
 	virtual void OnHoldCancelled_Implementation(AActor* Interactor) override {OnCancelled.Broadcast();}
 #pragma endregion

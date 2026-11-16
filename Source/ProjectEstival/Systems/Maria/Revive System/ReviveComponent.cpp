@@ -1,5 +1,4 @@
 ﻿#include "ReviveComponent.h"
-#include "Revivable.h"
 #include "Systems/Core/Characters/CharacterBase.h"
 
 #pragma region Lifecycle
@@ -19,19 +18,21 @@ void UReviveComponent::BeginPlay()
 #pragma region Interactable
 bool UReviveComponent::CanInteract_Implementation(AActor* Interactor) const { return CanBeRevived(); }
 
-void UReviveComponent::Interact_Implementation(AActor* Interactor)
+bool UReviveComponent::TryInteract_Implementation(AActor* Interactor)
 {
-	AActor* Owner = GetOwner();
-	if (Owner && Owner->Implements<URevivable>() && IRevivable::Execute_TryRevive(Owner, HealthPercent))
+	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(GetOwner());
+	if (!Character || !Character->TryRevive(HealthPercent))
 	{
-		RemainingLives--;
-		OnLivesChanged.Broadcast(RemainingLives);
-		OnCompleted.Broadcast();
-		return;
+		UE_LOG(LogTemp, Warning, TEXT("Revive failed on %s"), *GetNameSafe(GetOwner()));
+		OnCancelled.Broadcast();
+		return false;
 	}
 
-	UE_LOG(LogTemp, Warning, TEXT("Revive failed on %s"), *GetNameSafe(Owner));
-	OnCancelled.Broadcast();
+	UE_LOG(LogTemp, Warning, TEXT("Revived! on %s"), *GetNameSafe(GetOwner()));
+	RemainingLives--;
+	OnLivesChanged.Broadcast(RemainingLives);
+	OnCompleted.Broadcast();
+	return true;
 }
 #pragma endregion
 

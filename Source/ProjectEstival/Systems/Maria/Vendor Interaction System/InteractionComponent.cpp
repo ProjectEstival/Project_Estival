@@ -39,8 +39,7 @@ void UInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	
 	UObject* Target = HoldTarget.Get();
 	ResetHold();
-	IInteractable::Execute_Interact(Target, GetOwner());
-	OnInteracted.Broadcast();
+	if (IInteractable::Execute_TryInteract(Target, GetOwner())) OnInteracted.Broadcast();
 }
 
 bool UInteractionComponent::StartInteract()
@@ -54,7 +53,7 @@ bool UInteractionComponent::StartInteract()
 	const float Duration = IInteractable::Execute_GetHoldDuration(Target);
 	if (Duration <= 0.f)
 	{
-		IInteractable::Execute_Interact(Target, GetOwner());
+		if (!IInteractable::Execute_TryInteract(Target, GetOwner())) return false;
 		OnInteracted.Broadcast();
 		return true;
 	}

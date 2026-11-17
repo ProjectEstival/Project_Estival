@@ -70,22 +70,23 @@ bool UInteractionComponent::StartInteract()
 
 void UInteractionComponent::StopInteract()
 {
-	UObject* Target = HoldTarget.Get();
-	if (!Target)
+	if (HoldDuration <= 0.f)
 	{
 		SetComponentTickEnabled(false);
 		return;
 	}
-	
+
+	UObject* Target = HoldTarget.Get();
 	ResetHold();
-	IInteractable::Execute_OnHoldCancelled(Target, GetOwner());
+
+	if (Target) IInteractable::Execute_OnHoldCancelled(Target, GetOwner());
 	OnHoldCancelled.Broadcast();
 }
 
 float UInteractionComponent::GetHoldProgress() const
 {
-	if (!HoldTarget.IsValid() || HoldDuration <= 0.f) return 0.f;
-	return FMath::Clamp(HoldElapsed/HoldDuration, 0.f, 1.f);
+	if (HoldDuration <= 0.f) return 0.f;
+	return FMath::Clamp(HoldElapsed / HoldDuration, 0.f, 1.f);
 }
 
 UObject* UInteractionComponent::FindNearestInteractable()const

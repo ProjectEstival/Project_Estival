@@ -20,6 +20,8 @@ bool UReviveComponent::CanInteract_Implementation(AActor* Interactor) const { re
 
 bool UReviveComponent::TryInteract_Implementation(AActor* Interactor)
 {
+	if (!Execute_CanInteract(this, Interactor)) return false;
+	
 	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(GetOwner());
 	if (!Character || !Character->TryRevive(HealthPercent))
 	{

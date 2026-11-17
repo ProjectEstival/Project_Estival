@@ -25,7 +25,7 @@ public:
 	void StopInteract();
 	
 	UFUNCTION(BlueprintPure)
-	bool IsHolding() const { return HoldTarget.IsValid(); }
+	bool IsHolding() const { return HoldDuration > 0.f; }
 	
 	UFUNCTION(BlueprintPure)
 	float GetHoldProgress() const;

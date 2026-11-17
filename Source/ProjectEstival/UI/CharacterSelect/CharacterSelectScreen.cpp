@@ -203,9 +203,9 @@ void UCharacterSelectScreen::CompleteIfReady()
 	TArray<FCharacterSelectPlayerChoice> Choices;
 	for (const TPair<TObjectPtr<ULocalPlayer>, int32>& Entry : ConfirmedCharacterByPlayer)
 	{
-		FCharacterSelectPlayerChoice& Choice = Choices.AddDefaulted_GetRef();
-		Choice.LocalPlayer = Entry.Key;
-		Choice.CharacterTitle = CharacterTitles.IsValidIndex(Entry.Value) ? CharacterTitles[Entry.Value] : FText::FromString(FString::Printf(TEXT("Character %d"), Entry.Value + 1));
+		auto& [LocalPlayer, CharacterTitle] = Choices.AddDefaulted_GetRef();
+		LocalPlayer = Entry.Key;
+		CharacterTitle = CharacterTitles.IsValidIndex(Entry.Value) ? CharacterTitles[Entry.Value] : FText::FromString(FString::Printf(TEXT("Character %d"), Entry.Value + 1));
 	}
 	TArray<int32> Remaining = AvailableCharacters;
 	while (Choices.Num() < 4 && !Remaining.IsEmpty())
@@ -214,8 +214,9 @@ void UCharacterSelectScreen::CompleteIfReady()
 		const int32 Index = Remaining[RandomPosition];
 		Remaining.RemoveAtSwap(RandomPosition);
 		auto& [LocalPlayer, CharacterTitle] = Choices.AddDefaulted_GetRef();
-		LocalPlayer = nullptr; // Null LocalPlayer denotes an AI controlled slot.
+		LocalPlayer = nullptr; // Null LocalPlayer denotes an AI controlled slot
 		CharacterTitle = CharacterTitles.IsValidIndex(Index) ? CharacterTitles[Index] : FText::FromString(FString::Printf(TEXT("Character %d"), Index + 1));
 	}
 	OnAllPlayersSelected.Broadcast(Choices);
 }
+

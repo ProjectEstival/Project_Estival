@@ -312,7 +312,7 @@ bool UPlayerProfileSubsystem::AssignProfile(ULocalPlayer* LocalPlayer, const FGu
 void UPlayerProfileSubsystem::ReleaseProfile(ULocalPlayer* LocalPlayer) const
 {
     if (!IsValid(LocalPlayer)) return;
-	if (UGameInstance* GI = GetGameInstance())
+	if (const UGameInstance* GI = GetGameInstance())
 	{
 		if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
 		{

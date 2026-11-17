@@ -7,7 +7,7 @@
 #include "Engine/World.h"
 #include "Engine/OverlapResult.h"
 
-
+#pragma region Public Methods
 // Sets default values for this component's properties
 UInteractionComponent::UInteractionComponent()
 {
@@ -38,6 +38,7 @@ void UInteractionComponent::TickComponent(float DeltaTime, ELevelTick TickType, 
 	if (HoldElapsed < HoldDuration) return;
 	
 	UObject* Target = HoldTarget.Get();
+	// reset first so the trailing input release doesn't fire a false cancel
 	ResetHold();
 	if (IInteractable::Execute_TryInteract(Target, GetOwner())) OnInteracted.Broadcast();
 }
@@ -70,6 +71,7 @@ bool UInteractionComponent::StartInteract()
 
 void UInteractionComponent::StopInteract()
 {
+	// HoldDuration is the "hold active" flag, so cancellation still works after the target is destroyed
 	if (HoldDuration <= 0.f)
 	{
 		SetComponentTickEnabled(false);
@@ -88,7 +90,9 @@ float UInteractionComponent::GetHoldProgress() const
 	if (HoldDuration <= 0.f) return 0.f;
 	return FMath::Clamp(HoldElapsed / HoldDuration, 0.f, 1.f);
 }
+#pragma endregion
 
+#pragma region Private Methods
 UObject* UInteractionComponent::FindNearestInteractable()const
 {
 	if (!GetWorld()) return nullptr;
@@ -125,6 +129,7 @@ UObject* UInteractionComponent::FindNearestInteractable()const
 		AActor* Actor = Overlap.GetActor();
 		if (!Actor) continue;
 		
+		// the interface can sit on the actor itself or on any of its components
 		if (Actor->Implements<UInteractable>()) Consider(Actor, Actor);
 		
 		for (UActorComponent* Component : Actor->GetComponentsByInterface(UInteractable::StaticClass())) Consider(Component, Actor);
@@ -157,3 +162,4 @@ void UInteractionComponent::ResetHold()
 	HoldDuration = 0.f;
 	SetComponentTickEnabled(false);
 }
+#pragma endregion

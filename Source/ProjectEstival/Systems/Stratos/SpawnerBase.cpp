@@ -2,7 +2,7 @@
 
 
 #include "Systems/Stratos/SpawnerBase.h"
-#include "EnemySpawner.h"
+#include "Systems/Core/Spawning/EnemySpawner.h"
 #include "Engine/World.h"
 #include "Engine/EngineTypes.h"
 

@@ -35,6 +35,7 @@ void ADpsTrap::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	//VisualMesh->SetVisibility(false); Το κρατάω έτσι γιατί όταν το βγάλω το trap δεν θα φαίνεται όταν πατάω play ια να το τεστάρω πιο εύκολα
 	
 	TriggerArea->OnComponentBeginOverlap.AddDynamic(this, &ADpsTrap::OnOverlapBegin);
 	TriggerArea->OnComponentEndOverlap.AddDynamic(this, &ADpsTrap::OnOverlapEnd);

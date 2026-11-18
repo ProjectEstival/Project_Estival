@@ -9,8 +9,10 @@
 #include "CharacterSelectScreen.generated.h"
 
 class APlayerController;
+class AEstivalBaseCharacter;
 class UPanelWidget;
 class ULocalPlayer;
+class ULoadout;
 
 USTRUCT(BlueprintType)
 struct FCharacterSelectPlayerChoice
@@ -18,16 +20,11 @@ struct FCharacterSelectPlayerChoice
 	GENERATED_BODY()
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<ULocalPlayer> LocalPlayer = nullptr;
 	UPROPERTY(BlueprintReadOnly) FText CharacterTitle;
+	UPROPERTY(BlueprintReadOnly) TObjectPtr<ULoadout> Loadout = nullptr;
+	UPROPERTY(BlueprintReadOnly) TSubclassOf<AEstivalBaseCharacter> CharacterClass;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterSelectCompleted, const TArray<FCharacterSelectPlayerChoice>&, PlayerChoices);
-
-USTRUCT(BlueprintType)
-struct FCharacterSelectAbilitySet
-{
-	GENERATED_BODY()
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly) TArray<FCharacterSelectAbilityInfo> Abilities;
-};
 
 UCLASS()
 class PROJECTESTIVAL_API UCharacterSelectScreen : public UUserWidget, public IUIBackHandler, public IUIInputHandler
@@ -54,10 +51,10 @@ protected:
 	virtual void NativeOnInitialized() override;
 	UPROPERTY(EditDefaultsOnly, Category="Character Select")
 	TSubclassOf<UCharacterSelectCard> CharacterSelectCardClass;
-	UPROPERTY(EditDefaultsOnly, Category="Character Select")
-	TArray<FText> CharacterTitles;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
-	TArray<FCharacterSelectAbilitySet> CharacterAbilitySets;
+	TArray<TObjectPtr<ULoadout>> CharacterLoadouts;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
+	TMap<TObjectPtr<ULoadout>, TSubclassOf<AEstivalBaseCharacter>> CharacterClassesByLoadout;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
 	float CharacterCardPadding = 20.0f;
 	UPROPERTY(meta=(BindWidget))

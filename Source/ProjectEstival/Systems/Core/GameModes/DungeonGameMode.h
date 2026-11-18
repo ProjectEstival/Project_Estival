@@ -34,9 +34,6 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Run")
 	void FloorReady(const FTransform& PartyStart, AEstivalBaseCharacter* Boss);
 
-	UFUNCTION(Exec)
-	void BossDefeated();
-
 	UFUNCTION(BlueprintCallable, Exec, Category = "Run")
 	void ContinueRun();
 
@@ -81,6 +78,9 @@ protected:
 	
 	UFUNCTION(BlueprintNativeEvent, Category = "Run")
 	TSubclassOf<APlayerBase> ChoosePlayerHero(APlayerController* Player);
+	
+	UFUNCTION(Exec)
+	void BossDefeated();
 
 	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;

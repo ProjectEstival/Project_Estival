@@ -272,7 +272,6 @@ void ADungeonGameMode::ContinueRun()
 
 void ADungeonGameMode::LeaveRun()
 {
-	if (Phase != EDungeonPhase::FloorCleared) return;
 	EndRun(ERunResult::Left);
 }
 

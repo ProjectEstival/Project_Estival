@@ -46,10 +46,10 @@ protected:
 	float TelegraphDelay = 0.5f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
-	float Active = 3.0f;
+	float Active = 5.0f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
-	float Cooldown = 2.0f;
+	float Cooldown = 3.5f;
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Settings")
 	float DpsRate = 0.5f;

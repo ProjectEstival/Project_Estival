@@ -7,6 +7,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "Systems/Core/EstivalGameInstance.h"
 #include "Systems/Core/Characters/PlayerBase.h"
+#include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 #include "Systems/Mike/Combat/TeamAttitudeSolver.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
@@ -16,6 +17,7 @@ ADungeonGameMode::ADungeonGameMode()
 {
 	Floors.SetNum(10);
 	Floors[4].bRevivesParty = true;
+	Floors[9].BossFragments = 3;
 	DefaultPawnClass = APlayerBase::StaticClass();
 }
 
@@ -221,6 +223,8 @@ void ADungeonGameMode::OnBossDied()
 		CurrentBoss = nullptr;
 	}
 
+	AwardFragments(Floors[FloorIndex].BossFragments);
+
 	if (Floors[FloorIndex].bRevivesParty)
 	{
 		for (APlayerBase* Member : Party)
@@ -237,6 +241,25 @@ void ADungeonGameMode::OnBossDied()
 
 	Phase = EDungeonPhase::FloorCleared;
 	OnFloorCleared.Broadcast(GetFloor());
+}
+
+void ADungeonGameMode::AwardFragments(const int32 Amount) const
+{
+	if (Amount <= 0) return;
+
+	const UPlayerProfileSubsystem* Profiles = UGameInstance::GetSubsystem<UPlayerProfileSubsystem>(GetGameInstance());
+	if (!Profiles) return;
+
+	for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		ULocalPlayer* LocalPlayer = It->Get() ? It->Get()->GetLocalPlayer() : nullptr;
+		UPlayerProfileSaveGame* Save = Profiles->GetProfile(LocalPlayer);
+		
+		if (!Save) continue;
+
+		Save->Profile.UnspentFragments += Amount;
+		Profiles->SaveProfile(LocalPlayer);
+	}
 }
 
 void ADungeonGameMode::ContinueRun()

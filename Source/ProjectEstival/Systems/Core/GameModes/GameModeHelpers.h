@@ -51,6 +51,10 @@ struct FDungeonFloor
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor")
 	bool bRevivesParty = false;
 
+	/** Boss Fragments every player gets when this floor's boss dies. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor", meta = (ClampMin = "0"))
+	int32 BossFragments = 1;
+
 	/** The pool this floor's modifiers are picked from. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Floor")
 	TArray<FFloorModifier> Modifiers;

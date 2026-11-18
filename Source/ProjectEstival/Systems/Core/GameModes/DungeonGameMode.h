@@ -112,6 +112,7 @@ private:
 	void ApplyFloorModifiers(AEstivalBaseCharacter* Character);
 	void OnActorAppeared(AActor* Actor);
 	void ApplyPendingFloorModifiers();
+	void AwardFragments(int32 Amount) const;
 	void EndRun(ERunResult Result);
 	void ReturnToHub() const;
 	TArray<TSubclassOf<APlayerBase>> GetHeroes() const;

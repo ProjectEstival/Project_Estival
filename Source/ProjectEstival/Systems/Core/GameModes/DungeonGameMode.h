@@ -100,11 +100,11 @@ private:
 
 	/** Space between heroes when the party is lined up at a floor's start. */
 	static constexpr float PartySpacing = 150.f;
+	/** Characters that spawned or came out of the pool this frame.*/
+	TSet<TWeakObjectPtr<AEstivalBaseCharacter>> PendingCharacters;
 	int32 FloorIndex = 0;
 	EDungeonPhase Phase = EDungeonPhase::LoadingFloor;
 	FDelegateHandle SpawnHandle;
-	/** Characters that spawned or came out of the pool this frame. A set, so one that did both is only in here once. */
-	TSet<TWeakObjectPtr<AEstivalBaseCharacter>> PendingCharacters;
 
 	void SpawnParty();
 	void RequestFloor();

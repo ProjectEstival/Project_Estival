@@ -56,7 +56,7 @@ public:
 protected:
 #pragma region Serialized Fields
 	
-	/** Radius around the owner searched for interactables. Also the range a hold must stay within. */
+	/** Radius around the owner searched for interactables. Also, the range a hold must stay within. */
 	UPROPERTY(EditAnywhere, Category = "Interaction", meta = (ClampMin = "0"))
 	float InteractRange = 200.f;
 	

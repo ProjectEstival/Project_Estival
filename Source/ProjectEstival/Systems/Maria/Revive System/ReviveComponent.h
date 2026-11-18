@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Systems/Maria/Vendor Interaction System/Interactable.h"
+#include "Systems/Maria/Interaction System/Interactable.h"
 #include "ReviveComponent.generated.h"
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnResurrectionEvent);

@@ -6,7 +6,7 @@
 #include "CharacterBase.h"
 #include "InputAction.h"
 #include "Systems/Maria/Revive System/ReviveComponent.h"
-#include "Systems/Maria/Vendor Interaction System/InteractionComponent.h"
+#include "Systems/Maria/Interaction System/InteractionComponent.h"
 #include "PlayerBase.generated.h"
 
 UCLASS()

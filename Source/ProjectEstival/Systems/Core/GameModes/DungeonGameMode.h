@@ -56,6 +56,10 @@ public:
 	UFUNCTION(BlueprintPure, Category = "Run")
 	TArray<APlayerBase*> GetParty() const;
 	
+	/** The modifiers picked for the current floor. */
+	UFUNCTION(BlueprintPure, Category = "Run")
+	TArray<FFloorModifier> GetFloorModifiers() const { return ActiveModifiers; }
+
 	virtual UClass* GetDefaultPawnClassForController_Implementation(AController* InController) override;
 
 protected:
@@ -79,6 +83,7 @@ protected:
 	TSubclassOf<APlayerBase> ChoosePlayerHero(APlayerController* Player);
 
 	virtual void BeginPlay() override;
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 
 private:
 	UPROPERTY(Transient)
@@ -90,13 +95,23 @@ private:
 	UPROPERTY(Transient)
 	TObjectPtr<AEstivalBaseCharacter> CurrentBoss;
 
+	UPROPERTY(Transient)
+	TArray<FFloorModifier> ActiveModifiers;
+
 	/** Space between heroes when the party is lined up at a floor's start. */
 	static constexpr float PartySpacing = 150.f;
 	int32 FloorIndex = 0;
 	EDungeonPhase Phase = EDungeonPhase::LoadingFloor;
+	FDelegateHandle SpawnHandle;
+	/** Characters that spawned or came out of the pool this frame. A set, so one that did both is only in here once. */
+	TSet<TWeakObjectPtr<AEstivalBaseCharacter>> PendingCharacters;
 
 	void SpawnParty();
 	void RequestFloor();
+	void RollFloorModifiers();
+	void ApplyFloorModifiers(AEstivalBaseCharacter* Character);
+	void OnActorAppeared(AActor* Actor);
+	void ApplyPendingFloorModifiers();
 	void EndRun(ERunResult Result);
 	void ReturnToHub() const;
 	TArray<TSubclassOf<APlayerBase>> GetHeroes() const;

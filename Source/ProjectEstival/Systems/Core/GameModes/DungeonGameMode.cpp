@@ -1,11 +1,15 @@
 ﻿#include "DungeonGameMode.h"
 #include "LevelManager.h"
+#include "EngineUtils.h"
 #include "Engine/LocalPlayer.h"
 #include "GenericTeamAgentInterface.h"
+#include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Systems/Core/EstivalGameInstance.h"
 #include "Systems/Core/Characters/PlayerBase.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 #include "Systems/Mike/Combat/TeamAttitudeSolver.h"
+#include "Systems/Mike/Stats/StatisticsComponent.h"
 
 
 ADungeonGameMode::ADungeonGameMode()
@@ -19,6 +23,16 @@ void ADungeonGameMode::BeginPlay()
 {
 	Super::BeginPlay();
 	FGenericTeamId::SetAttitudeSolver(&RunAttitudes::GetTeamBasedAttitude);
+}
+
+void ADungeonGameMode::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	if (const UWorld* World = GetWorld())
+	{
+		World->RemoveOnActorSpawnedHandler(SpawnHandle);
+		if (UActorPoolSubsystem* Pool = World->GetSubsystem<UActorPoolSubsystem>()) Pool->OnActorAcquired.RemoveAll(this);
+	}
+	Super::EndPlay(EndPlayReason);
 }
 
 void ADungeonGameMode::StartPlay()
@@ -35,6 +49,12 @@ void ADungeonGameMode::StartPlay()
 	else LevelManager = Managers[0];
 
 	SpawnParty();
+
+	SpawnHandle = GetWorld()->AddOnActorSpawnedHandler(FOnActorSpawned::FDelegate::CreateUObject(this, &ADungeonGameMode::OnActorAppeared));
+	if (UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>())
+	{
+		Pool->OnActorAcquired.AddUObject(this, &ADungeonGameMode::OnActorAppeared);
+	}
 	RequestFloor();
 }
 
@@ -88,6 +108,7 @@ void ADungeonGameMode::SpawnParty()
 void ADungeonGameMode::RequestFloor()
 {
 	Phase = EDungeonPhase::LoadingFloor;
+	RollFloorModifiers();
 
 	if (LevelManager)
 	{
@@ -119,8 +140,70 @@ void ADungeonGameMode::FloorReady(const FTransform& PartyStart, AEstivalBaseChar
 		UE_LOG(LogTemp, Warning, TEXT("DungeonGameMode: floor %d has no boss, only the BossDefeated command can clear it."), GetFloor());
 	}
 
+	for (AEstivalBaseCharacter* Character : TActorRange<AEstivalBaseCharacter>(GetWorld()))
+	{
+		ApplyFloorModifiers(Character);
+	}
+
 	Phase = EDungeonPhase::Playing;
 	OnFloorStarted.Broadcast(GetFloor());
+}
+
+void ADungeonGameMode::RollFloorModifiers()
+{
+	const FDungeonFloor& Floor = Floors[FloorIndex];
+	TArray<FFloorModifier> Pool = Floor.Modifiers;
+	Pool.RemoveAll([](const FFloorModifier& Modifier) { return !Modifier.Set; });
+
+	ActiveModifiers.Reset();
+	while (ActiveModifiers.Num() < Floor.ModifierCount && !Pool.IsEmpty())
+	{
+		const int32 Pick = FMath::RandHelper(Pool.Num());
+		ActiveModifiers.Add(Pool[Pick]);
+		Pool.RemoveAtSwap(Pick);
+	}
+}
+
+void ADungeonGameMode::ApplyFloorModifiers(AEstivalBaseCharacter* Character)
+{
+	UStatisticsComponent* Stats = Character ? Character->GetStatistics() : nullptr;
+	if (!Stats) return;
+
+	Stats->RemoveAllFromSource(this);
+
+	const APlayerBase* Hero = Cast<APlayerBase>(Character);
+	const bool bInParty = Hero && Party.Contains(Hero);
+	const bool bIsEnemy = !bInParty && !Party.IsEmpty() && Party[0]->GetTeamAttitudeTowards(*Character) == ETeamAttitude::Hostile;
+
+	for (const FFloorModifier& Modifier : ActiveModifiers)
+	{
+		const bool bTargeted = Modifier.Target == EFloorModifierTarget::Everyone
+		|| (Modifier.Target == EFloorModifierTarget::Party ? bInParty : bIsEnemy);
+		
+		if (bTargeted) Stats->ApplyModifierAsset(Modifier.Set, this);
+	}
+}
+
+void ADungeonGameMode::OnActorAppeared(AActor* Actor)
+{
+	if (ActiveModifiers.IsEmpty() || Phase == EDungeonPhase::LoadingFloor) return;
+
+	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(Actor);
+	if (!Character) return;
+
+	if (PendingCharacters.IsEmpty()) GetWorldTimerManager().SetTimerForNextTick(this, &ADungeonGameMode::ApplyPendingFloorModifiers);
+	PendingCharacters.Add(Character);
+}
+
+void ADungeonGameMode::ApplyPendingFloorModifiers()
+{
+	const TSet<TWeakObjectPtr<AEstivalBaseCharacter>> Characters = PendingCharacters;
+	PendingCharacters.Reset();
+
+	for (const TWeakObjectPtr<AEstivalBaseCharacter>& Character : Characters)
+	{
+		ApplyFloorModifiers(Character.Get());
+	}
 }
 
 void ADungeonGameMode::BossDefeated()

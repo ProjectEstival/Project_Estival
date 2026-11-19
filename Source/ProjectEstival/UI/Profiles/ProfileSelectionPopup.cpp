@@ -1,15 +1,15 @@
-#include "UI/ProfileSelectionPopup.h"
+#include "ProfileSelectionPopup.h"
 
 #include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "GameFramework/PlayerController.h"
+#include "UI/Profiles/PlayerProfileCard.h"
 #include "Components/ScrollBoxSlot.h"
 #include "Components/CanvasPanel.h"
-#include "UI/PlayerProfileCard.h"
 #include "Components/ScrollBox.h"
+#include "Components/Widget.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
-#include "Components/Widget.h"
 
 // Initialization
 void UProfileSelectionPopup::NativeOnInitialized()

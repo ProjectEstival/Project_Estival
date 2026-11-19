@@ -4,6 +4,7 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Components/Widget.h"
+#include "Systems/Core/Characters/PlayerBase.h"
 
 ULocalPlayerSessionDirectory::ULocalPlayerSessionDirectory()
 {
@@ -166,4 +167,15 @@ bool ULocalPlayerSessionDirectory::IsProfileAssigned(const FGuid& ProfileId, con
 		if (Pair.Key.IsValid() && Pair.Key.Get() != ExceptPlayer && Pair.Value.ProfileId == ProfileId) return true;
 	}
 	return false;
+}
+
+TSubclassOf<APlayerBase> ULocalPlayerSessionDirectory::PlayerToSelectedCharacter(APlayerController* PC)
+{
+	if (!PC) return nullptr;
+	
+	if (ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
+	{
+		if (const TSubclassOf<APlayerBase>* Character = SelectedCharacters.Find(LocalPlayer)) return Character->Get();
+	}
+	return nullptr;
 }

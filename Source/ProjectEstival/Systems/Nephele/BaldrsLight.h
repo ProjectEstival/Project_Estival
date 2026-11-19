@@ -5,9 +5,11 @@
 #include "GameplayTagContainer.h"
 #include "Components/SpotLightComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "Systems/Core/Characters/PlayerBase.h"
 #include "BaldrsLight.generated.h"
 
 class ACharacter;
+class ADungeonGameMode;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FBaldrsLightPlayerEvent, ACharacter*, Player);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FBaldrsLightPlayerDamagedEvent, ACharacter*, Player, float, Damage);
@@ -19,7 +21,7 @@ struct FBaldrsLightPlayerState
 	GENERATED_BODY()
 	
 	UPROPERTY()
-	TObjectPtr<ACharacter> Player = nullptr;
+	APlayerBase* Player;
 	float DamageIntervalTimer = 0.0f;
 	int CorruptionTier = 0;
 	bool bInsideLight = true;
@@ -34,12 +36,8 @@ public:
 	ABaldrsLight();
 	
 	// Player definition
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Baldr's Light|Players")
-	TSubclassOf<ACharacter> PlayerBaseClass;
-	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Baldr's Light|Players")
-	TArray<TObjectPtr<ACharacter>> Players;
-	TArray<TObjectPtr<ACharacter>> GetPlayersInLight();
-	TArray<TObjectPtr<ACharacter>> GetPlayersOutsideLight();
+	TArray<APlayerBase*> GetPlayersInLight();
+	TArray<APlayerBase*> GetPlayersOutsideLight();
 	
 	// Light settings
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Baldr's Light", meta = (ClampMin = "0.0"))
@@ -100,7 +98,11 @@ public:
 	
 protected:
 	virtual void BeginPlay() override;
-	
+	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
+	virtual void PostInitializeComponents() override;
+	UFUNCTION()
+	void InitializePosition(int32 Floor);
+
 	// Corruption damage
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Baldr's Light|Damage", meta = (ClampMin = "0.0"))
 	float CorruptionRate = 1.0f; // per second
@@ -117,20 +119,20 @@ protected:
 	
 	// Events
 	UFUNCTION(BlueprintNativeEvent, Category = "Baldr's Light|Events")
-	void PlayerEnteredLight(ACharacter* Player);
-	virtual void PlayerEnteredLight_Implementation(ACharacter* Player);
+	void PlayerEnteredLight(APlayerBase* Player);
+	virtual void PlayerEnteredLight_Implementation(APlayerBase* Player);
 	UFUNCTION(BlueprintNativeEvent, Category = "Baldr's Light|Events")
-	void PlayerExitedLight(ACharacter* Player);
-	virtual void PlayerExitedLight_Implementation(ACharacter* Player);
+	void PlayerExitedLight(APlayerBase* Player);
+	virtual void PlayerExitedLight_Implementation(APlayerBase* Player);
 	UFUNCTION(BlueprintNativeEvent, Category = "Baldr's Light|Events")
-	void PlayerCured(ACharacter* Player);
-	virtual void PlayerCured_Implementation(ACharacter* Player);
+	void PlayerCured(APlayerBase* Player);
+	virtual void PlayerCured_Implementation(APlayerBase* Player);
 	UFUNCTION(BlueprintNativeEvent, Category = "Baldr's Light|Events")
-	void PlayerDamaged(ACharacter* Player, float Damage);
-	virtual void PlayerDamaged_Implementation(ACharacter* Player, float Damage);
+	void PlayerDamaged(APlayerBase* Player, float Damage);
+	virtual void PlayerDamaged_Implementation(APlayerBase* Player, float Damage);
 	UFUNCTION(BlueprintNativeEvent, Category = "Baldr's Light|Events")
-	void PlayerCorruptionTierChanged(ACharacter* Player, int Tier);
-	virtual void PlayerCorruptionTierChanged_Implementation(ACharacter* Player, int Tier);
+	void PlayerCorruptionTierChanged(APlayerBase* Player, int Tier);
+	virtual void PlayerCorruptionTierChanged_Implementation(APlayerBase* Player, int Tier);
 	
 	// Light projection
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Baldr's Light|Visuals")
@@ -156,7 +158,7 @@ protected:
 private:
 	UPROPERTY()
 	TArray<FBaldrsLightPlayerState> PlayerStates;
-	void FindPlayers();
+	TArray<APlayerBase*> GetPlayers() const;
 	FVector CalculatePlayersBarycenter() const;
 	void UpdatePlayerStates(float DeltaTime);
 	

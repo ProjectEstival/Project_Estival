@@ -35,6 +35,7 @@ public:
 	// Target player
 	void SetTargetLocalPlayer(ULocalPlayer* LocalPlayer);
 	ULocalPlayer* GetTargetLocalPlayer() const { return TargetLocalPlayer; }
+	UScrollBox* GetProfileScrollBox() const { return ProfileScrollBox; }
 	
 	// Selection flow
 	UFUNCTION(BlueprintCallable, Category = "Profile Selection")

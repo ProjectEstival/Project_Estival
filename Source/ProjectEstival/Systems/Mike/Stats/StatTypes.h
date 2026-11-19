@@ -1,6 +1,7 @@
 ﻿#pragma once
  
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "StatTypes.generated.h"
 
 USTRUCT(BlueprintType)
@@ -11,6 +12,7 @@ struct FStatModifier
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	float Value = 0;
  
+	/** Value is equivalent to the percentage (ex. 50 = 50%) */
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Stats")
 	bool bAsPercentage = false;
 };

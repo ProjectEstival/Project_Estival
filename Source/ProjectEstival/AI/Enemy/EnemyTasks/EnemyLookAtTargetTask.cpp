@@ -1,12 +1,13 @@
 ﻿#include "EnemyLookAtTargetTask.h"
 #include "StateTreeExecutionContext.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "GameFramework/Pawn.h"
 
 EStateTreeRunStatus FEnemyLookAtTargetTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
 	FEnemyLookAtTargetTaskInstanceData& InstanceData = Context.GetInstanceData<FEnemyLookAtTargetTaskInstanceData>(*this);
 	
-	if (!IsValid(InstanceData.Player)) return EStateTreeRunStatus::Failed;
+	if (!IsValid(InstanceData.Player) || !IsValid(InstanceData.Enemy)) return EStateTreeRunStatus::Failed;
 	
 	FVector EnemyPos = InstanceData.Enemy->GetActorLocation();
 	FVector PlayerPos = InstanceData.Player->GetActorLocation();
@@ -20,9 +21,17 @@ EStateTreeRunStatus FEnemyLookAtTargetTask::Tick(FStateTreeExecutionContext& Con
 	InstanceData.Enemy->SetActorRotation(NewRot);
 	
 	// Check if reached
+		// Enemy Forward
 	FVector EnemyForward = InstanceData.Enemy->GetActorForwardVector();
-	FVector PlayerDist = (PlayerPos - EnemyPos).GetSafeNormal();
-	float DotProd = FVector::DotProduct(EnemyForward, PlayerDist);
+	EnemyForward.Z = 0.0f;
+	EnemyForward.Normalize();
+	
+		// Player Dir
+	FVector PlayerDir = PlayerPos - EnemyPos;
+	PlayerDir.Z = 0.0f;
+	PlayerDir.Normalize();
+	
+	float DotProd = FVector::DotProduct(EnemyForward, PlayerDir);
 	
 	if (DotProd >= InstanceData.MaxThreshold) return EStateTreeRunStatus::Succeeded;
 	

@@ -118,6 +118,7 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 	{
 		if (UStateTree* StateAsset = EnemyChar->StateTreeAsset)
 		{
+			StateTree->StopLogic(TEXT("Possessed enemy changed"));
 			StateTree->SetStateTree(StateAsset);
 			StateTree->StartLogic();
 		}

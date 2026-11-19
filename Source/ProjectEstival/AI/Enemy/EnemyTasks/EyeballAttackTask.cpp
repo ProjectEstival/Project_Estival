@@ -17,8 +17,8 @@ EStateTreeRunStatus FEyeballAttackTask::EnterState(FStateTreeExecutionContext& C
 		return EStateTreeRunStatus::Failed;
 	}
 	
-	InstanceData.Enemy->TryActivateAbility(InstanceData.AbilityTag);
+	const bool bActivated = EnemyChar->TryActivateAbility(InstanceData.AbilityTag);
 	
-	return EStateTreeRunStatus::Succeeded;
+	return bActivated ? EStateTreeRunStatus::Succeeded : EStateTreeRunStatus::Failed;
 }
 

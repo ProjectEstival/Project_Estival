@@ -111,6 +111,7 @@ void ULoadoutComponent::ReduceCooldown(const FGameplayTag Slot, const float Seco
 	FAbilitySlot* SlotData = Slots.Find(Slot);
 	if (!SlotData || Seconds <= 0.f) return;
 
+	SlotData->CooldownStart -= Seconds;
 	SlotData->CooldownEnd -= Seconds;
 }
 

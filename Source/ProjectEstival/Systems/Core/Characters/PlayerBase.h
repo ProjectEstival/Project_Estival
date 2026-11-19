@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "CharacterBase.h"
 #include "InputAction.h"
-#include "Systems/Maria/ReviveComponent.h"
+#include "Systems/Maria/Revive System/ReviveComponent.h"
+#include "Systems/Maria/Interaction System/InteractionComponent.h"
 #include "PlayerBase.generated.h"
 
 UCLASS()
@@ -23,10 +24,13 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Resurrection")
 	TObjectPtr<UReviveComponent> ResurrectionComponent;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	TObjectPtr<UInteractionComponent> InteractionComponent;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
-	TObjectPtr<UInputAction> ReviveAction;
+	TObjectPtr<UInputAction> InteractAction;
 
 private:
-	void StartRevive();
-	void StopRevive();
+	void StartInteract();
+	void StopInteract();
 };

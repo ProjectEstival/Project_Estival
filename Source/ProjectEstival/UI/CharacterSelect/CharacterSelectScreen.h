@@ -3,13 +3,13 @@
 #include "Blueprint/UserWidget.h"
 #include "UI/UIBackHandler.h"
 #include "CoreMinimal.h"
+#include "Systems/Core/Characters/CharacterBase.h"
 #include "UI/CharacterSelect/CharacterSelectCard.h"
 #include "UI/UIInputHandler.h"
 
 #include "CharacterSelectScreen.generated.h"
 
 class APlayerController;
-class AEstivalBaseCharacter;
 class UPanelWidget;
 class ULocalPlayer;
 class ULoadout;
@@ -22,6 +22,16 @@ struct FCharacterSelectPlayerChoice
 	UPROPERTY(BlueprintReadOnly) FText CharacterTitle;
 	UPROPERTY(BlueprintReadOnly) TObjectPtr<ULoadout> Loadout = nullptr;
 	UPROPERTY(BlueprintReadOnly) TSubclassOf<AEstivalBaseCharacter> CharacterClass;
+};
+
+USTRUCT(BlueprintType)
+struct FCharacterSelectCharacter
+{
+	GENERATED_BODY()
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TObjectPtr<ULoadout> Loadout = nullptr;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
+	TSubclassOf<AEstivalBaseCharacter> CharacterClass;
 };
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterSelectCompleted, const TArray<FCharacterSelectPlayerChoice>&, PlayerChoices);
@@ -52,9 +62,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Character Select")
 	TSubclassOf<UCharacterSelectCard> CharacterSelectCardClass;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
-	TArray<TObjectPtr<ULoadout>> CharacterLoadouts;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
-	TMap<TObjectPtr<ULoadout>, TSubclassOf<AEstivalBaseCharacter>> CharacterClassesByLoadout;
+	TArray<FCharacterSelectCharacter> Characters;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
 	float CharacterCardPadding = 20.0f;
 	UPROPERTY(meta=(BindWidget))
@@ -73,6 +81,8 @@ private:
 	TMap<TObjectPtr<ULocalPlayer>, int32> PlayerCardSlotByPlayer;
 	UPROPERTY(Transient)
 	TMap<TObjectPtr<ULocalPlayer>, int32> FocusedAbilityByPlayer;
+	UPROPERTY(Transient)
+	bool bHasCompletedSelection = false;
 	void RefreshCardStates();
 	void RefreshPlayerCard(ULocalPlayer* Player);
 	void CompleteIfReady();

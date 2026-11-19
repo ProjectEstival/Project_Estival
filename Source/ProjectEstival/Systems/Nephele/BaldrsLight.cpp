@@ -98,6 +98,19 @@ void ABaldrsLight::FindPlayers()
 	}
 	UE_LOG(LogTemp, Log, TEXT("Baldr's Light found %d players."), Players.Num());
 }
+
+bool ABaldrsLight::AddPlayer(ACharacter* Player)
+{
+	if (!IsValid(Player)) return false;
+	if (!Players.Contains(Player)) Players.Add(Player);
+	if (PlayerStates.ContainsByPredicate([Player](const FBaldrsLightPlayerState& State) { return State.Player == Player; })) return true;
+
+	FBaldrsLightPlayerState& State = PlayerStates.AddDefaulted_GetRef();
+	State.Player = Player;
+	State.bInsideLight = FVector::DistSquared(Player->GetActorLocation(), GetActorLocation()) <= FMath::Square(LightRadius);
+	return true;
+}
+
 TArray<TObjectPtr<ACharacter>> ABaldrsLight::GetPlayersInLight()
 {
 	TArray<TObjectPtr<ACharacter>> PlayersInLight;

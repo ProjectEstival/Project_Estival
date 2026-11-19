@@ -19,7 +19,7 @@ void AHUDBase::BeginPlay()
 {
 	Super::BeginPlay();
 	
-	if (!BaseWidgetClass) return;
+	if (!BaseWidgetClass || IsValid(BaseWidget)) return;
 	APlayerController* PC = GetOwningPlayerController();
 	if (!IsValid(PC)) return;
 	
@@ -33,6 +33,54 @@ void AHUDBase::BeginPlay()
 	// The shared root widget belongs to player 0; do not give its focus to another Slate user
 	UWidget* InitialFocusWidget = FindDefaultFocusableWidget(BaseWidget);
 	ApplyInputMode(InitialFocusWidget ? InitialFocusWidget : BaseWidget, BaseInputMode, bBaseShowCursor, PC);
+}
+
+void AHUDBase::SetBaseWidget(const TSubclassOf<UUserWidget> WidgetClass, const EManagedUIInputMode InputMode, const bool bShowCursor)
+{
+	APlayerController* PC = GetOwningPlayerController();
+	if (!IsValid(PC)) return;
+
+	UUserWidget* PreviousBaseWidget = BaseWidget;
+	if (IsValid(PreviousBaseWidget)) PreviousBaseWidget->RemoveFromParent();
+
+	BaseWidgetClass = WidgetClass;
+	BaseInputMode = InputMode;
+	bBaseShowCursor = bShowCursor;
+	BaseWidget = WidgetClass ? CreateWidget<UUserWidget>(PC, WidgetClass) : nullptr;
+	if (IsValid(BaseWidget))
+	{
+		BaseWidget->AddToViewport();
+		BaseWidget->SetVisibility(ESlateVisibility::Visible);
+	}
+
+	const UGameInstance* GI = GetGameInstance();
+	TSet<AHUDBase*> VisitedHUDs;
+	for (const ULocalPlayer* LocalPlayer : GI ? GI->GetLocalPlayers() : TArray<ULocalPlayer*>())
+	{
+		const APlayerController* LocalPlayerController = LocalPlayer ? LocalPlayer->GetPlayerController(GetWorld()) : nullptr;
+		AHUDBase* HUD = LocalPlayerController ? Cast<AHUDBase>(LocalPlayerController->GetHUD()) : nullptr;
+		if (!IsValid(HUD) || VisitedHUDs.Contains(HUD)) continue;
+		VisitedHUDs.Add(HUD);
+
+		for (TPair<TObjectPtr<ULocalPlayer>, FPlayerWidgetStack>& StackPair : HUD->PlayerModalStacks)
+		{
+			for (FWidgetContext& Context : StackPair.Value.Contexts)
+			{
+				if (Context.bIsBaseContext)
+				{
+					Context.WidgetClass = WidgetClass;
+					Context.Widget = BaseWidget;
+					Context.InputMode = InputMode;
+					Context.bShowMouseCursor = bShowCursor;
+					Context.PC = PC;
+				}
+				if (Context.PreviousFocusWidget == PreviousBaseWidget) Context.PreviousFocusWidget = BaseWidget;
+			}
+		}
+	}
+
+	UWidget* InitialFocusWidget = FindDefaultFocusableWidget(BaseWidget);
+	ApplyInputMode(InitialFocusWidget ? InitialFocusWidget : BaseWidget, InputMode, bShowCursor, PC);
 }
 
 UUserWidget* AHUDBase::CreateOrGetWidget(const TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC) const

@@ -38,6 +38,8 @@ public:
 	TSubclassOf<ACharacter> PlayerBaseClass;
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category = "Baldr's Light|Players")
 	TArray<TObjectPtr<ACharacter>> Players;
+	UFUNCTION(BlueprintCallable, Category = "Baldr's Light|Players")
+	bool AddPlayer(ACharacter* Player);
 	TArray<TObjectPtr<ACharacter>> GetPlayersInLight();
 	TArray<TObjectPtr<ACharacter>> GetPlayersOutsideLight();
 	

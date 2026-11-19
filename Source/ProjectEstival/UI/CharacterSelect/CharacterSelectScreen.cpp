@@ -1,5 +1,4 @@
 #include "UI/CharacterSelect/CharacterSelectScreen.h"
-#include "Systems/Core/GameModes/DungeonGameMode.h"
 
 #include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "UI/CharacterSelect/CharacterSelectCard.h"
@@ -17,22 +16,21 @@
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "Systems/Core/Profiles/PlayerProfileSaveGame.h"
 #include "GameplayTagContainer.h"
+#include "Systems/Core/EstivalGameInstance.h"
+#include "Systems/Core/Characters/PlayerBase.h"
 
 void UCharacterSelectScreen::NativeOnInitialized()
 {
 	Super::NativeOnInitialized();
-	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode()))
-	{
-		OnAllPlayersSelected.AddUniqueDynamic(GameMode, &ADungeonGameMode::HandleAllPlayersSelected);
-	}
 	if (!CharacterCardsPanel || !CharacterSelectCardClass) return;
 	
+	Characters = Cast<UEstivalGameInstance>(GetGameInstance())->GetHeroClasses().Array();
 	CharacterCardsPanel->ClearChildren();
 	AvailableCharacters.Reset();
 	constexpr int32 CardCount = 4;
 	for (int32 Index = 0; Index < CardCount; ++Index)
 	{
-		if (Characters.IsValidIndex(Index) && Characters[Index].Loadout && Characters[Index].CharacterClass) AvailableCharacters.Add(Index);
+		if (Characters.IsValidIndex(Index) && Characters[Index].GetDefaultObject()->GetLoadout()->DefaultLoadout && Characters[Index]) AvailableCharacters.Add(Index);
 		if (UCharacterSelectCard* Card = CreateWidget<UCharacterSelectCard>(GetOwningPlayer(), CharacterSelectCardClass))
 		{
 			Card->InitializeCard(Index, FText::GetEmpty());
@@ -201,21 +199,20 @@ void UCharacterSelectScreen::RefreshPlayerCard(ULocalPlayer* Player)
 	const int32* ConfirmedIndex = ConfirmedCharacterByPlayer.Find(Player);
 	const int32* FocusedIndex = FocusedCharacterByPlayer.Find(Player);
 	const int32 DisplayIndex = ConfirmedIndex ? *ConfirmedIndex : FocusedIndex ? *FocusedIndex : INDEX_NONE;
-	ULoadout* Loadout = Characters.IsValidIndex(DisplayIndex) ? Characters[DisplayIndex].Loadout : nullptr;
+	ULoadout* Loadout = Characters.IsValidIndex(DisplayIndex) ? Characters[DisplayIndex].GetDefaultObject()->GetLoadout()->DefaultLoadout : nullptr;
 	Card->SetLoadout(Loadout);
 	TArray<FCharacterSelectAbilityInfo> AbilityInfos;
 	static const FName AbilitySlotNames[] = { TEXT("Ability.First"), TEXT("Ability.Second"), TEXT("Ability.Third"), TEXT("Ability.Fourth") };
 	for (const FName SlotName : AbilitySlotNames)
 	{
-		FCharacterSelectAbilityInfo& Info = AbilityInfos.AddDefaulted_GetRef();
-		const FGameplayTag SlotTag = FGameplayTag::RequestGameplayTag(SlotName, false);
-		if (Loadout && SlotTag.IsValid())
+		auto& [Name, Description, Icon] = AbilityInfos.AddDefaulted_GetRef();
+		if (const FGameplayTag SlotTag = FGameplayTag::RequestGameplayTag(SlotName, false); Loadout && SlotTag.IsValid())
 		{
 			if (const TObjectPtr<UAbilityDefinition>* Ability = Loadout->Abilities.Find(SlotTag); Ability && IsValid(Ability->Get()))
 			{
-				Info.Name = Ability->Get()->DisplayName;
-				Info.Description = Ability->Get()->Description;
-				Info.Icon = Ability->Get()->Icon;
+				Name = Ability->Get()->DisplayName;
+				Description = Ability->Get()->Description;
+				Icon = Ability->Get()->Icon;
 			}
 		}
 	}
@@ -235,30 +232,10 @@ void UCharacterSelectScreen::CompleteIfReady()
 	for (const ULocalPlayer* Player : GI->GetLocalPlayers()) if (Directory->GetProfileId(Player).IsValid()) ++AssignedProfileCount;
 	if (ConfirmedCharacterByPlayer.Num() < AssignedProfileCount) return;
 	
-	TArray<FCharacterSelectPlayerChoice> Choices;
-	for (const TPair<TObjectPtr<ULocalPlayer>, int32>& Entry : ConfirmedCharacterByPlayer)
-	{
-		auto& [LocalPlayer, CharacterTitle, Loadout, CharacterClass] = Choices.AddDefaulted_GetRef();
-		LocalPlayer = Entry.Key;
-		const FCharacterSelectCharacter* Character = Characters.IsValidIndex(Entry.Value) ? &Characters[Entry.Value] : nullptr;
-		Loadout = Character ? Character->Loadout : nullptr;
-		CharacterClass = Character ? Character->CharacterClass : nullptr;
-		CharacterTitle = Loadout ? Loadout->DisplayName : FText::FromString(FString::Printf(TEXT("Character %d"), Entry.Value + 1));
-	}
-	TArray<int32> RemainingCharacters = AvailableCharacters;
-	while (Choices.Num() < Characters.Num() && !RemainingCharacters.IsEmpty())
-	{
-		const int32 RandomPosition = FMath::RandRange(0, RemainingCharacters.Num() - 1);
-		const int32 CharacterIndex = RemainingCharacters[RandomPosition];
-		RemainingCharacters.RemoveAtSwap(RandomPosition);
-		const FCharacterSelectCharacter& Character = Characters[CharacterIndex];
-		FCharacterSelectPlayerChoice& AIChoice = Choices.AddDefaulted_GetRef();
-		AIChoice.LocalPlayer = nullptr;
-		AIChoice.Loadout = Character.Loadout;
-		AIChoice.CharacterClass = Character.CharacterClass;
-		AIChoice.CharacterTitle = Character.Loadout->DisplayName;
-	}
+	// Save choices to directory
+	Directory->SelectedCharacters.Empty();
+	for (const TPair<TObjectPtr<ULocalPlayer>, int32>& Entry : ConfirmedCharacterByPlayer) Directory->SelectedCharacters.Add(Entry.Key, Characters[Entry.Value]);
+	
 	bHasCompletedSelection = true;
-	OnAllPlayersSelected.Broadcast(Choices);
+	OnAllPlayersSelected.Broadcast();
 }
-

@@ -1,17 +1,18 @@
 #pragma once
 
-#include "Blueprint/UserWidget.h"
-#include "UI/UIBackHandler.h"
-#include "CoreMinimal.h"
-#include "Systems/Core/Characters/CharacterBase.h"
 #include "UI/CharacterSelect/CharacterSelectCard.h"
 #include "UI/UIInputHandler.h"
+#include "UI/UIBackHandler.h"
+#include "Systems/Core/Characters/CharacterBase.h"
+#include "Blueprint/UserWidget.h"
+#include "CoreMinimal.h"
 
 #include "CharacterSelectScreen.generated.h"
 
 class APlayerController;
 class UPanelWidget;
 class ULocalPlayer;
+class APlayerBase;
 class ULoadout;
 
 USTRUCT(BlueprintType)
@@ -24,17 +25,7 @@ struct FCharacterSelectPlayerChoice
 	UPROPERTY(BlueprintReadOnly) TSubclassOf<AEstivalBaseCharacter> CharacterClass;
 };
 
-USTRUCT(BlueprintType)
-struct FCharacterSelectCharacter
-{
-	GENERATED_BODY()
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TObjectPtr<ULoadout> Loadout = nullptr;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
-	TSubclassOf<AEstivalBaseCharacter> CharacterClass;
-};
-
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FCharacterSelectCompleted, const TArray<FCharacterSelectPlayerChoice>&, PlayerChoices);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FCharacterSelectCompleted);
 
 UCLASS()
 class PROJECTESTIVAL_API UCharacterSelectScreen : public UUserWidget, public IUIBackHandler, public IUIInputHandler
@@ -62,7 +53,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category="Character Select")
 	TSubclassOf<UCharacterSelectCard> CharacterSelectCardClass;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
-	TArray<FCharacterSelectCharacter> Characters;
+	TArray<TSubclassOf<APlayerBase>> Characters;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Character Select", meta=(AllowPrivateAccess="true"))
 	float CharacterCardPadding = 20.0f;
 	UPROPERTY(meta=(BindWidget))

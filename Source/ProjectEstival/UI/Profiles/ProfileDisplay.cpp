@@ -1,9 +1,9 @@
-#include "UI/ProfileDisplay.h"
+#include "ProfileDisplay.h"
 
 #include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "GameFramework/PlayerController.h"
-#include "UI/ProfileDisplayEntry.h"
+#include "ProfileDisplayEntry.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/World.h"

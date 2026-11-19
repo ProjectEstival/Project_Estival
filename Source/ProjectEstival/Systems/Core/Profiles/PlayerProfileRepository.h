@@ -8,7 +8,7 @@
 
 class UPlayerProfileSaveGame;
 
-/** Owns profile save slots and loaded SaveGame objects. Contains no player or UI flow. */
+// Owns profile save slots and loaded SaveGame objects. Contains no player or UI flow
 UCLASS()
 class PROJECTESTIVAL_API UPlayerProfileRepository : public UObject
 {

@@ -1,4 +1,4 @@
-#include "UI/ProfileDisplayEntry.h"
+#include "UI/Profiles/ProfileDisplayEntry.h"
 
 #include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"

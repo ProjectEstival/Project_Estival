@@ -513,7 +513,7 @@ EStateTreeRunStatus FCompanionReadTacticsTask::EnterState(FStateTreeExecutionCon
 
 EStateTreeRunStatus FCompanionReadTacticsTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
 {
-	// every tick because the style can change while playing
+	// we do this in every tick because the style can change while playing
 	Read(Context.GetInstanceData(*this));
 	return EStateTreeRunStatus::Running;
 }
@@ -536,10 +536,11 @@ void ACompanionAIController::NextTactics()
 	// IndexOfByKey gives INDEX_NONE (-1) if the current style isn't a preset, so we start at 0
 	const int32 Current = TacticsPresets.IndexOfByKey(Tactics);
 
-	// through SetTactics, so OnTacticsChanged fires and Blueprint hears about it
+	// through SetTactics so OnTacticsChanged fires and Blueprint hears about it
 	SetTactics(TacticsPresets[(Current + 1) % TacticsPresets.Num()]);
 }
 
+// ------- DEBUG
 #if !UE_BUILD_SHIPPING
 // Estival.Bots.NextTactics: every bot switches to its next style
 static void NextTacticsForAllBots(const TArray<FString>& Args, UWorld* World)

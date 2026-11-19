@@ -12,6 +12,7 @@
 #include "EngineUtils.h"
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Systems/Core/TagDefinitions.h"
+#include "Systems/Mike/Combat/Loadouts/AimComponent.h"
 
 // ---------- Watch Phase ------------
 
@@ -170,4 +171,97 @@ void FBossFindTargetsTask::Update(FInstanceDataType& InstanceData)
 			DrawDebugSphere(Me->GetWorld(), Target->GetActorLocation(), 60.f, 12, FColor::Yellow, false, -1.f, 0, 3.f);
 		}
 	}
+}
+
+// --------- Ability Ready-----------
+bool FBossAbilityReadyCondition::TestCondition(FStateTreeExecutionContext& Context) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	ULoadoutComponent* Loadout = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<ULoadoutComponent>() : nullptr;
+	
+	return Loadout && Loadout->CanActivate(InstanceData.Slot);
+}
+
+// ---------- Use Ability ----------
+EStateTreeRunStatus FBossUseAbilityTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+
+	// a fresh start every time the state is entered
+	InstanceData.Timer = 0.f;
+	InstanceData.RecoveryTimer = 0.f;
+	InstanceData.bStarted = false;
+
+	// fail now and not after MaxTime
+	const AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
+	if (!Character || !Character->GetLoadout()->GetAbility(InstanceData.Slot))
+	{
+		UE_LOG(LogBossAI, Warning, TEXT("%s has nothing in slot %s"), *GetNameSafe(InstanceData.Pawn), *InstanceData.Slot.ToString());
+		return EStateTreeRunStatus::Failed;
+	}
+
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FBossUseAbilityTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
+	if (!Character)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// safeguard: never get stuck in one attack
+	InstanceData.Timer += DeltaTime;
+	if (InstanceData.MaxTime > 0.f && InstanceData.Timer > InstanceData.MaxTime)
+	{
+		UE_LOG(LogBossAI, Warning, TEXT("%s gave up on slot %s"), *GetNameSafe(Character), *InstanceData.Slot.ToString());
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// not fired yet: aim then press the button
+	if (!InstanceData.bStarted)
+	{
+		if (InstanceData.bAimAtLocation)
+		{
+			Character->GetAim()->SetAimLocation(InstanceData.AimLocation);
+		}
+		else
+		{
+			Character->GetAim()->ClearAim();
+		}
+
+		InstanceData.bStarted = Character->TryActivateAbility(InstanceData.Slot);
+		return EStateTreeRunStatus::Running;
+	}
+
+	// fired: wait until the ability is over
+	if (Character->GetLoadout()->IsBusy())
+	{
+		return EStateTreeRunStatus::Running;
+	}
+
+	//recovery: stand still so the players can hit back
+	InstanceData.RecoveryTimer += DeltaTime;
+	return InstanceData.RecoveryTimer >= InstanceData.RecoveryTime ? EStateTreeRunStatus::Succeeded : EStateTreeRunStatus::Running;
+}
+
+void FBossUseAbilityTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(InstanceData.Pawn);
+	if (!Character)
+	{
+		return;
+	}
+
+	// the tree left early so don't leave an ability running
+	if (InstanceData.bStarted && Character->GetLoadout()->IsBusy())
+	{
+		Character->GetLoadout()->Interrupt();
+	}
+
+	// give the aim back: abilities go where the boss faces again
+	Character->GetAim()->ClearAim();
 }

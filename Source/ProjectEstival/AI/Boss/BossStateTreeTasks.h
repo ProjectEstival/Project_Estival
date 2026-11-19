@@ -4,6 +4,8 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
+#include "StateTreeConditionBase.h"
+#include "GameplayTagContainer.h"
 #include "BossStateTreeTasks.generated.h"
 
 class APawn;
@@ -128,4 +130,79 @@ struct FBossFindTargetsTask : public FStateTreeTaskCommonBase
 
 private:
 	static void Update(FInstanceDataType& InstanceData);
+};
+
+
+// ------------ Ability Ready -----------
+USTRUCT()
+struct FBossAbilityReadyConditionInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
+	FGameplayTag Slot;
+};
+
+// true when the boss could use this slot right now: it has an ability and it is off cooldown
+USTRUCT(DisplayName="Boss Ability Ready", Category="Boss")
+struct FBossAbilityReadyCondition : public FStateTreeConditionCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FBossAbilityReadyConditionInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual bool TestCondition(FStateTreeExecutionContext& Context) const override;
+};
+
+// -------- Use Ability -----------
+USTRUCT()
+struct FBossUseAbilityInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	// which loadout slot to use
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
+	FGameplayTag Slot;
+
+	// the ability goes where the boss faces
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bAimAtLocation = true;
+
+	// where the ability aims
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	FVector AimLocation = FVector::ZeroVector;
+
+	// stands still this long after the ability ends (the players' window to hit back?)
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="s"))
+	float RecoveryTime = 0.5f;
+
+	// fail-safe: give up if the whole attack takes longer than this. 0 means no limit
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="s"))
+	float MaxTime = 10.f;
+	
+	float Timer = 0.f;
+	float RecoveryTimer = 0.f;
+	bool bStarted = false;
+};
+
+// Aims uses one ability waits until it is over and then rests for RecoveryTime.
+// Fails on an empty slot or after MaxTime
+USTRUCT(meta=(DisplayName="Boss Use Ability", Category="Boss"))
+struct FBossUseAbilityTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FBossUseAbilityInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 };

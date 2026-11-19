@@ -8,6 +8,7 @@
 APlayerBase::APlayerBase()
 {
 	ResurrectionComponent = CreateDefaultSubobject<UReviveComponent>(TEXT("Resurrection"));
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("Interaction"));
 }
 
 void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -17,20 +18,20 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (!Input) return;
 	
-	if (ReviveAction)
+	if (InteractAction)
 	{
-		Input->BindAction(ReviveAction, ETriggerEvent::Started, this, &APlayerBase::StartRevive);
-		Input->BindAction(ReviveAction, ETriggerEvent::Completed, this, &APlayerBase::StopRevive);
-		Input->BindAction(ReviveAction,ETriggerEvent::Canceled,this, &APlayerBase::StopRevive);
+		Input->BindAction(InteractAction, ETriggerEvent::Started, this, &APlayerBase::StartInteract);
+		Input->BindAction(InteractAction, ETriggerEvent::Completed, this, &APlayerBase::StopInteract);
+		Input->BindAction(InteractAction,ETriggerEvent::Canceled,this, &APlayerBase::StopInteract);
 	}
 }
 
-void APlayerBase::StartRevive()
+void APlayerBase::StartInteract()
 {
-	ResurrectionComponent->StartReviveNearby();
+	InteractionComponent->StartInteract();
 }
 
-void APlayerBase::StopRevive()
+void APlayerBase::StopInteract()
 {
-	ResurrectionComponent->StopReviveNearby();
+	InteractionComponent->StopInteract();
 }

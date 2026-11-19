@@ -20,7 +20,7 @@ enum class EMoveCasterDirection : uint8
 };
 
 /** Moves the caster along the ground over a set time, or teleports them if the time is 0. Interrupting the ability stops the move. */
-UCLASS(meta = (DisplayName = "Move Caster"))
+UCLASS(meta = (DisplayName = "Move Caster"), HideFunctions = (OnStart, OnEnd))
 class PROJECTESTIVAL_API UMoveCasterTask : public UAbilityTask
 {
 	GENERATED_BODY()

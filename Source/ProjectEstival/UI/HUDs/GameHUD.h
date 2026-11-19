@@ -1,7 +1,8 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "UI/HUDBase.h"
+#include "HUDBase.h"
+
 #include "GameHUD.generated.h"
 
 UCLASS()

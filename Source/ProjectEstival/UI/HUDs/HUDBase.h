@@ -69,6 +69,9 @@ class PROJECTESTIVAL_API AHUDBase : public AHUD
 public:
 	UPROPERTY(Transient, BlueprintReadOnly, Category = "UI Manager")
 	TObjectPtr<UUserWidget> BaseWidget = nullptr;
+
+	UFUNCTION(BlueprintCallable, Category = "UI Manager")
+	void SetBaseWidget(TSubclassOf<UUserWidget> WidgetClass, EManagedUIInputMode InputMode = EManagedUIInputMode::GameAndUI, bool bShowCursor = false);
 	
 	// Add widget to top
 	UFUNCTION(BlueprintCallable, Category = "UI Manager")
@@ -86,6 +89,7 @@ public:
 	UFUNCTION(BlueprintPure, Category = "UI Manager")
 	UUserWidget* GetWidget(TSubclassOf<UUserWidget> WidgetClass, APlayerController* PC = nullptr) const;
 	static APlayerController* GetTopmostModalOwner(const UWorld* World);
+	static UUserWidget* GetTopWidgetForPlayer(const UWorld* World, const APlayerController* PC);
 	static bool HandleBackForPlayer(const UWorld* World, APlayerController* RequestingPlayer); // Handles back for the topmost modal, only when it belongs to RequestingPlayer
 	static void ClearPlayerModalWidgets(const UWorld* World, ULocalPlayer* LocalPlayer); // Removes this player's modal widgets from every HUD stack. The shared base widget is always preserved
 	

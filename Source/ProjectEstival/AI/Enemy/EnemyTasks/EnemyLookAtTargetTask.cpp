@@ -29,7 +29,8 @@ EStateTreeRunStatus FEnemyLookAtTargetTask::Tick(FStateTreeExecutionContext& Con
 		// Player Dir
 	FVector PlayerDir = PlayerPos - EnemyPos;
 	PlayerDir.Z = 0.0f;
-	PlayerDir.Normalize();
+	
+	if (!PlayerDir.Normalize()) return EStateTreeRunStatus::Failed;
 	
 	float DotProd = FVector::DotProduct(EnemyForward, PlayerDir);
 	

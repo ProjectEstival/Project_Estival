@@ -1,6 +1,7 @@
 ﻿#pragma once
  
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "StatTypes.generated.h"
 
 USTRUCT(BlueprintType)

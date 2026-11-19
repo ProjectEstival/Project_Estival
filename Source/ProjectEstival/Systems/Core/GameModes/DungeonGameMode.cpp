@@ -41,6 +41,12 @@ void ADungeonGameMode::StartPlay()
 {
 	Super::StartPlay();
 
+	if (Floors.IsEmpty())
+	{
+		UE_LOG(LogTemp, Error, TEXT("DungeonGameMode: the Floors list is empty, the run can't start."));
+		return;
+	}
+
 	TArray<AActor*> Managers;
 	UGameplayStatics::GetAllActorsWithInterface(this, ULevelManager::StaticClass(), Managers);
 	
@@ -110,6 +116,7 @@ void ADungeonGameMode::SpawnParty()
 void ADungeonGameMode::RequestFloor()
 {
 	Phase = EDungeonPhase::LoadingFloor;
+	PendingCharacters.Reset();
 	RollFloorModifiers();
 
 	if (LevelManager)
@@ -128,8 +135,13 @@ void ADungeonGameMode::FloorReady(const FTransform& PartyStart, AEstivalBaseChar
 	const FVector Right = PartyStart.GetRotation().GetRightVector();
 	for (int32 i = 0; i < Party.Num(); i++)
 	{
+		if (!Party[i]) continue;
+
 		const float Offset = (i - (Party.Num() - 1) / 2.f) * PartySpacing;
-		if (Party[i]) Party[i]->TeleportTo(PartyStart.GetLocation() + Right * Offset, PartyStart.Rotator());
+		if (!Party[i]->TeleportTo(PartyStart.GetLocation() + Right * Offset, PartyStart.Rotator()))
+		{
+			Party[i]->TeleportTo(PartyStart.GetLocation(), PartyStart.Rotator(), false, true);
+		}
 	}
 
 	if (Boss)
@@ -160,9 +172,13 @@ void ADungeonGameMode::RollFloorModifiers()
 	ActiveModifiers.Reset();
 	while (ActiveModifiers.Num() < Floor.ModifierCount && !Pool.IsEmpty())
 	{
-		const int32 Pick = FMath::RandHelper(Pool.Num());
-		ActiveModifiers.Add(Pool[Pick]);
-		Pool.RemoveAtSwap(Pick);
+		const FFloorModifier Picked = Pool[FMath::RandHelper(Pool.Num())];
+		ActiveModifiers.Add(Picked);
+
+		Pool.RemoveAll([&Picked](const FFloorModifier& Modifier)
+		{
+			return Modifier.Set == Picked.Set && Modifier.Target == Picked.Target;
+		});
 	}
 }
 
@@ -175,7 +191,8 @@ void ADungeonGameMode::ApplyFloorModifiers(AEstivalBaseCharacter* Character)
 
 	const APlayerBase* Hero = Cast<APlayerBase>(Character);
 	const bool bInParty = Hero && Party.Contains(Hero);
-	const bool bIsEnemy = !bInParty && !Party.IsEmpty() && Party[0]->GetTeamAttitudeTowards(*Character) == ETeamAttitude::Hostile;
+	const APlayerBase* Leader = Party.IsEmpty() ? nullptr : Party[0].Get();
+	const bool bIsEnemy = !bInParty && IsValid(Leader) && Leader->GetTeamAttitudeTowards(*Character) == ETeamAttitude::Hostile;
 
 	for (const FFloorModifier& Modifier : ActiveModifiers)
 	{

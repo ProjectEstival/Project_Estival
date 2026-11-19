@@ -45,7 +45,10 @@ AActor* UActorPoolSubsystem::AcquireActorFromSettings(TSubclassOf<AActor> ActorC
 
 	// After the lifetime is scheduled, so a release from inside the hook cancels the timer.
 	if (Actor->Implements<UPoolable>()) IPoolable::Execute_OnAcquired(Actor);
-	OnActorAcquired.Broadcast(Actor);
+
+	const FPooledActorList* IdlePool = Pools.Find(ActorClass);
+	const bool bReleased = !IsValid(Actor) || (IdlePool && IdlePool->Actors.Contains(Actor));
+	if (!bReleased) OnActorAcquired.Broadcast(Actor);
 	
 	return Actor;
 }

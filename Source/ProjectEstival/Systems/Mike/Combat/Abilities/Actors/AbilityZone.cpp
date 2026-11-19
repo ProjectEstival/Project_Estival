@@ -25,9 +25,10 @@ const USpawnZoneEffect* AAbilityZone::GetZoneEffect() const
 	return Cast<USpawnZoneEffect>(GetSource());
 }
 
-void AAbilityZone::BeginPlay()
+void AAbilityZone::StartAbilityActor()
 {
-	Super::BeginPlay();
+	Super::StartAbilityActor();
+	LastHitTimes.Reset();
 
 	const USpawnZoneEffect* ZoneEffect = GetZoneEffect();
 	if (!ZoneEffect) return;

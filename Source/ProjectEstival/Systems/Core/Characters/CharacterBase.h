@@ -6,7 +6,6 @@
 #include "GameplayTagContainer.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
-#include "Systems/Maria/Revivable.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 #include "CharacterBase.generated.h"
@@ -21,7 +20,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRevived);
 
 /**Base class for every Estival character*/
 UCLASS(Abstract)
-class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter, public IGenericTeamAgentInterface, public IRevivable
+class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -133,7 +132,8 @@ public:
 	
 	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 	
-	virtual bool TryRevive_Implementation(const float HealthPercent) override;
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Health")
+	bool TryRevive(const float HealthPercent);
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	bool IsAlive() const;

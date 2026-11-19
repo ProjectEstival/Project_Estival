@@ -34,5 +34,5 @@ void USpawnProjectilesEffect::SpawnProjectile(const FAbilityContext& Context, co
 	AAbilityActor* Actor = BeginSpawn(ProjectileContext, ProjectileClass, SpawnTransform);
 	if (AAbilityProjectile* Projectile = Cast<AAbilityProjectile>(Actor)) Projectile->SetupProjectile(Speed, Range);
 
-	FinishSpawn(ProjectileContext, Actor, SpawnTransform);
+	FinishSpawn(ProjectileContext, Actor);
 }

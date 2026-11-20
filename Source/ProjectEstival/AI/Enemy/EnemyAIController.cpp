@@ -2,6 +2,8 @@
 
 
 #include "EnemyAIController.h"
+
+#include "EnemyBaseCharacter.h"
 #include "Components/StateTreeAIComponent.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AIPerceptionTypes.h"
@@ -68,10 +70,15 @@ void AEnemyAIController::OnTargetSensorForgot(AActor* Actor)
 	}
 }
 
+// Checks Dist to see what player to chase first
 void AEnemyAIController::DistCheck()
 {
 	if (Players.IsEmpty()) return;
 
+	APawn* ControlledPawn = GetPawn();
+	
+	if (!ControlledPawn) return;
+	
 	float MinDist = FLT_MAX;
 	AEstivalBaseCharacter* PlayerToTarget = nullptr;
 	
@@ -79,7 +86,7 @@ void AEnemyAIController::DistCheck()
 	{
 		if (!Player) continue;
 		
-		float Dist = FVector::Distance(Player->GetActorLocation(), GetPawn()->GetActorLocation());
+		float Dist = FVector::Distance(Player->GetActorLocation(), ControlledPawn->GetActorLocation());
 		
 		if (Dist < MinDist)
 		{
@@ -92,10 +99,55 @@ void AEnemyAIController::DistCheck()
 	{
 		PlayerRef = PlayerToTarget;
 		
-		if (PlayerRef && StateTree && ForceStateChangeTag.IsValid())
+		if (PlayerRef && StateTree && ReEvaluateChaseTargetTag.IsValid())
 		{
 			StopMovement();
-			StateTree->SendStateTreeEvent(ForceStateChangeTag);
+			StateTree->SendStateTreeEvent(ReEvaluateChaseTargetTag);
 		}
+	}
+}
+
+// Assigns Correct state tree to controller.
+void AEnemyAIController::OnPossess(APawn* InPawn)
+{
+	Super::OnPossess(InPawn);
+	
+	if (!InPawn) return;
+	
+	if (AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(InPawn))
+	{
+		EnemyChar->OnTakeAnyDamage.AddDynamic(this, &AEnemyAIController::Damaged);
+		
+		if (StateTree && EnemyChar->StateTreeAsset)
+		{
+			StateTree->StopLogic(TEXT("Possessed enemy changed"));
+			StateTree->SetStateTree(EnemyChar->StateTreeAsset);
+			StateTree->StartLogic();
+		}
+	}
+}
+
+void AEnemyAIController::OnUnPossess()
+{
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		if (AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(ControlledPawn))
+		{
+			EnemyChar->OnTakeAnyDamage.RemoveDynamic(this, &AEnemyAIController::Damaged);
+		}
+	}
+	
+	if (StateTree) StateTree->StopLogic(TEXT("Dead Pawn"));
+	
+	Super::OnUnPossess();
+}
+
+// Changes State if damaged
+void AEnemyAIController::Damaged(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (ChangeToDefence.IsValid())
+	{
+		StopMovement();
+		StateTree->SendStateTreeEvent(ChangeToDefence);
 	}
 }

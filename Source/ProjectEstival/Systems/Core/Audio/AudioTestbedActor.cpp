@@ -65,15 +65,13 @@ void AAudioTestbedActor::Tick(float DeltaTime)
 
     const auto SetMusicParameter = [this](float Value, float Duration)
     {
-        UFMODAudioComponent* Music = AudioManager->GetMusicComponent();
-
-        if (!IsValid(Music) || (!AudioManager->IsMusicPlaying() && !AudioManager->IsMusicPaused()))
+        if (!AudioManager->IsMusicPlaying() && !AudioManager->IsMusicPaused())
         {
             PrintTest(TEXT("Music parameter: No active music."));
             return;
         }
 
-        const bool bSuccess = AudioManager->SetInstanceParameter(Music, MusicParameterName, Value, Duration);
+        const bool bSuccess = AudioManager->SetMusicParameter(MusicParameterName, Value, Duration);
         PrintTest(FString::Printf(TEXT("Music %s => %.1f (%.1fs): %s"), *MusicParameterName.ToString(), Value, Duration, bSuccess ? TEXT("OK") : TEXT("FAILED")));
     };
 
@@ -283,7 +281,7 @@ void AAudioTestbedActor::Tick(float DeltaTime)
         if (AudioManager->GetGlobalParameter(GlobalParameterName, Value))
             PrintTest(FString::Printf(TEXT("Global %s = %.3f"), *GlobalParameterName.ToString(), Value));
 
-        if (IsValid(AudioManager->GetMusicComponent()) && AudioManager->GetInstanceParameter(AudioManager->GetMusicComponent(), MusicParameterName, Value))
+        if (AudioManager->GetMusicParameter(MusicParameterName, Value))
             PrintTest(FString::Printf(TEXT("Music %s = %.3f"), *MusicParameterName.ToString(), Value));
 
         if (IsValid(TestAudioComponent) && AudioManager->GetInstanceParameter(TestAudioComponent, LoopParameterName, Value))

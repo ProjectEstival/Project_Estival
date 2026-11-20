@@ -21,5 +21,4 @@ public:
 	
 	UFUNCTION()
 	void Dead();
-	
 };

@@ -2,8 +2,9 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
-#include "AI/Enemy/EnemyBaseCharacter.h"
 #include "EyeballAttackTask.generated.h"
+
+class AEnemyBaseCharacter;
 
 USTRUCT()
 struct FEyeballAttackTaskInstanceData

@@ -36,8 +36,11 @@ public:
 	UPROPERTY()
 	TArray<AEstivalBaseCharacter*> Players;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ForceChange"))
-	FGameplayTag ForceStateChangeTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ReEvaluateTarget"))
+	FGameplayTag ReEvaluateChaseTargetTag;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ChangeToDefence"))
+	FGameplayTag ChangeToDefence;
 	
 protected:
 	
@@ -59,5 +62,8 @@ private:
 	
 	UFUNCTION()
 	void DistCheck();
+	
+	UFUNCTION()
+	void Damaged(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
 	
 };

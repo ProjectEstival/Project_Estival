@@ -27,6 +27,8 @@ void AEnemyAIController::BeginPlay()
 		AIPerceptionComp->OnTargetPerceptionForgotten.AddDynamic(this, &AEnemyAIController::OnTargetSensorForgot);
 	}
 	
+	this->GetPawn()->OnTakeAnyDamage.AddDynamic(this, &AEnemyAIController::Damaged);
+	
 	GetWorld()->GetTimerManager().SetTimer(CheckDistanceTimerHandle, this, &AEnemyAIController::DistCheck, CheckDistTimer, true);
 }
 
@@ -99,10 +101,10 @@ void AEnemyAIController::DistCheck()
 	{
 		PlayerRef = PlayerToTarget;
 		
-		if (PlayerRef && StateTree && ForceStateChangeTag.IsValid())
+		if (PlayerRef && StateTree && ReEvaluateChaseTargetTag.IsValid())
 		{
 			StopMovement();
-			StateTree->SendStateTreeEvent(ForceStateChangeTag);
+			StateTree->SendStateTreeEvent(ReEvaluateChaseTargetTag);
 		}
 	}
 }
@@ -130,4 +132,14 @@ void AEnemyAIController::OnUnPossess()
 	Super::OnUnPossess();
 	
 	if (StateTree) StateTree->StartLogic();
+}
+
+// Changes State if damaged
+void AEnemyAIController::Damaged(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
+{
+	if (ChangeToDefence.IsValid())
+	{
+		StopMovement();
+		StateTree->SendStateTreeEvent(ChangeToDefence);
+	}
 }

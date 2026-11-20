@@ -34,7 +34,7 @@ struct FBossWatchPhaseInstanceData
 
 	// the phase the health says we should be in. it only goes up
 	UPROPERTY(VisibleAnywhere, Category="Output")
-	int32 HealthPhase = 1;
+	int32 HealthPhase = 0;
 
 	// true until the tree has announced the new phase. The Howl state does that
 	UPROPERTY(VisibleAnywhere, Category="Output")
@@ -70,7 +70,7 @@ struct FBossAnnouncePhaseInstanceData
 
 	// bind to Boss Watch Phase's HealthPhase
 	UPROPERTY(EditAnywhere, Category="Input")
-	int32 Phase = 1;
+	int32 Phase = 0;
 };
 
 // tells the controller the new phase, once, when its state is entered

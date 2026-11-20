@@ -9,9 +9,6 @@
 #include "EngineUtils.h"
 #include "Algo/Sort.h"
 #include "DrawDebugHelpers.h"
-#include "EngineUtils.h"
-#include "Systems/Core/Characters/CharacterBase.h"
-#include "Systems/Core/TagDefinitions.h"
 #include "Systems/Mike/Combat/Loadouts/AimComponent.h"
 
 // ---------- Watch Phase ------------
@@ -43,7 +40,7 @@ void FBossWatchPhaseTask::Update(FInstanceDataType& InstanceData)
 	InstanceData.HealthPercent = Resources->GetPercentage01(HealthTag);
 
 	// phase 1, plus one for every threshold the health has dropped to
-	int32 NewPhase = 1;
+	int32 NewPhase = 0;
 	for (const float Threshold : InstanceData.PhaseThresholds)
 	{
 		if (InstanceData.HealthPercent <= Threshold)
@@ -154,12 +151,12 @@ void FBossFindTargetsTask::Update(FInstanceDataType& InstanceData)
 	// nearest first
 	Algo::SortBy(InstanceData.Targets, [&MyLocation](const AActor* Target)
 	{
-		return FVector::DistSquared(MyLocation, Target->GetActorLocation());
+		return FVector::DistSquared2D(MyLocation, Target->GetActorLocation());
 	});
 
 	InstanceData.NearestTarget = InstanceData.Targets[0];
 	InstanceData.NearestLocation = InstanceData.NearestTarget->GetActorLocation();
-	InstanceData.DistanceToNearest = static_cast<float>(FVector::Dist(MyLocation, InstanceData.NearestLocation));
+	InstanceData.DistanceToNearest = static_cast<float>(FVector::Dist2D(MyLocation, InstanceData.NearestLocation));
 	InstanceData.bHasTarget = true;
 
 	if (InstanceData.bDrawDebug)

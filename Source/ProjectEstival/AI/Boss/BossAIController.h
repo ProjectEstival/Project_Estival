@@ -31,7 +31,7 @@ class PROJECTESTIVAL_API ABossAIController : public AAIController
 	bool bAutoStartFight = true;
 	
 	bool bFightStarted = false;
-	int32 Phase = 1;
+	int32 Phase = 0;
 
 public:
 	ABossAIController();
@@ -44,7 +44,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="Boss"	)
 	bool IsFightStarted() const { return bFightStarted; }
 	
-	// first phase = 1 and it only goes up
+	// first phase = 0 and it only goes up
 	UFUNCTION(BlueprintPure, Category="Boss")
 	int32 GetPhase() const { return Phase; }
 	

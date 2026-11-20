@@ -27,8 +27,6 @@ void AEnemyAIController::BeginPlay()
 		AIPerceptionComp->OnTargetPerceptionForgotten.AddDynamic(this, &AEnemyAIController::OnTargetSensorForgot);
 	}
 	
-	this->GetPawn()->OnTakeAnyDamage.AddDynamic(this, &AEnemyAIController::Damaged);
-	
 	GetWorld()->GetTimerManager().SetTimer(CheckDistanceTimerHandle, this, &AEnemyAIController::DistCheck, CheckDistTimer, true);
 }
 
@@ -114,14 +112,16 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
 	
-	if (!StateTree) return;
+	if (!InPawn) return;
 	
 	if (AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(InPawn))
 	{
-		if (UStateTree* StateAsset = EnemyChar->StateTreeAsset)
+		EnemyChar->OnTakeAnyDamage.AddDynamic(this, &AEnemyAIController::Damaged);
+		
+		if (StateTree && EnemyChar->StateTreeAsset)
 		{
 			StateTree->StopLogic(TEXT("Possessed enemy changed"));
-			StateTree->SetStateTree(StateAsset);
+			StateTree->SetStateTree(EnemyChar->StateTreeAsset);
 			StateTree->StartLogic();
 		}
 	}
@@ -129,9 +129,17 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 
 void AEnemyAIController::OnUnPossess()
 {
-	Super::OnUnPossess();
+	if (APawn* ControlledPawn = GetPawn())
+	{
+		if (AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(ControlledPawn))
+		{
+			EnemyChar->OnTakeAnyDamage.RemoveDynamic(this, &AEnemyAIController::Damaged);
+		}
+	}
 	
-	if (StateTree) StateTree->StartLogic();
+	if (StateTree) StateTree->StopLogic(TEXT("Dead Pawn"));
+	
+	Super::OnUnPossess();
 }
 
 // Changes State if damaged

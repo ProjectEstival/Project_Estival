@@ -1,87 +1,82 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "MusicPlayer.h"
-#include "FMODAudioComponent.h"
 #include "FMODEvent.h"
-#include "Engine/World.h"
-
-bool UMusicPlayer::Initialize(UWorld* World)
-{
-	if (IsValid(MusicComponent)) return true;
-	if (!IsValid(World)) return false;
-
-	MusicComponent = NewObject<UFMODAudioComponent>(this);
-	if (!IsValid(MusicComponent)) return false;
-
-	MusicComponent->bAutoActivate = false;
-	MusicComponent->bAutoDestroy = false;
-	MusicComponent->RegisterComponentWithWorld(World);
-
-	return MusicComponent->IsRegistered();
-}
+#include "FMODStudioModule.h"
+#include "fmod_studio.hpp"
 
 bool UMusicPlayer::Play(UFMODEvent* Event)
 {
-	if (!IsValid(Event) || !IsValid(MusicComponent)) return false;
+	if (!IsValid(Event) || !IFMODStudioModule::IsAvailable()) return false;
 
-	// Prevent restarting the same track.
-	if (CurrentEvent == Event && (MusicComponent->IsPlaying() || MusicComponent->GetPaused()))
+	if (CurrentEvent == Event && (IsPlaying() || IsPaused()))
 	{
-		MusicComponent->SetPaused(false);
+		SetPaused(false);
 		return true;
 	}
 
+	FMOD::Studio::EventDescription* Description =
+		IFMODStudioModule::Get().GetEventDescription(Event, EFMODSystemContext::Runtime);
+	if (!Description) return false;
+
+	FMOD::Studio::EventInstance* NewInstance = nullptr;
+	if (Description->createInstance(&NewInstance) != FMOD_OK || !NewInstance) return false;
+	if (NewInstance->start() != FMOD_OK)
+	{
+		NewInstance->release();
+		return false;
+	}
+
 	Stop(true);
-
+	MusicInstance = NewInstance;
 	CurrentEvent = Event;
-	MusicComponent->SetEvent(Event);
-	MusicComponent->Play();
-
 	return true;
 }
 
 void UMusicPlayer::Stop(bool bAllowFadeOut)
 {
-	if (IsValid(MusicComponent))
+	if (IFMODStudioModule::IsAvailable() &&
+		IFMODStudioModule::Get().GetStudioSystem(EFMODSystemContext::Runtime) &&
+		MusicInstance && MusicInstance->isValid())
 	{
-		FMOD::Studio::EventInstance* Instance = MusicComponent->StudioInstance;
-
-		if (Instance && Instance->isValid())
-		{
-			Instance->stop(bAllowFadeOut ? FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE);
-		}
-
-		MusicComponent->Release();
+		MusicInstance->stop(bAllowFadeOut ? FMOD_STUDIO_STOP_ALLOWFADEOUT : FMOD_STUDIO_STOP_IMMEDIATE);
+		MusicInstance->release();
 	}
-
+	MusicInstance = nullptr;
 	CurrentEvent = nullptr;
 }
 
 bool UMusicPlayer::IsPlaying() const
 {
-	return IsValid(MusicComponent) && MusicComponent->IsPlaying();
+	if (!MusicInstance || !MusicInstance->isValid()) return false;
+	FMOD_STUDIO_PLAYBACK_STATE State = FMOD_STUDIO_PLAYBACK_STOPPED;
+	return MusicInstance->getPlaybackState(&State) == FMOD_OK && State != FMOD_STUDIO_PLAYBACK_STOPPED;
 }
 
 void UMusicPlayer::SetPaused(bool bPaused) const
 {
-	if (!IsValid(MusicComponent)) return;
-	if (!MusicComponent->IsPlaying() && !MusicComponent->GetPaused()) return;
-
-	MusicComponent->SetPaused(bPaused);
+	if (MusicInstance && MusicInstance->isValid()) MusicInstance->setPaused(bPaused);
 }
 
 bool UMusicPlayer::IsPaused() const
 {
-	return IsValid(MusicComponent) && MusicComponent->GetPaused();
+	bool bPaused = false;
+	return MusicInstance && MusicInstance->isValid() &&
+		MusicInstance->getPaused(&bPaused) == FMOD_OK && bPaused;
+}
+
+bool UMusicPlayer::SetParameter(FName Name, float Value)
+{
+	return !Name.IsNone() && MusicInstance && MusicInstance->isValid() &&
+		MusicInstance->setParameterByName(TCHAR_TO_UTF8(*Name.ToString()), Value) == FMOD_OK;
+}
+
+bool UMusicPlayer::GetParameter(FName Name, float& OutValue) const
+{
+	OutValue = 0.f;
+	return !Name.IsNone() && MusicInstance && MusicInstance->isValid() &&
+		MusicInstance->getParameterByName(TCHAR_TO_UTF8(*Name.ToString()), &OutValue) == FMOD_OK;
 }
 
 void UMusicPlayer::Deinitialize()
 {
-	Stop();
-
-	if (IsValid(MusicComponent))
-	{
-		MusicComponent->DestroyComponent();
-		MusicComponent = nullptr;
-	}
+	Stop(false);
 }

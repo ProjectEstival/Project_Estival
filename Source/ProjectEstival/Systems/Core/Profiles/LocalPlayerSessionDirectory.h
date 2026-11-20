@@ -7,6 +7,7 @@
 
 #include "LocalPlayerSessionDirectory.generated.h"
 
+class APlayerBase;
 class APlayerController;
 class ULocalPlayer;
 class UWidget;
@@ -52,6 +53,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Local Players")
 	void SetPlayerSlotColor(int32 Slot, FLinearColor Color);
 	bool IsProfileAssigned(const FGuid& ProfileId, const ULocalPlayer* ExceptPlayer = nullptr) const;
+	
+	UFUNCTION(BlueprintCallable, Category="Character Select")
+	TSubclassOf<APlayerBase> PlayerToSelectedCharacter(APlayerController* PC);
+	TMap<TObjectPtr<ULocalPlayer>, TSubclassOf<APlayerBase>> SelectedCharacters; 
 	
 private:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Player Colors", meta = (AllowPrivateAccess = "true"))

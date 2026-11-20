@@ -31,6 +31,10 @@ class PROJECTESTIVAL_API UAudioManager : public UGameInstanceSubsystem
 	
 	UPROPERTY(Transient)
 	TObjectPtr<UMusicPlayer> MusicPlayer;
+
+	// The world owns this actor. A weak reference avoids retaining an unloaded world.
+	UPROPERTY(Transient)
+	TWeakObjectPtr<AActor> OwnerlessAudioActor;
 	
 	FParameterTweener ParameterTweener;
 	
@@ -70,11 +74,12 @@ public:
 	/**
 	 * Used for looping 2D sounds, mostly ambience, do NOT use for music.
 	 * @param Event UFMODEvent: Pointer to the audio event.
-	 * @param Owner AActor: Pointer to the owning Actor.
+	 * @param Owner Optional owning Actor. If omitted, uses a shared transient actor in the current world.
+	 * Sounds created without an owner stop when the current world unloads.
 	 * @return UFMODAudioComponent: Pointer to the created FMOD Audio Component.
 	 */
 	UFUNCTION(BlueprintCallable, Category="Audio|Playback")
-	UFMODAudioComponent* Create2DAudio(UFMODEvent* Event, AActor* Owner) const;
+	UFMODAudioComponent* Create2DAudio(UFMODEvent* Event, AActor* Owner = nullptr);
 	/**
 	 * Used to change the value of a global FMOD parameter.
 	 * @param ParameterName FName: The name of the parameter.
@@ -117,11 +122,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Audio|Music")
 	void StopMusic(bool bAllowFadeOut = true);
 	/**
-	 * Retrieves the Music Player's active music component.
-	 * @return UFMODAudioComponent: If found, the requested music component.
+	 * Sets a parameter on the persistent music instance, optionally smoothing the change.
 	 */
+	UFUNCTION(BlueprintCallable, Category="Audio|Music")
+	bool SetMusicParameter(FName ParameterName, float Value, float Duration = 0.f);
+
 	UFUNCTION(BlueprintPure, Category="Audio|Music")
-	UFMODAudioComponent* GetMusicComponent() const;
+	bool GetMusicParameter(FName ParameterName, float& OutValue) const;
 	/**
 	 * Pause/Unpause the current music track.
 	 * @param bPaused bool: The pause state of the music track.

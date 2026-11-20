@@ -7,7 +7,7 @@
 #include "MusicPlayer.generated.h"
 
 class UFMODEvent;
-class UFMODAudioComponent;
+namespace FMOD::Studio { class EventInstance; }
 
 UCLASS()
 class PROJECTESTIVAL_API UMusicPlayer : public UObject
@@ -15,19 +15,19 @@ class PROJECTESTIVAL_API UMusicPlayer : public UObject
 	GENERATED_BODY()
 
 private:
-	UPROPERTY(Transient)
-	TObjectPtr<UFMODAudioComponent> MusicComponent;
+	// Owned until Stop/Deinitialize, independent of any level world.
+	FMOD::Studio::EventInstance* MusicInstance = nullptr;
 
 	UPROPERTY(Transient)
 	TObjectPtr<UFMODEvent> CurrentEvent;
 
 public:
-	bool Initialize(UWorld* World);
 	bool Play(UFMODEvent* Event);
 	void Stop(bool bAllowFadeOut = true);
 	void Deinitialize();
 
-	UFMODAudioComponent* GetComponent() const { return MusicComponent; }
+	bool SetParameter(FName Name, float Value);
+	bool GetParameter(FName Name, float& OutValue) const;
 	UFMODEvent* GetCurrentEvent() const { return CurrentEvent; }
 	bool IsPlaying() const;
 	void SetPaused(bool bPaused) const;

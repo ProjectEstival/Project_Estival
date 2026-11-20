@@ -2,13 +2,25 @@
 
 #include "GenericTeamAgentInterface.h"
 
-inline ETeamAttitude::Type GetTeamBasedAttitude(const FGenericTeamId TeamA, const FGenericTeamId TeamB)
+namespace RunAttitudes
 {
-	if (TeamA == FGenericTeamId::NoTeam || TeamB == FGenericTeamId::NoTeam)
+	inline ETeamAttitude::Type GetTeamBasedAttitude(const FGenericTeamId TeamA, const FGenericTeamId TeamB)
 	{
-		return ETeamAttitude::Neutral;
-	}
+		if (TeamA == FGenericTeamId::NoTeam || TeamB == FGenericTeamId::NoTeam)
+		{
+			return ETeamAttitude::Neutral;
+		}
 	
-	if (TeamA == TeamB) return ETeamAttitude::Friendly;
-	return ETeamAttitude::Hostile;
+		if (TeamA == TeamB) return ETeamAttitude::Friendly;
+		return ETeamAttitude::Hostile;
+	}
+	inline ETeamAttitude::Type GetFreeForAllAttitude(const FGenericTeamId TeamA, const FGenericTeamId TeamB)
+	{
+		if (TeamA == FGenericTeamId::NoTeam || TeamB == FGenericTeamId::NoTeam)
+		{
+			return ETeamAttitude::Neutral;
+		}
+		
+		return ETeamAttitude::Hostile;
+	}
 }

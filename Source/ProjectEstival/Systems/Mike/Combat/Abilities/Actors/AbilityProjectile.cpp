@@ -38,7 +38,24 @@ void AAbilityProjectile::SetupProjectile(const float Speed, const float Range)
 	Movement->MaxSpeed = Speed;
 	if (Speed > 0.f) SetLifetime(Range / Speed);
 
+	Collision->ClearMoveIgnoreActors();
 	if (AActor* Caster = GetAbilityContext().Instigator) Collision->IgnoreActorWhenMoving(Caster, true);
+}
+
+void AAbilityProjectile::StartAbilityActor()
+{
+	Movement->SetUpdatedComponent(Collision);
+	Movement->Velocity = GetActorForwardVector() * Movement->InitialSpeed;
+
+	Super::StartAbilityActor();
+
+	TArray<AActor*> Touching;
+	Collision->GetOverlappingActors(Touching);
+
+	for (AActor* Actor : Touching)
+	{
+		if (CanHit(Actor)) TryHit(Actor);
+	}
 }
 
 void AAbilityProjectile::PostInitializeComponents()

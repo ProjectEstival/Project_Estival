@@ -42,6 +42,8 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
 	void ClearSpawnedEnemies();
+	//We need to get the reference of what we spawn
+	const TArray<TObjectPtr<AActor>>& GetSpawnedEnemies() const { return SpawnedEnemies; }
 
 	private:
     

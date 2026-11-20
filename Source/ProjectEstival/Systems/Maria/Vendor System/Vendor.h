@@ -92,6 +92,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vendor")
 	TSubclassOf<AVendorItem> ProductItemClass;
 
+	/** Run vendors sell each item once. Permanent vendors turn this off, since their limit is the profile's purchase cap and potions must stay buyable. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vendor")
+	bool bRemoveOnPurchase = true;
+
 	/** Permanent vendors turn this off, which also skips the Reroll socket. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reroll")
 	bool bAllowReroll = true;

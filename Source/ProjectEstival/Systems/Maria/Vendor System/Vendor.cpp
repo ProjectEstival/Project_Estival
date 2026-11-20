@@ -7,12 +7,17 @@
 
 namespace
 {
-	UObject* FindWallet(AActor* Buyer)
+	/** Every wallet the buyer carries, the actor itself and its components. A buyer can have one per currency source. */
+	TArray<UObject*> FindWallets(AActor* Buyer)
 	{
-		if (Buyer->Implements<UCurrencyWallet>()) return Buyer;
+		TArray<UObject*> Wallets;
+		if (Buyer->Implements<UCurrencyWallet>()) Wallets.Add(Buyer);
 
-		const TArray<UActorComponent*> Wallets = Buyer->GetComponentsByInterface(UCurrencyWallet::StaticClass());
-		return Wallets.Num() > 0 ? Wallets[0] : nullptr;
+		for (UActorComponent* Component : Buyer->GetComponentsByInterface(UCurrencyWallet::StaticClass()))
+		{
+			Wallets.Add(Component);
+		}
+		return Wallets;
 	}
 
 	/** Picks one entry by weight and removes it from the pool so a roll never repeats an item. */
@@ -74,8 +79,7 @@ void AVendor::BeginPlay()
 void AVendor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	// a world teardown takes the pool with it, so only a vendor leaving a living world returns its items
-	const bool bWorldContinues = EndPlayReason == EEndPlayReason::Destroyed || 
-		EndPlayReason == EEndPlayReason::RemovedFromWorld;
+	const bool bWorldContinues = EndPlayReason == EEndPlayReason::Destroyed || EndPlayReason == EEndPlayReason::RemovedFromWorld;
 	if (bWorldContinues && GetWorld())
 	{
 		if (UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>())
@@ -113,14 +117,12 @@ void AVendor::SpawnAtSocket(UVendorSocketComponent* Socket)
 	UClass* ItemClass = bProduct ? ProductItemClass.Get() : RerollItemClass.Get();
 	if (!ItemClass)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("%s: no item class set for socket '%s'."), *GetNameSafe(this),
-			*GetNameSafe(Socket));
+		UE_LOG(LogTemp, Warning, TEXT("%s: no item class set for socket '%s'."), *GetNameSafe(this), *GetNameSafe(Socket));
 		return;
 	}
 
 	UActorPoolSubsystem* Pool = GetWorld()->GetSubsystem<UActorPoolSubsystem>();
-	AVendorInteractable* Spawned = Pool ? Cast<AVendorInteractable>(Pool->AcquireActor
-		(ItemClass, Socket->GetComponentTransform())) : nullptr;
+	AVendorInteractable* Spawned = Pool ? Cast<AVendorInteractable>(Pool->AcquireActor(ItemClass, Socket->GetComponentTransform())) : nullptr;
 	if (!Spawned) return;
 
 	// after the acquire, because OnReleased clears the owner and attachment
@@ -188,7 +190,7 @@ EVendorTransactionResult AVendor::ProcessPurchase(AVendorItem* Item, AActor* Buy
 		if (Reward) Reward->Grant(Buyer);
 	}
 
-	Item->SetDefinition(nullptr);
+	if (bRemoveOnPurchase) Item->SetDefinition(nullptr);
 	return EVendorTransactionResult::Success;
 }
 
@@ -208,20 +210,28 @@ EVendorTransactionResult AVendor::TryCharge(AActor* Buyer, const TArray<FVendorP
 	const bool bFree = !Prices.ContainsByPredicate([](const FVendorPrice& Price) { return Price.Amount > 0; });
 	if (bFree) return EVendorTransactionResult::Success;
 
-	UObject* Wallet = FindWallet(Buyer);
-	if (!Wallet) return EVendorTransactionResult::NoWallet;
+	const TArray<UObject*> Wallets = FindWallets(Buyer);
+	if (Wallets.IsEmpty()) return EVendorTransactionResult::NoWallet;
 
-	// check everything first so a multi-currency price never charges half
+	// a wallet answers false for currencies it doesn't hold, so the one that can cover a price is the one holding its currency.
+	// Everything is matched before anything is spent so a multi-currency price never charges half
+	TArray<TPair<UObject*, const FVendorPrice*>> Payments;
 	for (const FVendorPrice& Price : Prices)
 	{
-		if (Price.Amount > 0 && !ICurrencyWallet::Execute_CanAfford(Wallet, Price.Currency, Price.Amount))
-			return EVendorTransactionResult::NotEnoughCurrency;
+		if (Price.Amount <= 0) continue;
+
+		UObject* const* Payer = Wallets.FindByPredicate([&Price](UObject* Wallet)
+		{
+			return ICurrencyWallet::Execute_CanAfford(Wallet, Price.Currency, Price.Amount);
+		});
+		if (!Payer) return EVendorTransactionResult::NotEnoughCurrency;
+
+		Payments.Emplace(*Payer, &Price);
 	}
 
-	for (const FVendorPrice& Price : Prices)
+	for (const TPair<UObject*, const FVendorPrice*>& Payment : Payments)
 	{
-		if (Price.Amount > 0 && !ICurrencyWallet::Execute_TrySpend(Wallet, Price.Currency, Price.Amount))
-			return EVendorTransactionResult::NotEnoughCurrency;
+		if (!ICurrencyWallet::Execute_TrySpend(Payment.Key, Payment.Value->Currency, Payment.Value->Amount)) return EVendorTransactionResult::NotEnoughCurrency;
 	}
 	return EVendorTransactionResult::Success;
 }

@@ -20,13 +20,7 @@ protected:
 	TMap<TSubclassOf<AActor>, FActorPoolSettings> ActorPoolSettings;
 	
 public:
-	FActorPoolSettings GetActorPoolSettings(const TSubclassOf<AActor> ActorClass) const
-	{
-		return ActorPoolSettings.FindRef(ActorClass);
-	}
+	FActorPoolSettings GetActorPoolSettings(const TSubclassOf<AActor> ActorClass) const { return ActorPoolSettings.FindRef(ActorClass); }
 	
-	TSet<TSubclassOf<APlayerBase>> GetHeroClasses() const
-	{
-		return PlayerHeroes;
-	}
+	TSet<TSubclassOf<APlayerBase>> GetHeroClasses() const { return PlayerHeroes; }
 };

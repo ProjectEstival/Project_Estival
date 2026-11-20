@@ -1,6 +1,4 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
 #include "GameplayTagContainer.h"
@@ -15,16 +13,21 @@ class UCurrencyWallet : public UInterface
 };
 
 /** Anything that holds spendable currencies, keyed by tag. Implementable on actors and components.
- *  The Vendor only talks to this, so the real currency system can replace UResourceWalletComponent by implementing it.*/
+ * The vendor only talks to this, so the real currency system can replace UResourceWalletComponent by implementing it.
+ * */
 class PROJECTESTIVAL_API ICurrencyWallet
 {
 	GENERATED_BODY()
 
-	// Add interface functions to this class. This is the class that will be inherited to implement this interface.
 public:
+#pragma region Interface Methods
+
+	/** True if the wallet holds at least Amount of this currency. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool CanAfford(FGameplayTag Currency, int32 Amount) const;
-	
+
+	/** Removes Amount of the currency. Returns false and changes nothing if it can't be afforded. */
 	UFUNCTION(BlueprintNativeEvent, BlueprintCallable)
 	bool TrySpend(FGameplayTag Currency, int32 Amount);
+#pragma endregion
 };

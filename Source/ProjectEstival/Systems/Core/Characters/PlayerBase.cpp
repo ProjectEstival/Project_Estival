@@ -26,12 +26,5 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	}
 }
 
-void APlayerBase::StartInteract()
-{
-	InteractionComponent->StartInteract();
-}
-
-void APlayerBase::StopInteract()
-{
-	InteractionComponent->StopInteract();
-}
+void APlayerBase::StartInteract() { InteractionComponent->StartInteract(); }
+void APlayerBase::StopInteract() { InteractionComponent->StopInteract(); }

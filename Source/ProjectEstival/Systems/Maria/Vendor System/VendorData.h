@@ -8,8 +8,7 @@
 class UStaticMesh;
 class UTexture2D;
 
-/** One currency amount. The currency is any tag the buyer's wallet understands,
- * so run and permanent currencies take the same path. */
+/** One currency amount. The currency is any tag the buyer's wallet understands, so run and permanent currencies take the same path. */
 USTRUCT(BlueprintType)
 struct FVendorPrice
 {
@@ -31,8 +30,7 @@ class PROJECTESTIVAL_API UVendorGrant : public UObject
 	GENERATED_BODY()
 
 public:
-	/** Checked before the buyer is charged, so a grant that can't apply (maxed, already unlocked)
-	 * refuses the purchase for free. */
+	/** Checked before the buyer is charged, so a grant that can't apply (maxed, already unlocked) refuses the purchase for free. */
 	UFUNCTION(BlueprintNativeEvent, Category = "Vendor")
 	bool CanGrant(AActor* Buyer) const;
 	virtual bool CanGrant_Implementation(AActor* Buyer) const { return true; }
@@ -42,8 +40,7 @@ public:
 	virtual void Grant_Implementation(AActor* Buyer) const {}
 };
 
-/** Something a vendor can sell. Run vendors and permanent vendors use the same asset,
- * they only differ in the currencies and grants inside. */
+/** Something a vendor can sell. Run vendors and permanent vendors use the same asset, they only differ in the currencies and grants inside. */
 UCLASS(BlueprintType)
 class PROJECTESTIVAL_API UVendorItemDefinition : public UDataAsset
 {

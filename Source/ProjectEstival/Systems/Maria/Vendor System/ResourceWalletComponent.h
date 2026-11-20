@@ -1,27 +1,32 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
-
-#pragma once
+﻿#pragma once
 
 #include "CoreMinimal.h"
-#include "CurrencyWallet.h"
 #include "Components/ActorComponent.h"
+#include "CurrencyWallet.h"
 #include "ResourceWalletComponent.generated.h"
 
 class UResourceComponent;
-UCLASS(ClassGroup=(Vendor), meta=(BlueprintSpawnableComponent))
+
+/** Stopgap wallet: exposes the owner's UResourceComponent as a currency wallet.
+ * Delete it once the real currency component implements ICurrencyWallet.
+ * */
+UCLASS(ClassGroup = (Vendor), meta = (BlueprintSpawnableComponent))
 class PROJECTESTIVAL_API UResourceWalletComponent : public UActorComponent, public ICurrencyWallet
 {
 	GENERATED_BODY()
 
 public:
+#pragma region Public Methods
 	virtual bool CanAfford_Implementation(FGameplayTag Currency, int32 Amount) const override;
 	virtual bool TrySpend_Implementation(FGameplayTag Currency, int32 Amount) override;
+#pragma endregion
 
 protected:
-	// Called when the game starts
 	virtual void BeginPlay() override;
 
 private:
+#pragma region Private Fields
 	UPROPERTY(Transient)
 	TObjectPtr<UResourceComponent> Resources;
+#pragma endregion
 };

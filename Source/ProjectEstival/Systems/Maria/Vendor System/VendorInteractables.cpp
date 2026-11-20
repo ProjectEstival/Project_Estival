@@ -32,11 +32,18 @@ void AVendorInteractable::OnReleased_Implementation()
 	SetOwner(nullptr);
 }
 
-AVendor* AVendorInteractable::GetVendor() const { return Cast<AVendor>(GetOwner()); }
+AVendor* AVendorInteractable::GetVendor() const
+{
+	return Cast<AVendor>(GetOwner());
+}
 #pragma endregion
 
 #pragma region AVendorItem
-AVendorItem::AVendorItem() { HoldDuration = 0.5f; }
+AVendorItem::AVendorItem()
+{
+	// purchases are held; the reroll button keeps the base 0 (tap)
+	HoldDuration = 0.5f;
+}
 
 void AVendorItem::BeginPlay()
 {
@@ -44,7 +51,11 @@ void AVendorItem::BeginPlay()
 	ApplyDefinition();
 }
 
-void AVendorItem::OnAcquired_Implementation() { ApplyDefinition(); }
+void AVendorItem::OnAcquired_Implementation()
+{
+	// the pool has just unhidden the actor; an empty slot must stay hidden
+	ApplyDefinition();
+}
 
 void AVendorItem::OnReleased_Implementation()
 {
@@ -79,7 +90,11 @@ void AVendorItem::ApplyDefinition()
 #pragma endregion
 
 #pragma region AVendorRerollItem
-AVendorRerollItem::AVendorRerollItem() { HoldDuration = 1.5f; }
+AVendorRerollItem::AVendorRerollItem()
+{
+	// longer than a purchase, so players have time to change their mind and release
+	HoldDuration = 1.5f;
+}
 
 bool AVendorRerollItem::TryInteract_Implementation(AActor* Interactor)
 {

@@ -13,12 +13,14 @@ enum class EVendorSocketType : uint8
 	Reroll
 };
 
-UCLASS(ClassGroup=(Vendor), meta=(BlueprintSpawnableComponent))
+/** Marks where the vendor spawns an item. Add as many as the vendor should sell, move them freely in the Blueprint. */
+UCLASS(ClassGroup = (Vendor), meta = (BlueprintSpawnableComponent))
 class PROJECTESTIVAL_API UVendorSocketComponent : public USceneComponent
 {
 	GENERATED_BODY()
 
 public:
+	/** Product sockets hold stock. Reroll sockets hold the reroll button and are ignored when the vendor has no reroll. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vendor")
 	EVendorSocketType Type = EVendorSocketType::Product;
 };

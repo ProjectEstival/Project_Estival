@@ -20,26 +20,40 @@ namespace
 		return Wallets;
 	}
 
-	/** Picks one entry by weight and removes it from the pool so a roll never repeats an item. */
-	UVendorItemDefinition* DrawWeighted(TArray<const FVendorCatalogEntry*>& Pool)
+	/** Picks one entry. A tiered item's chance is its tier's SpawnWeight shared among that tier's candidates by their own weights,
+	 * so a tier turns up as often as its weight says however many items it holds. An item without a tier uses its weight as is.
+	 * */
+	UVendorItemDefinition* DrawWeighted(const TArray<const FVendorCatalogEntry*>& Pool)
 	{
-		float TotalWeight = 0.f;
-		for (const FVendorCatalogEntry* Entry : Pool) TotalWeight += Entry->Weight;
-
-		float Roll = FMath::FRandRange(0.f, TotalWeight);
-		// last entry is the fallback for float rounding
-		int32 Index = Pool.Num() - 1;
-		for (int32 i = 0; i < Pool.Num(); ++i)
+		TMap<const UVendorTier*, float> TierTotals;
+		for (const FVendorCatalogEntry* Entry : Pool)
 		{
-			Roll -= Pool[i]->Weight;
-			if (Roll > 0.f) continue;
-			Index = i;
-			break;
+			if (const UVendorTier* Tier = Entry->Item->Tier) TierTotals.FindOrAdd(Tier) += Entry->Weight;
 		}
 
-		UVendorItemDefinition* Picked = Pool[Index]->Item.Get();
-		Pool.RemoveAtSwap(Index);
-		return Picked;
+		TArray<float> Chances;
+		float TotalChance = 0.f;
+		for (const FVendorCatalogEntry* Entry : Pool)
+		{
+			const UVendorTier* Tier = Entry->Item->Tier;
+			const float Chance = Tier ? Entry->Weight / TierTotals.FindChecked(Tier) * Tier->SpawnWeight : Entry->Weight;
+			Chances.Add(Chance);
+			TotalChance += Chance;
+		}
+		if (TotalChance <= 0.f) return nullptr;
+
+		float Roll = FMath::FRandRange(0.f, TotalChance);
+		int32 Picked = INDEX_NONE;
+		for (int32 i = 0; i < Pool.Num(); ++i)
+		{
+			if (Chances[i] <= 0.f) continue;
+
+			// the last entry that can be drawn is the fallback for float rounding
+			Picked = i;
+			Roll -= Chances[i];
+			if (Roll < 0.f) break;
+		}
+		return Pool[Picked]->Item.Get();
 	}
 }
 
@@ -73,7 +87,7 @@ void AVendor::BeginPlay()
 	GetComponents(Sockets);
 	for (UVendorSocketComponent* Socket : Sockets) SpawnAtSocket(Socket);
 
-	Restock();
+	Restock(false);
 }
 
 void AVendor::EndPlay(const EEndPlayReason::Type EndPlayReason)
@@ -87,7 +101,7 @@ void AVendor::EndPlay(const EEndPlayReason::Type EndPlayReason)
 			for (AVendorInteractable* Spawned : SpawnedInteractables) Pool->ReleaseActor(Spawned);
 		}
 		SpawnedInteractables.Reset();
-		ProductItems.Reset();
+		Slots.Reset();
 	}
 
 	Super::EndPlay(EndPlayReason);
@@ -129,60 +143,75 @@ void AVendor::SpawnAtSocket(UVendorSocketComponent* Socket)
 	Spawned->SetOwner(this);
 	Spawned->AttachToComponent(Socket, FAttachmentTransformRules::KeepWorldTransform);
 	SpawnedInteractables.Add(Spawned);
-	if (AVendorItem* Item = Cast<AVendorItem>(Spawned)) ProductItems.Add(Item);
+	AVendorItem* Item = Cast<AVendorItem>(Spawned);
+	if (!Item) return;
+
+	FVendorSlot& Slot = Slots.AddDefaulted_GetRef();
+	Slot.Item = Item;
+	Slot.Catalog = Socket->CatalogOverride ? Socket->CatalogOverride.Get() : Catalog.Get();
+	Slot.bRerollable = Socket->bRerollable;
 }
 
-void AVendor::Restock()
+void AVendor::Restock(const bool bRerollOnly)
 {
-	const TArray<UVendorItemDefinition*> Picks = RollStock(ProductItems.Num());
+	TSet<const UVendorItemDefinition*> Avoid = GetDisplayedDefinitions();
 
-	for (int32 i = 0; i < ProductItems.Num(); ++i)
+	for (const FVendorSlot& Slot : Slots)
 	{
-		ProductItems[i]->SetDefinition(Picks.IsValidIndex(i) ? Picks[i] : nullptr);
+		if (bRerollOnly && !Slot.bRerollable) continue;
+
+		UVendorItemDefinition* Picked = RollItem(Slot.Catalog, Avoid);
+		Slot.Item->SetDefinition(Picked);
+		if (Picked) Avoid.Add(Picked);
 	}
 
 	OnRestocked.Broadcast();
 }
 
-TArray<UVendorItemDefinition*> AVendor::RollStock(const int32 Count) const
+void AVendor::RefillSlot(FVendorSlot& Slot)
 {
-	TArray<UVendorItemDefinition*> Result;
-	if (!Catalog) return Result;
+	// the item just sold is still on display here, so the new roll avoids it
+	Slot.Item->SetDefinition(RollItem(Slot.Catalog, GetDisplayedDefinitions()));
+}
 
-	TSet<const UVendorItemDefinition*> Current;
-	for (const AVendorItem* Item : ProductItems)
+TSet<const UVendorItemDefinition*> AVendor::GetDisplayedDefinitions() const
+{
+	TSet<const UVendorItemDefinition*> Displayed;
+	for (const FVendorSlot& Slot : Slots)
 	{
-		if (Item && Item->GetDefinition()) Current.Add(Item->GetDefinition());
+		if (Slot.Item && Slot.Item->GetDefinition()) Displayed.Add(Slot.Item->GetDefinition());
 	}
+	return Displayed;
+}
 
-	// a reroll prefers items not on display, and only falls back to them when the catalog is too small
+UVendorItemDefinition* AVendor::RollItem(const UVendorCatalog* SourceCatalog, const TSet<const UVendorItemDefinition*>& Avoid) const
+{
+	if (!SourceCatalog) return nullptr;
+
 	TArray<const FVendorCatalogEntry*> Fresh;
-	TArray<const FVendorCatalogEntry*> Previous;
-	for (const FVendorCatalogEntry& Entry : Catalog->Entries)
+	TArray<const FVendorCatalogEntry*> All;
+	for (const FVendorCatalogEntry& Entry : SourceCatalog->Entries)
 	{
 		if (!Entry.Item || Entry.Weight <= 0.f) continue;
-		(Current.Contains(Entry.Item.Get()) ? Previous : Fresh).Add(&Entry);
-	}
 
-	while (Result.Num() < Count && (Fresh.Num() > 0 || Previous.Num() > 0))
-	{
-		TArray<const FVendorCatalogEntry*>& Pool = Fresh.Num() > 0 ? Fresh : Previous;
-		Result.Add(DrawWeighted(Pool));
+		All.Add(&Entry);
+		if (!Avoid.Contains(Entry.Item.Get())) Fresh.Add(&Entry);
 	}
-	return Result;
+	return DrawWeighted(Fresh.IsEmpty() ? All : Fresh);
 }
 
 EVendorTransactionResult AVendor::ProcessPurchase(AVendorItem* Item, AActor* Buyer)
 {
-	UVendorItemDefinition* Definition = Item ? Item->GetDefinition() : nullptr;
-	if (!Definition || !Buyer || !ProductItems.Contains(Item)) return EVendorTransactionResult::Unavailable;
+	FVendorSlot* Slot = Slots.FindByPredicate([Item](const FVendorSlot& Entry) { return Entry.Item == Item; });
+	UVendorItemDefinition* Definition = Slot ? Item->GetDefinition() : nullptr;
+	if (!Definition || !Buyer) return EVendorTransactionResult::Unavailable;
 
 	for (const UVendorGrant* Reward : Definition->Grants)
 	{
 		if (Reward && !Reward->CanGrant(Buyer)) return EVendorTransactionResult::NotGrantable;
 	}
 
-	const EVendorTransactionResult Payment = TryCharge(Buyer, Definition->Prices);
+	const EVendorTransactionResult Payment = TryCharge(Buyer, Definition->GetPrices());
 	if (Payment != EVendorTransactionResult::Success) return Payment;
 
 	for (const UVendorGrant* Reward : Definition->Grants)
@@ -190,18 +219,19 @@ EVendorTransactionResult AVendor::ProcessPurchase(AVendorItem* Item, AActor* Buy
 		if (Reward) Reward->Grant(Buyer);
 	}
 
-	if (bRemoveOnPurchase) Item->SetDefinition(nullptr);
+	if (bRefillOnPurchase) RefillSlot(*Slot);
 	return EVendorTransactionResult::Success;
 }
 
 EVendorTransactionResult AVendor::ProcessReroll(AActor* Buyer)
 {
-	if (!bAllowReroll || !Buyer) return EVendorTransactionResult::Unavailable;
+	if (!Buyer || !CanReroll()) return EVendorTransactionResult::Unavailable;
 
 	const EVendorTransactionResult Payment = TryCharge(Buyer, RerollPrices);
 	if (Payment != EVendorTransactionResult::Success) return Payment;
 
-	Restock();
+	RerollsUsed++;
+	Restock(true);
 	return EVendorTransactionResult::Success;
 }
 

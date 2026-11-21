@@ -17,4 +17,8 @@ namespace TagDefinitions
 
 	// Ability events
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(AbilityEvent_Hit, "AbilityEvent.Hit", "The hit frame of an ability animation");
+	
+	// Currencies
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Currency_Run_Runes, "Currency.Run.Runes", "A player's temporary currency for the current run. Paid from the hero's run wallet and back to 0 when a new run starts.");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Currency_Perma_Fragments, "Currency.Perma.Fragments", "Boss fragments kept in the player's saved profile. Spent at the permanent vendor.");
 }

@@ -14,7 +14,7 @@ UENUM(BlueprintType)
 enum class EVendorTransactionResult : uint8
 {
 	Success,
-	/** Nothing to buy: empty slot, reroll disabled, invalid request. */
+	/** Nothing to buy: empty slot, reroll disabled or used up, invalid request. */
 	Unavailable,
 	/** A grant refused (already maxed, already unlocked). The buyer was not charged. */
 	NotGrantable,
@@ -27,6 +27,22 @@ enum class EVendorTransactionResult : uint8
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_ThreeParams(FOnVendorTransaction, AVendorInteractable*, Target, AActor*, Buyer, EVendorTransactionResult, Result);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnVendorRestocked);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnVendorInteracted, AActor*, Interactor);
+
+/** One product slot: the item on display and where its stock comes from. */
+USTRUCT()
+struct FVendorSlot
+{
+	GENERATED_BODY()
+
+	UPROPERTY()
+	TObjectPtr<AVendorItem> Item;
+
+	UPROPERTY()
+	TObjectPtr<UVendorCatalog> Catalog;
+
+	UPROPERTY()
+	bool bRerollable = true;
+};
 
 /** Sells items from a catalog at the sockets placed in its Blueprint (table, NPC, props).
  * Run vendors and permanent vendors are the same class with different catalogs, currencies and reroll setting.
@@ -58,8 +74,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Vendor")
 	EVendorTransactionResult TryReroll(AVendorRerollItem* Button, AActor* Buyer);
 
+	/** False when rerolls are disabled or all of them were used. A reroll button should lock or hide itself on this after OnRestocked. */
 	UFUNCTION(BlueprintPure, Category = "Vendor")
-	bool CanReroll() const { return bAllowReroll; }
+	bool CanReroll() const { return bAllowReroll && (MaxRerolls == 0 || RerollsUsed < MaxRerolls); }
 
 	UFUNCTION(BlueprintPure, Category = "Vendor")
 	TArray<FVendorPrice> GetRerollPrices() const { return RerollPrices; }
@@ -84,7 +101,7 @@ protected:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Vendor")
 	TObjectPtr<USphereComponent> Trigger;
 
-	/** Pool the stock is drawn from. */
+	/** Pool the stock is drawn from. A socket can override it for its own slot. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vendor")
 	TObjectPtr<UVendorCatalog> Catalog;
 
@@ -92,13 +109,17 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vendor")
 	TSubclassOf<AVendorItem> ProductItemClass;
 
-	/** Run vendors sell each item once. Permanent vendors turn this off, since their limit is the profile's purchase cap and potions must stay buyable. */
+	/** A bought item is replaced by a new roll. Permanent vendors turn this off, so the item stays on sale and their limit is the profile's purchase cap. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Vendor")
-	bool bRemoveOnPurchase = true;
+	bool bRefillOnPurchase = true;
 
 	/** Permanent vendors turn this off, which also skips the Reroll socket. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reroll")
 	bool bAllowReroll = true;
+
+	/** How many times the stock can be rerolled, by anyone, before the button locks. 0 = unlimited. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reroll", meta = (ClampMin = "0", EditCondition = "bAllowReroll", EditConditionHides))
+	int32 MaxRerolls = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Reroll", meta = (EditCondition = "bAllowReroll", EditConditionHides))
 	TSubclassOf<AVendorRerollItem> RerollItemClass;
@@ -115,13 +136,22 @@ private:
 	TArray<TObjectPtr<AVendorInteractable>> SpawnedInteractables;
 
 	UPROPERTY(Transient)
-	TArray<TObjectPtr<AVendorItem>> ProductItems;
+	TArray<FVendorSlot> Slots;
+
+	/** Kept on the vendor, so every player shares one limit and it can't be dodged by leaving and coming back. */
+	UPROPERTY(Transient)
+	int32 RerollsUsed = 0;
 #pragma endregion
 
 #pragma region Private Methods
 	void SpawnAtSocket(UVendorSocketComponent* Socket);
-	void Restock();
-	TArray<UVendorItemDefinition*> RollStock(int32 Count) const;
+	/** Rolls every slot, or only the rerollable ones. */
+	void Restock(bool bRerollOnly);
+	void RefillSlot(FVendorSlot& Slot);
+	TSet<const UVendorItemDefinition*> GetDisplayedDefinitions() const;
+
+	/** A roll prefers items that aren't in Avoid (on display or already picked) and only falls back to them when the catalog has nothing else. */
+	UVendorItemDefinition* RollItem(const UVendorCatalog* SourceCatalog, const TSet<const UVendorItemDefinition*>& Avoid) const;
 
 	EVendorTransactionResult ProcessPurchase(AVendorItem* Item, AActor* Buyer);
 	EVendorTransactionResult ProcessReroll(AActor* Buyer);

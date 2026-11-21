@@ -40,6 +40,31 @@ public:
 	virtual void Grant_Implementation(AActor* Buyer) const {}
 };
 
+/** A rarity bracket (Common, Rare, Epic, Legendary...). Its items share its spawn chance and, unless they set their own, its price. */
+UCLASS(BlueprintType)
+class PROJECTESTIVAL_API UVendorTier : public UDataAsset
+{
+	GENERATED_BODY()
+
+public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
+	FText DisplayName;
+
+	/** For the item's icon, ground VFX and panel. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Info")
+	FLinearColor Color = FLinearColor::White;
+
+	/** Chance of this tier relative to the other tiers on offer. Inside the tier items are picked by their own catalog weight,
+	 * so adding items to a tier never changes how often the tier turns up.
+	 * */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawn", meta = (ClampMin = "0"))
+	float SpawnWeight = 1.f;
+
+	/** Price of every item in this tier that doesn't set its own. One entry per currency. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cost")
+	TArray<FVendorPrice> Prices;
+};
+
 /** Something a vendor can sell. Run vendors and permanent vendors use the same asset, they only differ in the currencies and grants inside. */
 UCLASS(BlueprintType)
 class PROJECTESTIVAL_API UVendorItemDefinition : public UDataAsset
@@ -60,9 +85,17 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Presentation")
 	TObjectPtr<UStaticMesh> DisplayMesh;
 
-	/** Everything the buyer pays. One entry per currency. Empty = free. */
+	/** Rarity. Sets the spawn chance and, unless Prices is filled, the price. Leave empty for items with no rarity, like the permanent vendor's. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cost")
+	TObjectPtr<UVendorTier> Tier;
+
+	/** Overrides the tier's price when not empty. One entry per currency. Empty with no tier = free. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Cost")
 	TArray<FVendorPrice> Prices;
+
+	/** What the buyer pays: the item's own prices, else its tier's. */
+	UFUNCTION(BlueprintPure, Category = "Cost")
+	TArray<FVendorPrice> GetPrices() const { return Prices.IsEmpty() && Tier ? Tier->Prices : Prices; }
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Execution")
 	TArray<TObjectPtr<UVendorGrant>> Grants;

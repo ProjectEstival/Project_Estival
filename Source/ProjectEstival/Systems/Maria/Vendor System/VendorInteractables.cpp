@@ -1,4 +1,5 @@
-﻿#include "VendorInteractables.h"
+﻿
+#include "VendorInteractables.h"
 #include "Vendor.h"
 #include "VendorData.h"
 #include "Components/SphereComponent.h"
@@ -94,6 +95,12 @@ AVendorRerollItem::AVendorRerollItem()
 {
 	// longer than a purchase, so players have time to change their mind and release
 	HoldDuration = 1.5f;
+}
+
+bool AVendorRerollItem::CanInteract_Implementation(AActor* Interactor) const
+{
+	const AVendor* Vendor = GetVendor();
+	return Vendor && Vendor->CanReroll() && Super::CanInteract_Implementation(Interactor);
 }
 
 bool AVendorRerollItem::TryInteract_Implementation(AActor* Interactor)

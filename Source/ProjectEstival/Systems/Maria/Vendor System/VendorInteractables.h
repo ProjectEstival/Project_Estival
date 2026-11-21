@@ -97,5 +97,7 @@ class PROJECTESTIVAL_API AVendorRerollItem : public AVendorInteractable
 public:
 	AVendorRerollItem();
 
+	/** Also false once the vendor's rerolls are used up, so the button can't be started and a hold in progress is cancelled. */
+	virtual bool CanInteract_Implementation(AActor* Interactor) const override;
 	virtual bool TryInteract_Implementation(AActor* Interactor) override;
 };

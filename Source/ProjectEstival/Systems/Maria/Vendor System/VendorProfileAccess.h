@@ -12,7 +12,6 @@ class UPlayerProfileSubsystem;
  * */
 struct FVendorProfileAccess
 {
-	
 #pragma region Public Methods
 	/** Accepts the hero pawn or its player controller. Returns an invalid access for bots and anything without a local player. */
 	static FVendorProfileAccess Find(AActor* Buyer);
@@ -26,7 +25,6 @@ struct FVendorProfileAccess
 	UPlayerProfileSaveGame* Save = nullptr;
 
 private:
-	
 #pragma region Private Fields
 	const UPlayerProfileSubsystem* Profiles = nullptr;
 	ULocalPlayer* LocalPlayer = nullptr;

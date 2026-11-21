@@ -29,6 +29,13 @@ void ABossAIController::OnPossess(APawn* InPawn)
 	}
 }
 
+void ABossAIController::OnUnPossess()
+{
+	// stop the tree while it still has its pawn otherwise StopLogic fails
+	StateTreeAI->StopLogic(TEXT("Unpossessed"));
+	Super::OnUnPossess();
+}
+
 void ABossAIController::StartFight()
 {
 	if (bFightStarted || !GetPawn())

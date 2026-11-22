@@ -262,3 +262,37 @@ void FBossUseAbilityTask::ExitState(FStateTreeExecutionContext& Context, const F
 	// give the aim back: abilities go where the boss faces again
 	Character->GetAim()->ClearAim();
 }
+
+
+// ------------- Boss Rotation --------------
+
+EStateTreeRunStatus FBossRotationTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	Update(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FBossRotationTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	Update(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FBossRotationTask::Update(FInstanceDataType& InstanceData)
+{
+	ABossAIController* Boss = Cast<ABossAIController>(InstanceData.AIController.Get());
+	if (!Boss)
+	{
+		return;
+	}
+	
+	// if the next ability waited too long
+	if (Boss->IsNextAbilityOverdue())
+	{
+		Boss->SkipNextAbility();
+	}
+	
+	InstanceData.NextSlot = Boss->GetNextAbility();
+	InstanceData.bAbilityTurn = Boss->IsAbilityTurn();
+	Boss->GetNextAbilityRange(InstanceData.MinRange, InstanceData.MaxRange);
+}

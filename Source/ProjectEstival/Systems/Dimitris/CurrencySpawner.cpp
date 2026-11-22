@@ -8,10 +8,7 @@ ACurrencySpawner::ACurrencySpawner()
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ACurrencySpawner::SpawnCurrency(
-	FVector Location,
-	ECurrencyType Type,
-	int32 Amount)
+void ACurrencySpawner::SpawnCurrency(FVector Location,ECurrencyStorage Storage,int32 Amount)
 {
 	if (!PickupClass || !GetWorld() || Amount <= 0)
 	{
@@ -19,24 +16,17 @@ void ACurrencySpawner::SpawnCurrency(
 	}
 
 	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	SpawnParams.SpawnCollisionHandlingOverride =ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-	ACurrencyPickup* Pickup = GetWorld()->SpawnActor<ACurrencyPickup>(
-		PickupClass,
-		Location,
-		FRotator::ZeroRotator,
-		SpawnParams
-	);
+	ACurrencyPickup* Pickup = GetWorld()->SpawnActor<ACurrencyPickup>(PickupClass,Location,FRotator::ZeroRotator,SpawnParams);
 
-	
 	if (Pickup)
 	{
-		Pickup->SetCurrency(Type, Amount);
+		Pickup->SetCurrency(Storage, Amount);
 
 		UE_LOG(LogTemp, Log,
-			TEXT("Spawned %d currency of type %d"),
+			TEXT("Spawned %d currency (Storage: %d)"),
 			Amount,
-			static_cast<int32>(Type));
+			static_cast<int32>(Storage));
 	}
 }

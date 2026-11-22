@@ -2,6 +2,8 @@
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Engine/LocalPlayer.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/GameInstance.h"
 
@@ -30,13 +32,8 @@ void ACurrencyPickup::BeginPlay()
 );
 }
 
-void ACurrencyPickup::OnPickupOverlap(
-	UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult)
+void ACurrencyPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent,AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,int32 OtherBodyIndex,bool bFromSweep,const FHitResult& SweepResult)
 {
 	if (bCollected)
 	{
@@ -46,6 +43,20 @@ void ACurrencyPickup::OnPickupOverlap(
 	APawn* Pawn = Cast<APawn>(OtherActor);
 
 	if (!Pawn || !Pawn->IsPlayerControlled())
+	{
+		return;
+	}
+	
+	APlayerController* PlayerController =Cast<APlayerController>(Pawn->GetController());
+
+	if (!PlayerController)
+	{
+		return;
+	}
+
+	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+
+	if (!LocalPlayer)
 	{
 		return;
 	}
@@ -66,26 +77,24 @@ void ACurrencyPickup::OnPickupOverlap(
 	}
 
 	const int32 PickupAmount = bRandomizeAmount
-		? FMath::RandRange(
-			FMath::Max(1, MinAmount),
+		? FMath::RandRange(FMath::Max(1, MinAmount),
 			FMath::Max(FMath::Max(1, MinAmount), MaxAmount))
 		: FMath::Max(1, Amount);
 
 	bCollected = true;
 
-	CurrencySystem->AddCurrency(CurrencyType, PickupAmount);
+	CurrencySystem->AddCurrency(LocalPlayer,CurrencyStorage,PickupAmount);
 
-	UE_LOG(LogTemp, Log, TEXT("Collected %d currency of type %d"),
-		PickupAmount, static_cast<int32>(CurrencyType));
-
+	UE_LOG(LogTemp, Log, TEXT("Collected %d currency (Storage: %d)"),
+		PickupAmount, static_cast<int32>(CurrencyStorage));
 	Destroy();
 }
 
 void ACurrencyPickup::SetCurrency(
-	ECurrencyType Type,
+	ECurrencyStorage Storage,
 	int32 NewAmount)
 {
-	CurrencyType = Type;
+	CurrencyStorage = Storage;
 	Amount = FMath::Max(1, NewAmount);
 	bRandomizeAmount = false;
 }

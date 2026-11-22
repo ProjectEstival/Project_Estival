@@ -8,8 +8,30 @@
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "Engine/Engine.h"
+#include "UI/UIInputHandler.h"
+#include "UI/HUDs/HUDBase.h"
 #include "InputCoreTypes.h"
-#include "UI/HUDBase.h"
+
+namespace
+{
+	bool ResolveUIInputAction(const FKey& Key, EUIInputAction& OutAction)
+	{
+		if (Key == EKeys::Enter || Key == EKeys::Gamepad_FaceButton_Bottom) OutAction = EUIInputAction::Submit;
+		else if (Key == EKeys::Escape || Key == EKeys::Gamepad_FaceButton_Right) OutAction = EUIInputAction::Back;
+		else if (Key == EKeys::Left || Key == EKeys::A || Key == EKeys::Gamepad_DPad_Left) OutAction = EUIInputAction::PreviousAbility;
+		else if (Key == EKeys::Right || Key == EKeys::D || Key == EKeys::Gamepad_DPad_Right) OutAction = EUIInputAction::NextAbility;
+		else if (Key == EKeys::Q || Key == EKeys::Gamepad_LeftShoulder) OutAction = EUIInputAction::PreviousCharacter;
+		else if (Key == EKeys::E || Key == EKeys::Gamepad_RightShoulder) OutAction = EUIInputAction::NextCharacter;
+		else return false;
+		return true;
+	}
+	
+	bool IsUIActionKey(const FKey& Key)
+	{
+		EUIInputAction IgnoredAction;
+		return ResolveUIInputAction(Key, IgnoredAction);
+	}
+}
 
 class FPlayerJoinInputProcessor final : public IInputProcessor
 {
@@ -22,7 +44,7 @@ public:
 		if (!IsValid(PinnedOwner)) return false;
 		if (PinnedOwner->ShouldBlockInputForModal(Event.GetInputDeviceId()))
 		{
-			if (const bool bIsKeyboardDevice = Event.GetInputDeviceId() == IPlatformInputDeviceMapper::Get().GetDefaultInputDevice())
+			if (Event.GetInputDeviceId() == IPlatformInputDeviceMapper::Get().GetDefaultInputDevice())
 			{
 				if (const UGameInstance* GI = PinnedOwner->GetGameInstance())
 				{
@@ -38,7 +60,7 @@ public:
 			return true;
 		}
 		if (Event.IsRepeat()) return false;
-		if (const FKey Key = Event.GetKey(); Key != EKeys::Gamepad_FaceButton_Bottom && Key != EKeys::Enter && Key != EKeys::Gamepad_FaceButton_Right && Key != EKeys::Escape) return false;
+		if (!IsUIActionKey(Event.GetKey())) return false;
 		return IsValid(PinnedOwner) && PinnedOwner->HandleKeyDown(Event);
 	}
 	virtual bool HandleKeyUpEvent(FSlateApplication& SlateApp, const FKeyEvent& Event) override
@@ -127,13 +149,29 @@ void UPlayerJoinInputSubsystem::HandleDeviceConnectionChange(const EInputDeviceC
 }
 bool UPlayerJoinInputSubsystem::HandleKeyDown(const FKeyEvent& Event) const
 {
-	if (!bInputEnabled) return false;
 	const UGameInstance* GI = GetGameInstance();
 	if (!GI) return false;
+	const bool bIsKeyboardDevice = Event.GetInputDeviceId() == IPlatformInputDeviceMapper::Get().GetDefaultInputDevice();
+	ULocalPlayer* InputPlayer = nullptr;
+	if (const ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
+	{
+		if (const FLocalPlayerSessionRecord* Record = Directory->FindPlayerForDevice(Event.GetInputDeviceId())) InputPlayer = Record->LocalPlayer.Get();
+	}
+	if (!IsValid(InputPlayer)) InputPlayer = bIsKeyboardDevice ? GI->GetLocalPlayerByIndex(0) : GI->FindLocalPlayerFromDeviceId(Event.GetInputDeviceId());
+	if (APlayerController* PC = InputPlayer ? InputPlayer->GetPlayerController(GetWorld()) : nullptr)
+	{
+		if (EUIInputAction UIAction; ResolveUIInputAction(Event.GetKey(), UIAction))
+		{
+			if (UUserWidget* ActiveWidget = AHUDBase::GetTopWidgetForPlayer(GetWorld(), PC); IsValid(ActiveWidget) && ActiveWidget->GetClass()->ImplementsInterface(UUIInputHandler::StaticClass()))
+			{
+				if (IUIInputHandler::Execute_HandleUIInputAction(ActiveWidget, UIAction, PC)) return true;
+			}
+		}
+	}
+	if (!bInputEnabled) return false;
 	const UPlayerProfileSubsystem* Profiles = GI->GetSubsystem<UPlayerProfileSubsystem>();
 	if (!IsValid(Profiles)) return false;
 	const FKey Key = Event.GetKey();
-	const bool bIsKeyboardDevice = Event.GetInputDeviceId() == IPlatformInputDeviceMapper::Get().GetDefaultInputDevice();
 	if (bIsKeyboardDevice && Key == EKeys::Escape && Profiles->HandleForeignKeyboardNameCancel()) return true;
 	
 	// Let Slate's editable text process keyboard Enter and emit its normal OnTextCommitted event
@@ -141,12 +179,6 @@ bool UPlayerJoinInputSubsystem::HandleKeyDown(const FKeyEvent& Event) const
 	if (Key == EKeys::Gamepad_FaceButton_Bottom && Profiles->TryCommitProfileNameFromDevice(Event.GetInputDeviceId())) return true;
 	if (Key == EKeys::Gamepad_FaceButton_Right || Key == EKeys::Escape)
 	{
-		const ULocalPlayer* InputPlayer = nullptr;
-		if (const ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
-		{
-			if (const FLocalPlayerSessionRecord* Record = Directory->FindPlayerForDevice(Event.GetInputDeviceId())) InputPlayer = Record->LocalPlayer.Get();
-		}
-		if (!IsValid(InputPlayer)) InputPlayer = bIsKeyboardDevice ? GI->GetLocalPlayerByIndex(0) : GI->FindLocalPlayerFromDeviceId(Event.GetInputDeviceId());
 		if (APlayerController* InputPlayerController = InputPlayer ? InputPlayer->GetPlayerController(GetWorld()) : nullptr; AHUDBase::HandleBackForPlayer(GetWorld(), InputPlayerController)) return true;
 		
 		// If player has no modal to close, release the profile they have selected

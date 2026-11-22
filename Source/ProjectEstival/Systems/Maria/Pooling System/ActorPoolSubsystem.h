@@ -42,6 +42,8 @@ struct FSuspendedComponentState
 	bool bWasActive = false;
 	bool bTickWasEnabled = false;
 };
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnPooledActorAcquired, AActor*);
 #pragma endregion
 
 /** World-scoped pool for arbitrary actors. Pooled actors keep their own class; nothing needs to inherit from a special base.
@@ -54,6 +56,9 @@ class PROJECTESTIVAL_API UActorPoolSubsystem : public UWorldSubsystem
 	GENERATED_BODY()
 	
 public:
+	/** Broadcast every time an actor is handed out, either spawned or reused. */
+	FOnPooledActorAcquired OnActorAcquired;
+
 #pragma region Public Methods
 	virtual void Deinitialize() override;
 	

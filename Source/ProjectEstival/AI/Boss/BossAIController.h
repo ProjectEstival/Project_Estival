@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Runtime/AIModule/Classes/AIController.h"
+#include "GameplayTagContainer.h"
 #include "BossAIController.generated.h"
 
 class UStateTreeAIComponent;
+class UBossRotation;
+class UAbilityDefinition;
 
 // create one log category for all boss AI code. 
 DECLARE_LOG_CATEGORY_EXTERN(LogBossAI, Log, All);
@@ -32,6 +35,18 @@ class PROJECTESTIVAL_API ABossAIController : public AAIController
 	
 	bool bFightStarted = false;
 	int32 Phase = 0;
+	
+	// the order of the boss's abilities. If empty the tree decides alone
+	UPROPERTY(EditAnywhere, Category="Boss")
+	TObjectPtr<UBossRotation> Rotation;
+	
+	// what the rotation remembers between abilities
+	FGameplayTag NextAbility;
+	FGameplayTag LastAbility;
+	int32 OpeningStep = 0;
+	int32 BasicsSinceAbility = 0;
+	double LastAbilityTime = 0.0;
+	double NextPickedTime = 0.0;
 
 public:
 	ABossAIController();
@@ -56,9 +71,34 @@ public:
 	
 	UPROPERTY(BlueprintAssignable, Category="Boss")
 	FOnBossPhaseChanged OnPhaseChanged;
+	
+	// the ability that the rotation wants next. Empty means no rotation
+	UFUNCTION(BlueprintPure, Category="Boss|Rotation")
+	FGameplayTag GetNextAbility() const { return NextAbility; }
+
+	// true when enough basic attacks or enough time  passed since the last rotation ability
+	UFUNCTION(BlueprintPure, Category="Boss|Rotation")
+	bool IsAbilityTurn() const;
+
+	// how far the target must be for the next ability
+	void GetNextAbilityRange(float& OutMin, float& OutMax) const;
+
+	// true when the next ability waited longer than the rotation's Patience
+	bool IsNextAbilityOverdue() const;
+
+	// gives up on the next ability and picks another one
+	UFUNCTION(BlueprintCallable, Category="Boss|Rotation")
+	void SkipNextAbility();
 
 protected:
 	virtual void OnPossess(APawn* InPawn) override;
 	virtual void OnUnPossess() override;
+	
+private:
+	void PickNextAbility();
+
+	// the loadout calls this every time the body uses an ability
+	UFUNCTION()
+	void HandleAbilityCommitted(FGameplayTag Slot, UAbilityDefinition* Ability);
 	
 };

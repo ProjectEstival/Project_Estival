@@ -33,10 +33,7 @@ void AVendorInteractable::OnReleased_Implementation()
 	SetOwner(nullptr);
 }
 
-AVendor* AVendorInteractable::GetVendor() const
-{
-	return Cast<AVendor>(GetOwner());
-}
+AVendor* AVendorInteractable::GetVendor() const { return Cast<AVendor>(GetOwner()); }
 #pragma endregion
 
 #pragma region AVendorItem

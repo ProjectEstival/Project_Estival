@@ -23,10 +23,7 @@ void URunWalletComponent::AddCurrency(const FGameplayTag Currency, const int32 A
 	SetBalance(Currency, GetBalance(Currency) + Amount);
 }
 
-int32 URunWalletComponent::GetBalance(const FGameplayTag Currency) const
-{
-	return Balances.FindRef(Currency);
-}
+int32 URunWalletComponent::GetBalance(const FGameplayTag Currency) const { return Balances.FindRef(Currency); }
 
 void URunWalletComponent::ResetAll()
 {

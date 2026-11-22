@@ -1,4 +1,6 @@
-﻿#include "Vendor.h"
+﻿
+
+#include "Vendor.h"
 #include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 #include "CurrencyWallet.h"
 #include "VendorSocketComponent.h"
@@ -68,10 +70,7 @@ AVendor::AVendor()
 	SetRootComponent(Trigger);
 }
 
-bool AVendor::CanInteract_Implementation(AActor* Interactor) const
-{
-	return CanServe(Interactor);
-}
+bool AVendor::CanInteract_Implementation(AActor* Interactor) const { return CanServe(Interactor); }
 
 bool AVendor::TryInteract_Implementation(AActor* Interactor)
 {

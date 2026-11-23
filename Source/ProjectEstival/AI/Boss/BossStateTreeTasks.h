@@ -34,7 +34,7 @@ struct FBossWatchPhaseInstanceData
 
 	// the phase the health says we should be in. it only goes up
 	UPROPERTY(VisibleAnywhere, Category="Output")
-	int32 HealthPhase = 1;
+	int32 HealthPhase = 0;
 
 	// true until the tree has announced the new phase. The Howl state does that
 	UPROPERTY(VisibleAnywhere, Category="Output")
@@ -70,7 +70,7 @@ struct FBossAnnouncePhaseInstanceData
 
 	// bind to Boss Watch Phase's HealthPhase
 	UPROPERTY(EditAnywhere, Category="Input")
-	int32 Phase = 1;
+	int32 Phase = 0;
 };
 
 // tells the controller the new phase, once, when its state is entered
@@ -205,4 +205,47 @@ struct FBossUseAbilityTask : public FStateTreeTaskCommonBase
 	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
 	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+};
+
+
+// ------------- Boss Rotation --------------
+USTRUCT()
+struct FBossRotationInstanceData
+{
+	GENERATED_BODY()
+	
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<AAIController> AIController;
+	
+	// the slot the rotation wants next
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	FGameplayTag NextSlot;
+	
+	// the distance the next ability needs on the floor
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	float MinRange = 0.f;
+	
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	float MaxRange = 100000.f;
+	
+	// false while the boss still owes basic attacks
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	bool bAbilityTurn = true;
+};
+
+// global task: shows the controller's rotation on the state tree and gives up  
+// on abilities that wiat too long
+USTRUCT(meta=(DisplayName="Boss Rotation", Category="Boss"))
+struct FBossRotationTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+	
+	using FInstanceDataType = FBossRotationInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+
+private:
+	static void Update(FInstanceDataType& InstanceData);
 };

@@ -1,11 +1,12 @@
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-#include "GameplayTagContainer.h"
-#include "Components/SpotLightComponent.h"
-#include "Components/StaticMeshComponent.h"
 #include "Systems/Core/Characters/PlayerBase.h"
+#include "Components/StaticMeshComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "GameplayTagContainer.h"
+#include "GameFramework/Actor.h"
+#include "CoreMinimal.h"
+
 #include "BaldrsLight.generated.h"
 
 class ACharacter;
@@ -101,7 +102,7 @@ protected:
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PostInitializeComponents() override;
 	UFUNCTION()
-	void InitializePosition(int32 Floor);
+	void InitializePostGameMode(int32 Floor);
 
 	// Corruption damage
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Baldr's Light|Damage", meta = (ClampMin = "0.0"))

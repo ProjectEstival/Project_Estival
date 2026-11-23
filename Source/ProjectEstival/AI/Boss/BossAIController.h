@@ -59,6 +59,7 @@ public:
 	UFUNCTION(BlueprintPure, Category="Boss"	)
 	bool IsFightStarted() const { return bFightStarted; }
 	
+	
 	// first phase = 0 and it only goes up
 	UFUNCTION(BlueprintPure, Category="Boss")
 	int32 GetPhase() const { return Phase; }

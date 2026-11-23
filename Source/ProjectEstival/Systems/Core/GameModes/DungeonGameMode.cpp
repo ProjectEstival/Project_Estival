@@ -310,7 +310,7 @@ void ADungeonGameMode::EndRun(const ERunResult Result)
 	Phase = EDungeonPhase::RunOver;
 	OnRunEnded.Broadcast(Result);
 	
-	if (auto CurrencySystem = UWorld::GetSubsystem<UCurrencySubsystem>())
+	if (const auto CurrencySystem = UWorld::GetSubsystem<UCurrencySubsystem>())
 	{
 		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
 		{

@@ -73,6 +73,9 @@ void AEnemyAIController::OnTargetSensorForgot(AActor* Actor)
 // Checks Dist to see what player to chase first
 void AEnemyAIController::DistCheck()
 {
+	// forget a target that died
+	if (PlayerRef && !PlayerRef->IsAlive()) PlayerRef = nullptr; 
+	
 	if (Players.IsEmpty()) return;
 
 	APawn* ControlledPawn = GetPawn();
@@ -139,12 +142,20 @@ void AEnemyAIController::OnUnPossess()
 	
 	if (StateTree) StateTree->StopLogic(TEXT("Dead Pawn"));
 	
+	// pawn is gone: stop the looping DistCheck timer we started in BeginPlay
+	GetWorldTimerManager().ClearTimer(CheckDistanceTimerHandle);
+	
 	Super::OnUnPossess();
+	
+	// enemies never get a second pawn, so remove this controller too
+	SetLifeSpan(0.1f);
 }
 
 // Changes State if damaged
 void AEnemyAIController::Damaged(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
 {
+	if (!StateTree) return;
+	
 	if (ChangeToDefence.IsValid())
 	{
 		StopMovement();

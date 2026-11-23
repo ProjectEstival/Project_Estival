@@ -16,7 +16,7 @@ void ACurrencySpawner::SpawnCurrency(FVector Location,ECurrencyStorage Storage,i
 		return;
 	}
 
-	const auto Pooling = GetGameInstance()->GetSubsystem<UActorPoolSubsystem>();
+	const auto Pooling = UWorld::GetSubsystem<UActorPoolSubsystem>(GetWorld());
 	ACurrencyPickup* Pickup = nullptr;
 	if (Pooling) Pickup = Cast<ACurrencyPickup>(Pooling->AcquireActorAtLocation(PickupClass, Location, FRotator::ZeroRotator));
 

@@ -70,7 +70,7 @@ void ACurrencyPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent,A
 	UE_LOG(LogTemp, Log, TEXT("Collected %d currency (Storage: %d)"),
 		PickupAmount, static_cast<int32>(CurrencyStorage));
 	
-	if (const auto Pooling = GetGameInstance()->GetSubsystem<UActorPoolSubsystem>()) Pooling->ReleaseActor(this);
+	if (const auto Pooling = UWorld::GetSubsystem<UActorPoolSubsystem>(GetWorld())) Pooling->ReleaseActor(this);
 }
 
 void ACurrencyPickup::SetCurrency(

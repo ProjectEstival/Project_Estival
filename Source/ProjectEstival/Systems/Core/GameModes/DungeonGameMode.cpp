@@ -120,6 +120,8 @@ void ADungeonGameMode::RequestFloor()
 	PendingCharacters.Reset();
 	RollFloorModifiers();
 
+	OnFloorLoading.Broadcast(GetFloor());
+
 	if (LevelManager)
 	{
 		ILevelManager::Execute_BuildFloor(LevelManager, GetFloor());

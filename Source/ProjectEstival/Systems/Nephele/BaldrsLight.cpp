@@ -4,7 +4,6 @@
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Core/Characters/PlayerBase.h"
 #include "UObject/ConstructorHelpers.h"
-#include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
@@ -51,13 +50,13 @@ void ABaldrsLight::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 	
-	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.AddDynamic(this, &ABaldrsLight::InitializePosition);
+	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.AddDynamic(this, &ABaldrsLight::InitializePostGameMode);
 }
 void ABaldrsLight::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	
-	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.RemoveDynamic(this, &ABaldrsLight::InitializePosition);
+	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.RemoveDynamic(this, &ABaldrsLight::InitializePostGameMode);
 }
 void ABaldrsLight::BeginPlay()
 {
@@ -65,6 +64,25 @@ void ABaldrsLight::BeginPlay()
 		
 	CorruptionTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Corruption"));
 	HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
+}
+void ABaldrsLight::Tick(const float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	UpdateLightPosition(DeltaTime);
+	UpdatePlayerStates(DeltaTime);
+	UpdateSpotlight();
+	
+#if WITH_EDITOR
+	DrawEditorDebug();
+#endif
+}
+void ABaldrsLight::InitializePostGameMode(int32 Floor)
+{
+	const ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode());
+	if (!IsValid(GameMode)) return;
+	
+	SetActorLocation(GameMode->GetParty()[0]->GetActorLocation() + FVector(0.0f, 0.0f, LanternHeight));
 	
 	PlayerStates.Reset();
 	for (APlayerBase* Player : GetPlayers())
@@ -80,22 +98,6 @@ void ABaldrsLight::BeginPlay()
 	HorizontalVelocity = FVector::ZeroVector;
 	bMovementInitialized = true;
 	UpdateSpotlight();
-}
-void ABaldrsLight::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-	
-	UpdateLightPosition(DeltaTime);
-	UpdatePlayerStates(DeltaTime);
-	UpdateSpotlight();
-	
-#if WITH_EDITOR
-	DrawEditorDebug();
-#endif
-}
-void ABaldrsLight::InitializePosition(int32 Floor)
-{
-	if (const ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) SetActorLocation(GameMode->GetParty()[0]->GetActorLocation() + FVector(0.0f, 0.0f, LanternHeight));
 }
 
 TArray<APlayerBase*> ABaldrsLight::GetPlayers() const

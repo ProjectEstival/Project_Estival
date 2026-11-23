@@ -170,4 +170,7 @@ private:
 	void Die();
 	bool bIsDead = false;
 	FGenericTeamId TeamId = FGenericTeamId::NoTeam;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<AController> LastController;
 };

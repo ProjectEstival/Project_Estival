@@ -6,6 +6,7 @@
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/GameInstance.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 
 ACurrencyPickup::ACurrencyPickup()
 {
@@ -35,46 +36,27 @@ void ACurrencyPickup::BeginPlay()
 void ACurrencyPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent,AActor* OtherActor,
 	UPrimitiveComponent* OtherComp,int32 OtherBodyIndex,bool bFromSweep,const FHitResult& SweepResult)
 {
-	if (bCollected)
-	{
-		return;
-	}
+	if (bCollected) return;
 
 	APawn* Pawn = Cast<APawn>(OtherActor);
-
-	if (!Pawn || !Pawn->IsPlayerControlled())
-	{
-		return;
-	}
+	if (!Pawn || !Pawn->IsPlayerControlled()) return;
 	
 	APlayerController* PlayerController =Cast<APlayerController>(Pawn->GetController());
 
-	if (!PlayerController)
-	{
-		return;
-	}
+	if (!PlayerController) return;
 
 	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
 
-	if (!LocalPlayer)
-	{
-		return;
-	}
+	if (!LocalPlayer) return;
 
 	UGameInstance* GameInstance = GetGameInstance();
 
-	if (!GameInstance)
-	{
-		return;
-	}
+	if (!GameInstance) return;
 
 	UCurrencySubsystem* CurrencySystem =
 		GameInstance->GetSubsystem<UCurrencySubsystem>();
 
-	if (!CurrencySystem)
-	{
-		return;
-	}
+	if (!CurrencySystem) return;
 
 	const int32 PickupAmount = bRandomizeAmount
 		? FMath::RandRange(FMath::Max(1, MinAmount),
@@ -87,7 +69,8 @@ void ACurrencyPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent,A
 
 	UE_LOG(LogTemp, Log, TEXT("Collected %d currency (Storage: %d)"),
 		PickupAmount, static_cast<int32>(CurrencyStorage));
-	Destroy();
+	
+	if (const auto Pooling = GetGameInstance()->GetSubsystem<UActorPoolSubsystem>()) Pooling->ReleaseActor(this);
 }
 
 void ACurrencyPickup::SetCurrency(
@@ -97,4 +80,10 @@ void ACurrencyPickup::SetCurrency(
 	CurrencyStorage = Storage;
 	Amount = FMath::Max(1, NewAmount);
 	bRandomizeAmount = false;
+}
+
+void ACurrencyPickup::OnAcquired_Implementation()
+{
+	bCollected = false;
+	Amount = DefaultAmount;
 }

@@ -4,6 +4,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "CurrencySubsystem.h"
+#include "Systems/Maria/Pooling System/Poolable.h"
 #include "CurrencyPickup.generated.h"
 
 class USphereComponent;
@@ -11,7 +12,7 @@ class UStaticMeshComponent;
 class UPrimitiveComponent;
 
 UCLASS()
-class PROJECTESTIVAL_API ACurrencyPickup : public AActor
+class PROJECTESTIVAL_API ACurrencyPickup : public AActor, public IPoolable
 {
 	GENERATED_BODY()
 
@@ -20,6 +21,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Currency")
 	void SetCurrency(ECurrencyStorage Storage, int32 NewAmount);
+	virtual void OnAcquired_Implementation() override;
 
 protected:
 	virtual void BeginPlay() override;
@@ -34,7 +36,7 @@ protected:
 	ECurrencyStorage CurrencyStorage = ECurrencyStorage::Run;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Currency",meta = (ClampMin = "1"))
-	int32 Amount = 1;
+	int32 DefaultAmount = 1;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Currency")
 	bool bRandomizeAmount = false;
@@ -51,4 +53,5 @@ protected:
 
 private:
 	bool bCollected = false;
+	int32 Amount;
 };

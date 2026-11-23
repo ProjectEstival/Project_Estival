@@ -17,7 +17,7 @@ public:
 	ACurrencySpawner();
 
 	UFUNCTION(BlueprintCallable, Category = "Currency")
-	void SpawnCurrency(FVector Location,ECurrencyStorage Storage,int32 Amount);
+	void SpawnCurrency(FVector Location,ECurrencyStorage Storage, int32 Amount);
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Currency")

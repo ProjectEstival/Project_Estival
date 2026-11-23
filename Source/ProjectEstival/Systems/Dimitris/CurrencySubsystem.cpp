@@ -133,12 +133,9 @@ void UCurrencySubsystem::Initialize(FSubsystemCollectionBase& Collection)
 {
     Super::Initialize(Collection);
 
-    UPlayerProfileSubsystem* Profiles = GetGameInstance()->GetSubsystem<UPlayerProfileSubsystem>();
-
-    if (Profiles)
+    if (UPlayerProfileSubsystem* Profiles = Collection.InitializeDependency<UPlayerProfileSubsystem>())
     {
         Profiles->OnProfileAssigned.AddDynamic(this, &UCurrencySubsystem::HandleProfileAssigned);
-
         Profiles->OnProfileReleased.AddDynamic(this, &UCurrencySubsystem::HandleProfileReleased);
     }
 }

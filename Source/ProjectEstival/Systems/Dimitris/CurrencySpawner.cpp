@@ -2,6 +2,7 @@
 #include "CurrencySpawner.h"
 #include "CurrencyPickup.h"
 #include "Engine/World.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 
 ACurrencySpawner::ACurrencySpawner()
 {
@@ -15,10 +16,9 @@ void ACurrencySpawner::SpawnCurrency(FVector Location,ECurrencyStorage Storage,i
 		return;
 	}
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride =ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
-
-	ACurrencyPickup* Pickup = GetWorld()->SpawnActor<ACurrencyPickup>(PickupClass,Location,FRotator::ZeroRotator,SpawnParams);
+	const auto Pooling = GetGameInstance()->GetSubsystem<UActorPoolSubsystem>();
+	ACurrencyPickup* Pickup = nullptr;
+	if (Pooling) Pickup = Cast<ACurrencyPickup>(Pooling->AcquireActorAtLocation(PickupClass, Location, FRotator::ZeroRotator));
 
 	if (Pickup)
 	{

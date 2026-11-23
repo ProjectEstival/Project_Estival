@@ -1,16 +1,17 @@
 #pragma once
 
 #include "Blueprint/UserWidget.h"
+#include "GameplayTagContainer.h"
 #include "CoreMinimal.h"
 
 #include "PlayerCard.generated.h"
 
+class UProgressBar;
 class APlayerBase;
 class UTextBlock;
 class UBorder;
 class UImage;
 
-/** The in-game party card. Gameplay stats can be added here later. */
 UCLASS()
 class PROJECTESTIVAL_API UPlayerCard : public UUserWidget
 {
@@ -27,6 +28,8 @@ public:
 	int32 GetPartyIndex() const { return PartyIndex; }
 	
 protected:
+	virtual void NativeDestruct() override;
+	
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UBorder> CardBorder;
 	
@@ -47,4 +50,15 @@ protected:
 	
 	UPROPERTY(BlueprintReadOnly, Category = "Game HUD")
 	int32 PartyIndex = INDEX_NONE;
+	
+	// Stats
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UProgressBar> HealthBar;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UProgressBar> CorruptionBar;
+	
+private:
+	UFUNCTION()
+	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue) const;
 };

@@ -10,6 +10,7 @@
 #include "Components/TextBlock.h"
 #include "Components/Border.h"
 #include "Components/Image.h"
+#include "Components/ProgressBar.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 
@@ -17,6 +18,8 @@ void UPlayerCard::InitializeCard(APlayerBase* InPlayer, const int32 InPartyIndex
 {
 	Player = InPlayer;
 	PartyIndex = InPartyIndex;
+	
+	Player->GetResources()->OnResourceChanged.AddDynamic(this, &UPlayerCard::OnResourceChanged);
 	
 	if (CharacterTitle)
 	{
@@ -41,4 +44,25 @@ void UPlayerCard::InitializeCard(APlayerBase* InPlayer, const int32 InPartyIndex
 	if (CardBorder) CardBorder->SetBrushColor(ProfileColor);
 	if (TagBorder) TagBorder->SetBrushColor(ProfileColor);
 	if (TagColor) TagColor->SetColorAndOpacity(ProfileColor);
+}
+
+void UPlayerCard::NativeDestruct()
+{
+	Player->GetResources()->OnResourceChanged.RemoveDynamic(this, &UPlayerCard::OnResourceChanged);
+	
+	Super::NativeDestruct();
+}
+
+void UPlayerCard::OnResourceChanged(const FGameplayTag Stat, const float NewValue, const float OldValue, const float MaxValue) const
+{	
+	if (Stat.MatchesTagExact(TagDefinitions::Stats_Resources_Health) && HealthBar)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Health"));
+		HealthBar.Get()->SetPercent(NewValue / MaxValue);
+	}
+	else if (Stat.MatchesTagExact(TagDefinitions::Stats_Resources_Corruption) && CorruptionBar)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Corruption"));
+		CorruptionBar.Get()->SetPercent(NewValue / MaxValue);
+	}
 }

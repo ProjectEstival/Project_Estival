@@ -4,9 +4,12 @@
 
 #include "CoreMinimal.h"
 #include "Systems/Core/Characters/CharacterBase.h"
+#include "Animation/AnimNotifies/AnimNotify.h"
 #include "EnemyBaseCharacter.generated.h"
 
 class UStateTree;
+class UAnimMontage;
+
 UCLASS()
 class PROJECTESTIVAL_API AEnemyBaseCharacter : public AEstivalBaseCharacter
 {
@@ -21,4 +24,5 @@ public:
 	
 	UFUNCTION()
 	void Dead();
+	
 };

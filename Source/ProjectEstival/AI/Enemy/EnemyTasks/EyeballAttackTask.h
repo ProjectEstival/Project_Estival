@@ -5,6 +5,7 @@
 #include "EyeballAttackTask.generated.h"
 
 class AEnemyBaseCharacter;
+class UAnimMontage;
 
 USTRUCT()
 struct FEyeballAttackTaskInstanceData
@@ -16,7 +17,7 @@ struct FEyeballAttackTaskInstanceData
 	
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(Categories="Ability."))
 	FGameplayTag AbilityTag;
-
+	
 };
 
 USTRUCT()

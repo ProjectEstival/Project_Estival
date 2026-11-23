@@ -127,6 +127,10 @@ struct FCompanionFindThreatInstanceData
 	// every enemy in the fight. The target query picks from these
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	TArray<TObjectPtr<AActor>> Threats;
+	
+	// distance on the floor to AttackTarget. Tall enemies like Fenrir have their centre high above the floor
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	float DistanceToTarget = 0.f;
 
 	// the target query that is still running, or INDEX_NONE. code only
 	int32 QueryId = INDEX_NONE;

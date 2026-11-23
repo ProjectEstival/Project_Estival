@@ -213,7 +213,11 @@ void AEstivalBaseCharacter::Die()
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();
 	
-	if (Controller) Controller->UnPossess();
+	if (Controller)
+	{
+		LastController = Controller;
+		Controller->UnPossess();
+	}
 	
 	Resources->SetActive(false);
 	OnDeath.Broadcast();
@@ -229,9 +233,9 @@ bool AEstivalBaseCharacter::TryRevive_Implementation(const float HealthPercent)
 	const float Max = Resources->GetMax(HealthTag);
 	Resources->SetCurrent(HealthTag, FMath::Max(1.f, Max * FMath::Clamp(HealthPercent, 0.f, 1.f)));
 	
-	if (PreviousController.Get())
+	if (LastController.Get())
 	{
-		if (!PreviousController->GetPawn()) PreviousController->Possess(this);
+		if (!LastController->GetPawn()) LastController->Possess(this);
 	}
 	
 	bIsDead = false;

@@ -11,6 +11,7 @@
 class UStateTreeAIComponent;
 class UAIPerceptionComponent;
 class AEstivalBaseCharacter;
+class UAnimMontage;
 
 UCLASS()
 class PROJECTESTIVAL_API AEnemyAIController : public AAIController
@@ -36,12 +37,19 @@ public:
 	UPROPERTY()
 	TArray<AEstivalBaseCharacter*> Players;
 	
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ForceChange"))
-	FGameplayTag ForceStateChangeTag;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ReEvaluateChaseTarget"))
+	FGameplayTag ReEvaluateChaseTargetTag;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ChangeToDefence"))
+	FGameplayTag ChangeToDefence;
+
 protected:
 	
 	virtual void BeginPlay() override;
+	
+	void OnPossess(APawn* InPawn) override;
+	
+	void OnUnPossess() override;
 	
 	FTimerHandle CheckDistanceTimerHandle;
 	
@@ -55,5 +63,8 @@ private:
 	
 	UFUNCTION()
 	void DistCheck();
+
+	UFUNCTION()
+	void Damaged(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
 	
 };

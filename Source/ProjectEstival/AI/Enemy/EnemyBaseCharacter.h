@@ -16,13 +16,27 @@ class PROJECTESTIVAL_API AEnemyBaseCharacter : public AEstivalBaseCharacter
 	GENERATED_BODY()
 	
 public: 
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "State Tree")
 	TObjectPtr<UStateTree> StateTreeAsset;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI Animaions")
+	UAnimMontage* HitMontage;
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI Animaions")
+	UAnimMontage* DeathMontage;
 	
 	virtual void BeginPlay() override;
 	
 	UFUNCTION()
 	void Dead();
+	
+	UFUNCTION()
+	void DeathAnim();
+
+private:
+	
+	UFUNCTION()
+	void HandleMontageNotifyBegin(FName NotifyName, const FBranchingPointNotifyPayload& BranchingPointPayload);
 	
 };

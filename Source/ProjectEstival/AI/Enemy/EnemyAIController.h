@@ -11,6 +11,7 @@
 class UStateTreeAIComponent;
 class UAIPerceptionComponent;
 class AEstivalBaseCharacter;
+class UAnimMontage;
 
 UCLASS()
 class PROJECTESTIVAL_API AEnemyAIController : public AAIController
@@ -41,7 +42,7 @@ public:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ChangeToDefence"))
 	FGameplayTag ChangeToDefence;
-	
+
 protected:
 	
 	virtual void BeginPlay() override;

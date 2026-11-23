@@ -21,6 +21,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnFloorEvent OnFloorStarted;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Run")
+	FOnFloorEvent OnFloorLoading;
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnFloorEvent OnFloorCleared;

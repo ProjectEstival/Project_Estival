@@ -235,7 +235,6 @@ bool AEstivalBaseCharacter::TryRevive_Implementation(const float HealthPercent)
 	
 	if (LastController.Get())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Last Controller is not null"));
 		if (!LastController->GetPawn()) LastController->Possess(this);
 	}
 	

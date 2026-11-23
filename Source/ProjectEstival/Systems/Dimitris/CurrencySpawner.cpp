@@ -2,41 +2,31 @@
 #include "CurrencySpawner.h"
 #include "CurrencyPickup.h"
 #include "Engine/World.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 
 ACurrencySpawner::ACurrencySpawner()
 {
 	PrimaryActorTick.bCanEverTick = false;
 }
 
-void ACurrencySpawner::SpawnCurrency(
-	FVector Location,
-	ECurrencyType Type,
-	int32 Amount)
+void ACurrencySpawner::SpawnCurrency(FVector Location,ECurrencyStorage Storage,int32 Amount)
 {
 	if (!PickupClass || !GetWorld() || Amount <= 0)
 	{
 		return;
 	}
 
-	FActorSpawnParameters SpawnParams;
-	SpawnParams.SpawnCollisionHandlingOverride =
-		ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	const auto Pooling = UWorld::GetSubsystem<UActorPoolSubsystem>(GetWorld());
+	ACurrencyPickup* Pickup = nullptr;
+	if (Pooling) Pickup = Cast<ACurrencyPickup>(Pooling->AcquireActorAtLocation(PickupClass, Location, FRotator::ZeroRotator));
 
-	ACurrencyPickup* Pickup = GetWorld()->SpawnActor<ACurrencyPickup>(
-		PickupClass,
-		Location,
-		FRotator::ZeroRotator,
-		SpawnParams
-	);
-
-	
 	if (Pickup)
 	{
-		Pickup->SetCurrency(Type, Amount);
+		Pickup->SetCurrency(Storage, Amount);
 
 		UE_LOG(LogTemp, Log,
-			TEXT("Spawned %d currency of type %d"),
+			TEXT("Spawned %d currency (Storage: %d)"),
 			Amount,
-			static_cast<int32>(Type));
+			static_cast<int32>(Storage));
 	}
 }

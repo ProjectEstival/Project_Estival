@@ -112,15 +112,14 @@ void ABLK_PCG::BuildFloor_Implementation(int32 Floor) {
 	}
 	if (!Boss) {
 		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no boss spawned for floor %d, only BossDefeated can clear it"), Floor);
-		/** TODO DELETEME */
-		return;
 	}
-
 	//Update gamemode
 	const FTransform PartyStart = PartyStartMarker ? PartyStartMarker->GetActorTransform() : GetActorTransform();
 	if (ADungeonGameMode* GameMode = GetWorld()->GetAuthGameMode<ADungeonGameMode>()) {
 		GameMode->FloorReady(PartyStart, Boss);
-		Boss->OnDeath.AddDynamic(GameMode, &ADungeonGameMode::ContinueRun);
+		if (Boss) {
+			Boss->OnDeath.AddDynamic(GameMode, &ADungeonGameMode::ContinueRun);
+		}
 	}
 }
 

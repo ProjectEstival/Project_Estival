@@ -98,12 +98,11 @@ public:
 	float GetDamagePerTick(int Tier) const;
 	
 protected:
-	virtual void BeginPlay() override;
 	virtual void EndPlay(const EEndPlayReason::Type EndPlayReason) override;
 	virtual void PostInitializeComponents() override;
 	UFUNCTION()
 	void InitializePostGameMode(int32 Floor);
-
+	
 	// Corruption damage
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Baldr's Light|Damage", meta = (ClampMin = "0.0"))
 	float CorruptionRate = 1.0f; // per second
@@ -171,8 +170,6 @@ private:
 	FVector HorizontalVelocity = FVector::ZeroVector;
 	FRotator CurrentLanternRotation = FRotator::ZeroRotator;
 	
-	FGameplayTag CorruptionTag;
-	FGameplayTag HealthTag;
 	void UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaTime);
 	void BroadcastCorruptionTierChanges(FBaldrsLightPlayerState& State, int Tier);
 };

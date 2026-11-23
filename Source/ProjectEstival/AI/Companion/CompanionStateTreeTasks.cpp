@@ -179,7 +179,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 			continue;
 		}
 
-		const double DistSq = FVector::DistSquared(Me->GetActorLocation(), Enemy->GetActorLocation());
+		const double DistSq = FVector::DistSquared2D(Me->GetActorLocation(), Enemy->GetActorLocation());
 		if (DistSq < NearestSeenSq)
 		{
 			NearestSeenSq = DistSq;
@@ -189,7 +189,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		// "in the fight" = close to the player or close to me
 		const bool bNearMe = DistSq < EngageRadiusSq;
 		const bool bNearPlayer = InstanceData.FollowTarget
-			&& FVector::DistSquared(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
+			&& FVector::DistSquared2D(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
 
 		if (!bNearMe && !bNearPlayer)
 		{
@@ -238,6 +238,11 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		const FColor LineColor = Tactics ? Tactics->DebugColor : FColor::Red;
 		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), LineColor, false, -1.f, 0, 3.f);
 	}
+	
+	// distance on the floor so the companions can reach tall enemies (like Fenrir)
+	InstanceData.DistanceToTarget = InstanceData.AttackTarget
+		? static_cast<float>(FVector::Dist2D(Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation()))
+		: TNumericLimits<float>::Max();
 	
 	// global task: keeps running for the whole tree
 	return EStateTreeRunStatus::Running;
@@ -330,7 +335,7 @@ bool FCompanionUseAbilityTask::TryTacticsAbilities(AEstivalBaseCharacter* Me, co
 	}
 
 	// no target bound? Then only rows that start at 0 can match
-	const double Distance = IsValid(Target) ? FVector::Dist(Me->GetActorLocation(), Target->GetActorLocation()) : 0.0;
+	const double Distance = IsValid(Target) ? FVector::Dist2D(Me->GetActorLocation(), Target->GetActorLocation()) : 0.0;
 
 	// from the top: the first row that is in range AND fires wins
 	for (const FCompanionAbilityRule& Rule : Tactics->Abilities)

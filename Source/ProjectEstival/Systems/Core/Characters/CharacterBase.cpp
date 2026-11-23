@@ -1,14 +1,13 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #include "Systems/Core/Characters/CharacterBase.h"
-#include "Systems/Thanos/Components/AC_LookAtComponent.h"
+
 #include "Systems/Thanos/Components/AC_StatusEffectComponent.h"
+#include "Systems/Thanos/Components/AC_LookAtComponent.h"
+#include "Systems/Mike/Combat/Loadouts/AimComponent.h"
+#include "Systems/Mike/Stats/StatisticsComponent.h"
+#include "Systems/Core/TagDefinitions.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "EnhancedInputComponent.h"
 #include "InputAction.h"
-#include "Systems/Core/TagDefinitions.h"
-#include "Systems/Mike/Combat/Loadouts/AimComponent.h"
-#include "Systems/Mike/Stats/StatisticsComponent.h"
 
 AEstivalBaseCharacter::AEstivalBaseCharacter()
 {
@@ -22,21 +21,21 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 	Resources = CreateDefaultSubobject<UResourceComponent>(TEXT("Resources"));
 	Loadout = CreateDefaultSubobject<ULoadoutComponent>(TEXT("Loadout"));
 	Aim = CreateDefaultSubobject<UAimComponent>(TEXT("Aim"));
-
+	
 	// rotation is driven by the LookAt component
 	bUseControllerRotationYaw = false;
 	GetCharacterMovement()->bOrientRotationToMovement = false;
-
+	
 	MovementBlockingTags.AddTag(TagDefinitions::Status_Stunned);
 	AbilityBlockingTags.AddTag(TagDefinitions::Status_Stunned);
 }
 
 float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
 {
-	if (!IsAlive() || DamageAmount <= 0.f || StatusEffects->HasEffect(TagDefinitions::Status_Invincible)) return 0.f;
-	if (DamageCauser && DamageCauser != this && GetTeamAttitudeTowards(*DamageCauser) == ETeamAttitude::Friendly) return 0.f;
+	if (!IsAlive() || DamageAmount <= 0.f || StatusEffects->HasEffect(TagDefinitions::Status_Invincible)) return 0.0f;
+	if (DamageCauser && DamageCauser != this && GetTeamAttitudeTowards(*DamageCauser) == ETeamAttitude::Friendly) return 0.0f;
 	
-	DamageAmount *= 1.f - FMath::Clamp(Statistics->GetFloat(TagDefinitions::Stats_DamageReduction), 0.f, 100.f) / 100.f;
+	DamageAmount *= 1.f - FMath::Clamp(Statistics->GetFloat(TagDefinitions::Stats_DamageReduction), 0.0f, 100.0f) / 100.0f;
 	Resources->ModifyResource(TagDefinitions::Stats_Resources_Health, -DamageAmount);
 	return Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
 }
@@ -44,10 +43,10 @@ float AEstivalBaseCharacter::TakeDamage(float DamageAmount, FDamageEvent const& 
 void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
-
+	
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (!Input) return;
-
+	
 	if (MoveAction)
 	{
 		Input->BindActionValueLambda(MoveAction, ETriggerEvent::Triggered, [this](const FInputActionValue& Value)
@@ -61,7 +60,7 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 	{
 		BindAbilityInput(Input, InputPair.Key, InputPair.Value);
 	}
-
+	
 	if (StickAimAction)
 	{
 		Input->BindActionValueLambda(StickAimAction, ETriggerEvent::Triggered, [this](const FInputActionValue& Value)
@@ -74,7 +73,7 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 			Aim->ClearAim();
 		});
 	}
-
+	
 	if (MouseAimAction)
 	{
 		Input->BindActionValueLambda(MouseAimAction, ETriggerEvent::Triggered, [this](const FInputActionValue&)
@@ -87,7 +86,7 @@ void AEstivalBaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInp
 void AEstivalBaseCharacter::DoMove(float AxisX, float AxisY)
 {
 	if (!CanMove()) return;
-
+	
 	AddMovementInput(InputToWorld(FVector2D(AxisX, AxisY)));
 }
 
@@ -106,23 +105,22 @@ void AEstivalBaseCharacter::BeginPlay()
 	Loadout->OnAbilityActivated.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityActivated);
 	Loadout->OnAbilityCommitted.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityCommitted);
 	Loadout->OnAbilityEnded.AddDynamic(this, &AEstivalBaseCharacter::OnAbilityEnded);
-
-	if (const auto& MoveSpeedTag = TagDefinitions::Stats_MoveSpeed; Statistics->HasStat(MoveSpeedTag)) 
-		OnStatChanged(MoveSpeedTag, Statistics->GetFloat(MoveSpeedTag), 0.f);
 	
+	if (const auto& MoveSpeedTag = TagDefinitions::Stats_MoveSpeed; Statistics->HasStat(MoveSpeedTag)) OnStatChanged(MoveSpeedTag, Statistics->GetFloat(MoveSpeedTag), 0.f);
 	if (TeamId == FGenericTeamId::NoTeam) TeamId = DefaultTeam;
 }
 
 void AEstivalBaseCharacter::Tick(const float DeltaSeconds)
 {
 	Super::Tick(DeltaSeconds);
+	
 	LookAt->SetLookDirection(Aim->GetAimDirection());
 }
 
 void AEstivalBaseCharacter::OnAbilityActivated(FGameplayTag Slot, UAbilityDefinition* Ability)
 {
 	if (!Ability || Ability->Facing != EAbilityFacing::WholeTime) return;
-
+	
 	FaceAim();
 	SetActorTickEnabled(true);
 }
@@ -135,7 +133,7 @@ void AEstivalBaseCharacter::OnAbilityCommitted(FGameplayTag Slot, UAbilityDefini
 void AEstivalBaseCharacter::OnAbilityEnded(FGameplayTag Slot, UAbilityDefinition* Ability)
 {
 	if (!Ability || Ability->Facing == EAbilityFacing::None) return;
-
+	
 	SetActorTickEnabled(false);
 	LookAt->ClearLookTarget();
 }
@@ -161,19 +159,19 @@ void AEstivalBaseCharacter::BindAbilityInput(UEnhancedInputComponent* Input, con
 	if (!Input || !Action || !AbilityTag.IsValid()) return;
 	
 	Input->BindActionInstanceLambda(Action, ETriggerEvent::Started, [this, AbilityTag](const FInputActionInstance&)
-		{
-			if (CanUseAbilities()) Loadout->InputPressed(AbilityTag);
-		});
-
+	{
+		if (CanUseAbilities()) Loadout->InputPressed(AbilityTag);
+	});
+	
 	Input->BindActionInstanceLambda(Action, ETriggerEvent::Completed, [this, AbilityTag](const FInputActionInstance&)
-		{
-			Loadout->InputReleased(AbilityTag);
-		});
-
+	{
+		Loadout->InputReleased(AbilityTag);
+	});
+	
 	Input->BindActionInstanceLambda(Action, ETriggerEvent::Canceled, [this, AbilityTag](const FInputActionInstance&)
-		{
-			Loadout->InputReleased(AbilityTag);
-		});
+	{
+		Loadout->InputReleased(AbilityTag);
+	});
 }
 
 bool AEstivalBaseCharacter::TryActivateAbility(const FGameplayTag Slot)
@@ -195,7 +193,7 @@ void AEstivalBaseCharacter::OnStatusEffectChanged(const FGameplayTag Tag)
 {
 	if (Tag.MatchesAny(AbilityBlockingTags) && !CanUseAbilities()) Loadout->Interrupt();
 	if (!Tag.MatchesAny(MovementBlockingTags)) return;
-
+	
 	const bool bBlocked = StatusEffects->HasAnyEffect(MovementBlockingTags);
 	LookAt->SetComponentTickEnabled(!bBlocked);
 }
@@ -211,28 +209,33 @@ void AEstivalBaseCharacter::Die()
 	bIsDead = true;
 	
 	Loadout->Interrupt();
- 
+	
 	GetCharacterMovement()->StopMovementImmediately();
 	GetCharacterMovement()->DisableMovement();
- 
-	if (Controller) Controller->UnPossess();
+	
+	if (Controller)
+	{
+		LastController = Controller;
+		Controller->UnPossess();
+	}
 	
 	Resources->SetActive(false);
 	OnDeath.Broadcast();
 }
+
 bool AEstivalBaseCharacter::TryRevive_Implementation(const float HealthPercent)
 {
 	if (IsAlive()) return false;
- 
+	
 	GetCharacterMovement()->SetMovementMode(MOVE_Walking);
 	
 	const auto& HealthTag = TagDefinitions::Stats_Resources_Health;
 	const float Max = Resources->GetMax(HealthTag);
 	Resources->SetCurrent(HealthTag, FMath::Max(1.f, Max * FMath::Clamp(HealthPercent, 0.f, 1.f)));
 	
-	if (PreviousController.Get())
+	if (LastController.Get())
 	{
-		if (!PreviousController->GetPawn()) PreviousController->Possess(this);
+		if (!LastController->GetPawn()) LastController->Possess(this);
 	}
 	
 	bIsDead = false;

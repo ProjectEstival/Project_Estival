@@ -9,9 +9,6 @@
 #include "EngineUtils.h"
 #include "Algo/Sort.h"
 #include "DrawDebugHelpers.h"
-#include "EngineUtils.h"
-#include "Systems/Core/Characters/CharacterBase.h"
-#include "Systems/Core/TagDefinitions.h"
 #include "Systems/Mike/Combat/Loadouts/AimComponent.h"
 
 // ---------- Watch Phase ------------
@@ -43,7 +40,7 @@ void FBossWatchPhaseTask::Update(FInstanceDataType& InstanceData)
 	InstanceData.HealthPercent = Resources->GetPercentage01(HealthTag);
 
 	// phase 1, plus one for every threshold the health has dropped to
-	int32 NewPhase = 1;
+	int32 NewPhase = 0;
 	for (const float Threshold : InstanceData.PhaseThresholds)
 	{
 		if (InstanceData.HealthPercent <= Threshold)
@@ -154,12 +151,12 @@ void FBossFindTargetsTask::Update(FInstanceDataType& InstanceData)
 	// nearest first
 	Algo::SortBy(InstanceData.Targets, [&MyLocation](const AActor* Target)
 	{
-		return FVector::DistSquared(MyLocation, Target->GetActorLocation());
+		return FVector::DistSquared2D(MyLocation, Target->GetActorLocation());
 	});
 
 	InstanceData.NearestTarget = InstanceData.Targets[0];
 	InstanceData.NearestLocation = InstanceData.NearestTarget->GetActorLocation();
-	InstanceData.DistanceToNearest = static_cast<float>(FVector::Dist(MyLocation, InstanceData.NearestLocation));
+	InstanceData.DistanceToNearest = static_cast<float>(FVector::Dist2D(MyLocation, InstanceData.NearestLocation));
 	InstanceData.bHasTarget = true;
 
 	if (InstanceData.bDrawDebug)
@@ -264,4 +261,38 @@ void FBossUseAbilityTask::ExitState(FStateTreeExecutionContext& Context, const F
 
 	// give the aim back: abilities go where the boss faces again
 	Character->GetAim()->ClearAim();
+}
+
+
+// ------------- Boss Rotation --------------
+
+EStateTreeRunStatus FBossRotationTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	Update(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FBossRotationTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	Update(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FBossRotationTask::Update(FInstanceDataType& InstanceData)
+{
+	ABossAIController* Boss = Cast<ABossAIController>(InstanceData.AIController.Get());
+	if (!Boss)
+	{
+		return;
+	}
+	
+	// if the next ability waited too long
+	if (Boss->IsNextAbilityOverdue())
+	{
+		Boss->SkipNextAbility();
+	}
+	
+	InstanceData.NextSlot = Boss->GetNextAbility();
+	InstanceData.bAbilityTurn = Boss->IsAbilityTurn();
+	Boss->GetNextAbilityRange(InstanceData.MinRange, InstanceData.MaxRange);
 }

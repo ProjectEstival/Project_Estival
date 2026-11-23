@@ -87,7 +87,7 @@ void AEnemyAIController::DistCheck()
 	
 	for (AEstivalBaseCharacter* Player : Players)
 	{
-		if (!Player) continue;
+		if (!Player || !Player->IsAlive()) continue;
 		
 		float Dist = FVector::Distance(Player->GetActorLocation(), ControlledPawn->GetActorLocation());
 		
@@ -155,6 +155,7 @@ void AEnemyAIController::OnUnPossess()
 void AEnemyAIController::Damaged(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser)
 {
 	if (!StateTree) return;
+	if (!PlayerRef) PlayerRef = Cast<AEstivalBaseCharacter>(DamageCauser);
 	
 	if (ChangeToDefence.IsValid())
 	{

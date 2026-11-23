@@ -7,6 +7,7 @@
 #include "GameplayTagContainer.h"
 #include "BossAIController.generated.h"
 
+class UFMODEvent;
 class UStateTreeAIComponent;
 class UBossRotation;
 class UAbilityDefinition;
@@ -39,6 +40,9 @@ class PROJECTESTIVAL_API ABossAIController : public AAIController
 	// the order of the boss's abilities. If empty the tree decides alone
 	UPROPERTY(EditAnywhere, Category="Boss")
 	TObjectPtr<UBossRotation> Rotation;
+	
+	UPROPERTY(EditAnywhere, Category="Music")
+	TObjectPtr<UFMODEvent> Phase2Event;
 	
 	// what the rotation remembers between abilities
 	FGameplayTag NextAbility;

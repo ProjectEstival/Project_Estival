@@ -4,6 +4,7 @@
 #include "BossAIController.h"
 #include "Components/StateTreeAIComponent.h"
 #include "AI/Boss/BossRotation.h"
+#include "Systems/Core/Audio/AudioManager.h"
 #include "Systems/Core/Characters/CharacterBase.h"
 #include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
 
@@ -84,6 +85,15 @@ void ABossAIController::SetPhase(const int32 NewPhase)
 	// a new phase plays its opening from the first step
 	OpeningStep = 0;
 	PickNextAbility();
+	
+	// switch music on half health.
+	if (NewPhase == 2)
+	{
+		if (UAudioManager* AudioManager = GetGameInstance()->GetSubsystem<UAudioManager>())
+		{
+			if (Phase2Event) AudioManager->PlayMusic(Phase2Event);
+		}
+	}
 }
 
 // -------- Rotation -----------

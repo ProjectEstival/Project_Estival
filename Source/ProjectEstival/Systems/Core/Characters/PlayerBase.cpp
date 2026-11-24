@@ -14,6 +14,8 @@ APlayerBase::APlayerBase()
 	RightWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponRight"));
 	LeftWeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_L"));
 	RightWeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
+	RightWeaponMesh->bReceivesDecals = false;
+	LeftWeaponMesh->bReceivesDecals = false;
 	ColorRing->SetupAttachment(GetMesh());
 	ColorRing->SetRelativeLocation(FVector::ZeroVector);
 	ColorRing->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));

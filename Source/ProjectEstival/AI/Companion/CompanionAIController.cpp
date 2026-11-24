@@ -8,7 +8,6 @@
 #include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "Components/StateTreeAIComponent.h"
 
-
 // Sets default values
 ACompanionAIController::ACompanionAIController(const FObjectInitializer& ObjectInitializer):
 Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))

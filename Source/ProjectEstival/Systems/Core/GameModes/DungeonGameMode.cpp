@@ -118,6 +118,7 @@ void ADungeonGameMode::RequestFloor()
 {
 	Phase = EDungeonPhase::LoadingFloor;
 	PendingCharacters.Reset();
+	bossStarted = false;
 	RollFloorModifiers();
 
 	OnFloorLoading.Broadcast(GetFloor());
@@ -288,6 +289,14 @@ void ADungeonGameMode::ContinueRun()
 
 	FloorIndex++;
 	RequestFloor();
+}
+
+void ADungeonGameMode::StartBossEncounter()
+{
+	if (Phase != EDungeonPhase::Playing || bossStarted) return;
+ 
+	bossStarted = true;
+	OnBossEncounterStarted.Broadcast(GetFloor());
 }
 
 void ADungeonGameMode::LeaveRun()

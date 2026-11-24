@@ -27,6 +27,9 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnFloorEvent OnFloorCleared;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Run")
+	FOnFloorEvent OnBossEncounterStarted;
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnRunEnded OnRunEnded;
@@ -39,6 +42,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Exec, Category = "Run")
 	void ContinueRun();
+	
+	UFUNCTION(BlueprintCallable, Category = "Run")
+	void StartBossEncounter();
 
 	UFUNCTION(BlueprintCallable, Exec, Category = "Run")
 	void LeaveRun();
@@ -107,6 +113,7 @@ private:
 	TSet<TWeakObjectPtr<AEstivalBaseCharacter>> PendingCharacters;
 	int32 FloorIndex = 0;
 	EDungeonPhase Phase = EDungeonPhase::LoadingFloor;
+	bool bossStarted = false;
 	FDelegateHandle SpawnHandle;
 
 	void SpawnParty();

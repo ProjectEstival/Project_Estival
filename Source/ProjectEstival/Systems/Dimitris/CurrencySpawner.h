@@ -3,13 +3,13 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
-#include "CurrencySubsystem.h"
+#include "CurrencyTypes.h"
 #include "CurrencySpawner.generated.h"
 
 class ACurrencyPickup;
 
 UCLASS()
-class ACurrencySpawner : public AActor
+class PROJECTESTIVAL_API ACurrencySpawner : public AActor
 {
 	GENERATED_BODY()
 
@@ -17,7 +17,7 @@ public:
 	ACurrencySpawner();
 
 	UFUNCTION(BlueprintCallable, Category = "Currency")
-	void SpawnCurrency(FVector Location, ECurrencyType Type, int32 Amount);
+	void SpawnCurrency(FVector Location,ECurrencyStorage Storage, int32 Amount);
 
 protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Currency")

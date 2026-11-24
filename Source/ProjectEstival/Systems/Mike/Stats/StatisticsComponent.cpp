@@ -1,4 +1,5 @@
 ﻿#include "StatisticsComponent.h"
+
 #include "StatDataAssets.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
@@ -12,6 +13,7 @@ UStatisticsComponent::UStatisticsComponent()
 void UStatisticsComponent::InitializeComponent()
 {
 	Super::InitializeComponent();
+	
 	if (DefaultStats) SetStatCollection(DefaultStats);
 }
  
@@ -56,12 +58,12 @@ int32 UStatisticsComponent::GetInt(const FGameplayTag Stat, const int32 Fallback
 void UStatisticsComponent::AddModifier(const FGameplayTag StatTag, const FStatModifier Modifier, const UObject* Source)
 {
 	if (!HasStat(StatTag)) return;
- 
+	
 	FActiveStatModifier StatModifier;
 	StatModifier.Modifier = Modifier;
 	StatModifier.Source = Source;
 	Stats[StatTag].Modifiers.Add(StatModifier);
-
+	
 	if (FStatChange Change; Recalculate(StatTag, Change)) BroadcastChanges({ Change });
 }
 
@@ -73,13 +75,13 @@ void UStatisticsComponent::AddModifierSet(TMap<FGameplayTag, FStatModifier> Set,
 void UStatisticsComponent::AddTimedModifierSet(TMap<FGameplayTag, FStatModifier> Set, const UObject* Source, const float Duration)
 {
 	if (!Source) return;
-
+	
 	RemoveAllFromSource(Source);
 	AddModifierSet(Set, Source);
 
-	UWorld* World = GetWorld();
+	const UWorld* World = GetWorld();
 	if (!World || Duration <= 0.f) return;
-
+	
 	const TWeakObjectPtr WeakSource(Source);
 	FTimerHandle& Handle = SourceTimers.FindOrAdd(TObjectKey<UObject>(Source));
 
@@ -98,22 +100,22 @@ void UStatisticsComponent::ApplyModifierAsset(UStatModifierSet* Set, const UObje
 int32 UStatisticsComponent::RemoveAllFromSource(const UObject* Source)
 {
 	if (!Source) return 0;
- 
+	
 	if (FTimerHandle Handle; SourceTimers.RemoveAndCopyValue(TObjectKey<UObject>(Source), Handle))
 	{
 		if (const UWorld* World = GetWorld()) World->GetTimerManager().ClearTimer(Handle);
 	}
-
+	
 	int32 TotalRemoved = 0;
 	TArray<FStatChange> Changes;
- 
+	
 	for (TPair<FGameplayTag, FStat>& Pair : Stats)
 	{
 		const int32 Removed = Pair.Value.Modifiers.RemoveAll([Source](const FActiveStatModifier& M)
 		{
 			return M.Source == Source;
 		});
- 
+		
 		if (Removed > 0)
 		{
 			TotalRemoved += Removed;
@@ -121,7 +123,7 @@ int32 UStatisticsComponent::RemoveAllFromSource(const UObject* Source)
 			if (Recalculate(Pair.Key, Change) && HasStat(Pair.Key)) Changes.Add(Change);
 		}
 	}
- 
+	
 	BroadcastChanges(Changes);
 	return TotalRemoved;
 }
@@ -133,9 +135,9 @@ void UStatisticsComponent::ClearAllModifiers()
 		for (TPair<TObjectKey<UObject>, FTimerHandle>& Pair : SourceTimers) World->GetTimerManager().ClearTimer(Pair.Value);
 	}
 	SourceTimers.Reset();
-
+	
 	TArray<FStatChange> Changes;
- 
+	
 	for (TPair<FGameplayTag, FStat>& Pair : Stats)
 	{
 		if (Pair.Value.Modifiers.Num() == 0) continue;
@@ -145,7 +147,7 @@ void UStatisticsComponent::ClearAllModifiers()
 		FStatChange Change;
 		if (Recalculate(Pair.Key, Change) && HasStat(Pair.Key)) Changes.Add(Change);
 	}
- 
+	
 	BroadcastChanges(Changes);
 }
  
@@ -156,9 +158,9 @@ bool UStatisticsComponent::Recalculate(const FGameplayTag& Tag, FStatChange& Out
 	FStat& Stat = Stats[Tag];
 	const float Old = Stat.CachedValue;
 	Stat.CachedValue = Stat.Calculate();
- 
+	
 	if (FMath::IsNearlyEqual(Old, Stat.CachedValue)) return false;
- 
+	
 	OutChange.Tag = Tag;
 	OutChange.OldValue = Old;
 	OutChange.NewValue = Stat.CachedValue;

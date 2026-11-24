@@ -8,6 +8,7 @@
 #include "Systems/Core/EstivalGameInstance.h"
 #include "Systems/Core/Characters/PlayerBase.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
+#include "Systems/Dimitris/CurrencySubsystem.h"
 #include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 #include "Systems/Mike/Combat/TeamAttitudeSolver.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
@@ -310,6 +311,16 @@ void ADungeonGameMode::EndRun(const ERunResult Result)
 
 	Phase = EDungeonPhase::RunOver;
 	OnRunEnded.Broadcast(Result);
+	
+	if (const auto CurrencySystem = UGameInstance::GetSubsystem<UCurrencySubsystem>(GetGameInstance()))
+	{
+		for (FConstPlayerControllerIterator It = GetWorld()->GetPlayerControllerIterator(); It; ++It)
+		{
+			ULocalPlayer* LocalPlayer = It->Get() ? It->Get()->GetLocalPlayer() : nullptr;
+			if (!LocalPlayer) continue;
+			CurrencySystem->ClearRunCurrency(LocalPlayer);
+		}
+	}
 
 	FTimerHandle ReturnTimer;
 	GetWorldTimerManager().SetTimer(ReturnTimer, this, &ADungeonGameMode::ReturnToHub, ReturnToHubDelay);

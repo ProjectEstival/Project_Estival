@@ -235,7 +235,14 @@ bool AEstivalBaseCharacter::TryRevive_Implementation(const float HealthPercent)
 	
 	if (LastController.Get())
 	{
-		if (!LastController->GetPawn()) LastController->Possess(this);
+		if (!LastController->GetPawn())
+		{
+			// Possess turns the control rotation to where this body faces and movement follows the control rotation
+			const FRotator KeepRotation = LastController->GetControlRotation();
+			LastController->Possess(this);
+			LastController->SetControlRotation(KeepRotation);
+		}
+		//if (!LastController->GetPawn()) LastController->Possess(this);
 	}
 	
 	bIsDead = false;

@@ -56,6 +56,9 @@ struct FWFCTile : public FTableRowBase
 	
 	UPROPERTY(EditAnywhere, Category = "Tile", meta = (ClampMin = 0.01))
 	float Weight = 1.0f;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	bool bForcedOnly = false;
 };
 
 //Force tiles to place before the generation

@@ -6,6 +6,7 @@
 
 #include "PlayerCard.generated.h"
 
+class UMaterialInstanceDynamic;
 class UProgressBar;
 class APlayerBase;
 class UTextBlock;
@@ -28,6 +29,7 @@ public:
 	int32 GetPartyIndex() const { return PartyIndex; }
 	
 protected:
+	virtual void NativeTick(const FGeometry& MyGeometry, float InDeltaTime) override;
 	virtual void NativeDestruct() override;
 	
 	UPROPERTY(meta = (BindWidget))
@@ -58,7 +60,29 @@ protected:
 	UPROPERTY(meta = (BindWidget))
 	TObjectPtr<UProgressBar> CorruptionBar;
 	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> Ability0;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> Ability1;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> Ability2;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> Ability3;
+	
+	UPROPERTY(meta = (BindWidget))
+	TObjectPtr<UImage> Elixir;
+	
 private:
+	UPROPERTY(Transient)
+	TArray<TObjectPtr<UMaterialInstanceDynamic>> AbilityMaterials;
+	TArray<FGameplayTag> AbilitySlotTags;
+	
+	void SetAbilityIcon(int32 AbilityIndex, class UTexture2D* Icon);
+	void UpdateAbilityCooldowns();
+	
 	UFUNCTION()
 	void OnResourceChanged(FGameplayTag Stat, float NewValue, float OldValue, float MaxValue) const;
 };

@@ -5,6 +5,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "DungeonGameMode.generated.h"
 
+class UFMODEvent;
 class AEstivalBaseCharacter;
 class APlayerBase;
 
@@ -87,6 +88,12 @@ protected:
 	
 	UFUNCTION(BlueprintNativeEvent, Category = "Run")
 	TSubclassOf<APlayerBase> ChoosePlayerHero(APlayerController* Player);
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Music")
+	TObjectPtr<UFMODEvent> ExploreMusicEvent;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Music")
+	TObjectPtr<UFMODEvent> BossMusicEvent;
 	
 	UFUNCTION(Exec)
 	void BossDefeated();

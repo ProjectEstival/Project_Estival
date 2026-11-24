@@ -1,32 +1,51 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#pragma once
 
-#pragma once
-
-#include "CoreMinimal.h"
+#include "Systems/Maria/Interaction System/InteractionComponent.h"
+#include "Systems/Maria/Revive System/ReviveComponent.h"
 #include "CharacterBase.h"
+#include "CoreMinimal.h"
 #include "InputAction.h"
-#include "Systems/Maria/ReviveComponent.h"
+
 #include "PlayerBase.generated.h"
+
+class UMaterialInstanceDynamic;
+class UDecalComponent;
 
 UCLASS()
 class PROJECTESTIVAL_API APlayerBase : public AEstivalBaseCharacter
 {
 	GENERATED_BODY()
-
-public:
 	
+public:
 	APlayerBase();
 	virtual void SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) override;
-
+	void SetPlayerColor(const FLinearColor& Color);
+	
 protected:
+	virtual void PostInitializeComponents() override;
 	
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Resurrection")
 	TObjectPtr<UReviveComponent> ResurrectionComponent;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Interaction")
+	TObjectPtr<UInteractionComponent> InteractionComponent;
+	
 	UPROPERTY(EditDefaultsOnly, Category = "Input")
-	TObjectPtr<UInputAction> ReviveAction;
+	TObjectPtr<UInputAction> InteractAction;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	TObjectPtr<UDecalComponent> ColorRing;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	TObjectPtr<UStaticMeshComponent> LeftWeaponMesh;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Visuals")
+	TObjectPtr<UStaticMeshComponent> RightWeaponMesh;
 
 private:
-	void StartRevive();
-	void StopRevive();
+	UPROPERTY(Transient)
+	TObjectPtr<UMaterialInstanceDynamic> ColorRingMaterial = nullptr;
+	
+	void StartInteract();
+	void StopInteract();
 };

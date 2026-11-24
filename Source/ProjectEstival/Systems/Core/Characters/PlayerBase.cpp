@@ -1,13 +1,26 @@
-﻿// Fill out your copyright notice in the Description page of Project Settings.
+﻿#include "PlayerBase.h"
 
-
-#include "PlayerBase.h"
+#include "Materials/MaterialInstanceDynamic.h"
+#include "Components/DecalComponent.h"
 #include "EnhancedInputComponent.h"
 #include "Engine/World.h"
 
 APlayerBase::APlayerBase()
 {
 	ResurrectionComponent = CreateDefaultSubobject<UReviveComponent>(TEXT("Resurrection"));
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>(TEXT("Interaction"));
+	ColorRing = CreateDefaultSubobject<UDecalComponent>(TEXT("ColorRing"));
+	LeftWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponLeft"));
+	RightWeaponMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("WeaponRight"));
+	LeftWeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_L"));
+	RightWeaponMesh->SetupAttachment(GetMesh(), FName("HandGrip_R"));
+	RightWeaponMesh->bReceivesDecals = false;
+	LeftWeaponMesh->bReceivesDecals = false;
+	ColorRing->SetupAttachment(GetMesh());
+	ColorRing->SetRelativeLocation(FVector::ZeroVector);
+	ColorRing->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
+	ColorRing->DecalSize = FVector(64.0f);
+	GetMesh()->bReceivesDecals = false;
 }
 
 void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -17,20 +30,41 @@ void APlayerBase::SetupPlayerInputComponent(UInputComponent* PlayerInputComponen
 	UEnhancedInputComponent* Input = Cast<UEnhancedInputComponent>(PlayerInputComponent);
 	if (!Input) return;
 	
-	if (ReviveAction)
+	if (InteractAction)
 	{
-		Input->BindAction(ReviveAction, ETriggerEvent::Started, this, &APlayerBase::StartRevive);
-		Input->BindAction(ReviveAction, ETriggerEvent::Completed, this, &APlayerBase::StopRevive);
-		Input->BindAction(ReviveAction,ETriggerEvent::Canceled,this, &APlayerBase::StopRevive);
+		Input->BindAction(InteractAction, ETriggerEvent::Started, this, &APlayerBase::StartInteract);
+		Input->BindAction(InteractAction, ETriggerEvent::Completed, this, &APlayerBase::StopInteract);
+		Input->BindAction(InteractAction, ETriggerEvent::Canceled, this, &APlayerBase::StopInteract);
 	}
 }
 
-void APlayerBase::StartRevive()
+void APlayerBase::PostInitializeComponents()
 {
-	ResurrectionComponent->StartReviveNearby();
+	Super::PostInitializeComponents();
+	
+	if (ColorRing && GetMesh())
+	{
+		if (ColorRing->GetAttachParent() != GetMesh()) ColorRing->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform);
+		ColorRing->SetRelativeLocation(FVector::ZeroVector);
+		ColorRing->SetRelativeRotation(FRotator(90.0f, 0.0f, 0.0f));
+		ColorRing->DecalSize = FVector(64.0f);
+	}
 }
 
-void APlayerBase::StopRevive()
+void APlayerBase::SetPlayerColor(const FLinearColor& Color)
 {
-	ResurrectionComponent->StopReviveNearby();
+	if (!ColorRing) return;
+	if (!ColorRingMaterial) ColorRingMaterial = ColorRing->CreateDynamicMaterialInstance();
+	ColorRing->SetDecalColor(Color);
+	if (ColorRingMaterial) ColorRingMaterial->SetVectorParameterValue(TEXT("DecalColor"), Color);
+}
+
+void APlayerBase::StartInteract()
+{
+	InteractionComponent->StartInteract();
+}
+
+void APlayerBase::StopInteract()
+{
+	InteractionComponent->StopInteract();
 }

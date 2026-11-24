@@ -2,6 +2,11 @@
 #include "Engine/World.h"
 #include "DrawDebugHelpers.h"
 #include "Components/TextRenderComponent.h"
+#include "Systems/Stratos/SpawnerBase.h"
+#include "Systems/Core/Spawning/EnemySpawner.h"
+#include "Systems/Core/GameModes/DungeonGameMode.h" 
+#include "Systems/Core/Spawning/RoomSpawnPoint.h"
+#include "Systems/Core/Characters/PlayerBase.h"
 
 // Sets default values
 ABLK_PCG::ABLK_PCG()
@@ -21,13 +26,13 @@ void ABLK_PCG::BeginPlay()
 	}
 }
 
-void ABLK_PCG::GenerateGrid()
+bool ABLK_PCG::GenerateGrid()
 {
 	ClearGrid();
 
 	if (!InitializeCells())
 	{
-		return;
+		return false;
 	}
 
 	RandomStream.Initialize(bUseRandomSeed ? RandomSeed : FMath::Rand());
@@ -47,7 +52,7 @@ void ABLK_PCG::GenerateGrid()
 			if (OptionCount == 0)
 			{
 				UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: contradiction reached generating the grid, aborting"));
-				return;
+				return false;
 			}
 
 			if (OptionCount > 1 && OptionCount < LowestEntropyCount)
@@ -74,6 +79,48 @@ void ABLK_PCG::GenerateGrid()
 	if (bShowDebugLabels)
 	{
 		ShowDebugGrid();
+	}
+	
+	return true;
+}
+
+void ABLK_PCG::BuildFloor_Implementation(int32 Floor) {
+	//Reset boss
+	if (BossSpawner) {
+		BossSpawner->ResetSpawnedEnemies();
+	}
+
+	//Gen again (and again.. and again)
+	bool bGenerated = false;
+	for (int32 Attempt = 0; Attempt < MaxGenerationAttempts && !bGenerated; ++Attempt) {
+		bGenerated = GenerateGrid();
+	}
+	if (!bGenerated){
+		UE_LOG(LogTemp, Error, TEXT("BLK_PCG: floor %d failed to generate after %d attempts"), Floor, MaxGenerationAttempts);
+	}
+
+	//Spawn boss
+	AEstivalBaseCharacter* Boss = bGenerated ? ARoomSpawnPoint::SpawnAllIn(SpawnedActors) : nullptr;
+	if (!Boss && BossSpawner && BossSpawner->EnemySpawnerComponent) {
+		BossSpawner->EnemySpawnerComponent->SpawnEnemies();
+
+		for (AActor* Spawned : BossSpawner->EnemySpawnerComponent->GetSpawnedEnemies()) {
+			if (AEstivalBaseCharacter* Character = Cast<AEstivalBaseCharacter>(Spawned)) {
+				Boss = Character;
+				break;
+			}
+		}
+	}
+	if (!Boss) {
+		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no boss spawned for floor %d, only BossDefeated can clear it"), Floor);
+	}
+	//Update gamemode
+	const FTransform PartyStart = PartyStartMarker ? PartyStartMarker->GetActorTransform() : GetActorTransform();
+	if (ADungeonGameMode* GameMode = GetWorld()->GetAuthGameMode<ADungeonGameMode>()) {
+		GameMode->FloorReady(PartyStart, Boss);
+		if (Boss) {
+			Boss->OnDeath.AddDynamic(GameMode, &ADungeonGameMode::ContinueRun);
+		}
 	}
 }
 
@@ -220,6 +267,11 @@ bool ABLK_PCG::InitializeCells()
 	CellPossibilities.Init(AllOptions, GridWidth * GridHeight);
 
 	RestrictBoundaryCells();
+	
+	for (TArray<int32>& Options : CellPossibilities)
+	{
+		Options.RemoveAll([this](int32 TileIndex) { return Tiles[TileIndex].bForcedOnly; });
+	}
 
 	//pin forced cells to their tile first
 	for (const FWFCForcedTile& Forced : ForcedTiles)

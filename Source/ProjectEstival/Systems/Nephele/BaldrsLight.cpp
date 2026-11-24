@@ -1,10 +1,10 @@
 #include "BaldrsLight.h"
 
+#include "Systems/Core/GameModes/DungeonGameMode.h"
 #include "Systems/Mike/Combat/ResourceComponent.h"
+#include "Systems/Core/Characters/PlayerBase.h"
 #include "UObject/ConstructorHelpers.h"
-#include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
-#include "Kismet/GameplayStatics.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 
@@ -45,16 +45,40 @@ ABaldrsLight::ABaldrsLight()
 	Spotlight->SetIntensity(100.0f);
 	Spotlight->SetLightColor(FLinearColor::MakeFromHSV8(34, 179, 255));
 }
-void ABaldrsLight::BeginPlay()
+
+void ABaldrsLight::PostInitializeComponents()
 {
-	Super::BeginPlay();
+	Super::PostInitializeComponents();
 	
-	FindPlayers();
-	CorruptionTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Corruption"));
-	HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
+	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.AddDynamic(this, &ABaldrsLight::InitializePostGameMode);
+}
+void ABaldrsLight::EndPlay(const EEndPlayReason::Type EndPlayReason)
+{
+	Super::EndPlay(EndPlayReason);
+	
+	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.RemoveDynamic(this, &ABaldrsLight::InitializePostGameMode);
+}
+void ABaldrsLight::Tick(const float DeltaTime)
+{
+	Super::Tick(DeltaTime);
+	
+	UpdateLightPosition(DeltaTime);
+	UpdatePlayerStates(DeltaTime);
+	UpdateSpotlight();
+	
+#if WITH_EDITOR
+	DrawEditorDebug();
+#endif
+}
+void ABaldrsLight::InitializePostGameMode(int32 Floor)
+{
+	const ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode());
+	if (!IsValid(GameMode)) return;
+	
+	SetActorLocation(GameMode->GetParty()[0]->GetActorLocation() + FVector(0.0f, 0.0f, LanternHeight));
 	
 	PlayerStates.Reset();
-	for (ACharacter* Player : Players)
+	for (APlayerBase* Player : GetPlayers())
 	{
 		if (!IsValid(Player)) continue;
 		FBaldrsLightPlayerState State;
@@ -68,57 +92,36 @@ void ABaldrsLight::BeginPlay()
 	bMovementInitialized = true;
 	UpdateSpotlight();
 }
-void ABaldrsLight::Tick(float DeltaTime)
+
+TArray<APlayerBase*> ABaldrsLight::GetPlayers() const
 {
-	Super::Tick(DeltaTime);
-	
-	UpdateLightPosition(DeltaTime);
-	UpdatePlayerStates(DeltaTime);
-	UpdateSpotlight();
-	
-#if WITH_EDITOR
-	DrawEditorDebug();
-#endif
+	TArray<APlayerBase*> Players;
+	if (const ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) Players = GameMode->GetParty();
+	return Players;
 }
 
-void ABaldrsLight::FindPlayers()
+TArray<APlayerBase*> ABaldrsLight::GetPlayersInLight()
 {
-	Players.Reset();
-	if (!PlayerBaseClass)
+	TArray<APlayerBase*> PlayersInLight;
+	for (const FBaldrsLightPlayerState& State : PlayerStates)
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Baldr's Light: PlayerBaseClass is not set."));
-		return;
-	}
-	
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsOfClass(GetWorld(), PlayerBaseClass, FoundActors);
-	for (AActor* Actor : FoundActors)
-	{
-		if (ACharacter* Character = Cast<ACharacter>(Actor)) Players.Add(Character);
-	}
-	UE_LOG(LogTemp, Log, TEXT("Baldr's Light found %d players."), Players.Num());
-}
-TArray<TObjectPtr<ACharacter>> ABaldrsLight::GetPlayersInLight()
-{
-	TArray<TObjectPtr<ACharacter>> PlayersInLight;
-	for (FBaldrsLightPlayerState& State : PlayerStates)
-	{
-		ACharacter* Player = State.Player;
-		if (!IsValid(Player)) continue;
+		APlayerBase* Player = State.Player;
+		if (Player) continue;
 		if (State.bInsideLight) PlayersInLight.Add(Player);
 	}
 	return PlayersInLight;
 }
-TArray<TObjectPtr<ACharacter>> ABaldrsLight::GetPlayersOutsideLight()
+
+TArray<APlayerBase*> ABaldrsLight::GetPlayersOutsideLight()
 {
-	TArray<TObjectPtr<ACharacter>> PlayersInLight;
-	for (FBaldrsLightPlayerState& State : PlayerStates)
+	TArray<APlayerBase*> PlayersOutsideLight;
+	for (const FBaldrsLightPlayerState& State : PlayerStates)
 	{
-		ACharacter* Player = State.Player;
+		APlayerBase* Player = State.Player;
 		if (!IsValid(Player)) continue;
-		if (!State.bInsideLight) PlayersInLight.Add(Player);
+		if (!State.bInsideLight) PlayersOutsideLight.Add(Player);
 	}
-	return PlayersInLight;
+	return PlayersOutsideLight;
 }
 
 // Movement
@@ -126,7 +129,7 @@ FVector ABaldrsLight::CalculatePlayersBarycenter() const
 {
 	FVector Sum = FVector::ZeroVector;
 	int32 Count = 0;
-	for (ACharacter* Player : Players)
+	for (const APlayerBase* Player : GetPlayers())
 	{
 		if (!IsValid(Player)) continue;
 		Sum += Player->GetActorLocation();
@@ -135,9 +138,9 @@ FVector ABaldrsLight::CalculatePlayersBarycenter() const
 	if (Count == 0) return GetActorLocation();
 	return Sum / static_cast<float>(Count);
 }
-void ABaldrsLight::UpdateLightPosition(float DeltaTime)
+void ABaldrsLight::UpdateLightPosition(const float DeltaTime)
 {
-	if (DeltaTime <= 0.0f || Players.IsEmpty()) return;
+	if (DeltaTime <= 0.0f || GetPlayers().IsEmpty()) return;
 	AnimationTime += DeltaTime;
 	
 	// HORIZONTAL POSITION
@@ -153,7 +156,7 @@ void ABaldrsLight::UpdateLightPosition(float DeltaTime)
 	// Damped spring: acceleration depends on both distance and velocity
 	const FVector Acceleration = Displacement * SpringStiffness - HorizontalVelocity * SpringDamping;
 	HorizontalVelocity += Acceleration * DeltaTime;
-	FVector NewPosition = Position + HorizontalVelocity * DeltaTime;
+	const FVector NewPosition = Position + HorizontalVelocity * DeltaTime;
 	SetActorLocation(NewPosition);
 	
 	// VERTICAL POSITION
@@ -201,17 +204,16 @@ void ABaldrsLight::UpdateSpotlight() const
 }
 
 // Corruption
-void ABaldrsLight::UpdatePlayerStates(float DeltaTime)
+void ABaldrsLight::UpdatePlayerStates(const float DeltaTime)
 {
 	for (FBaldrsLightPlayerState& State : PlayerStates)
 	{
-		ACharacter* Player = State.Player;
+		APlayerBase* Player = State.Player;
 		if (!IsValid(Player)) continue;
 		const float DistanceSquared = FVector::DistSquared(Player->GetActorLocation(), GetActorLocation());
-		const bool bIsInside = DistanceSquared <= FMath::Square(LightRadius);
-		
+
 		// Events
-		if (bIsInside != State.bInsideLight)
+		if (const bool bIsInside = DistanceSquared <= FMath::Square(LightRadius); bIsInside != State.bInsideLight)
 		{
 			State.bInsideLight = bIsInside;
 			if (bIsInside)
@@ -229,22 +231,22 @@ void ABaldrsLight::UpdatePlayerStates(float DeltaTime)
 		UpdateCorruption(State, DeltaTime);
 	}
 }
-void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaTime)
+void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, const float DeltaTime)
 {
-	ACharacter* Player = State.Player;
+	APlayerBase* Player = State.Player;
 	if (!IsValid(Player) || DeltaTime <= 0.0f) return;
 	
 	// Add/remove corruption
 	UResourceComponent* ResourceManager = Player->FindComponentByClass<UResourceComponent>();
 	if (!ResourceManager) return;
-	ResourceManager->ModifyResource(CorruptionTag, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
+	ResourceManager->ModifyResource(TagDefinitions::Stats_Resources_Corruption, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
 	
 	// Debug player health / corruption [DELETE ME]
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Health: %.2f"), ResourceManager->GetFloat(HealthTag)));
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Corruption: %.2f"), ResourceManager->GetFloat(CorruptionTag)));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Health: %0.2f"), ResourceManager->GetFloat(TagDefinitions::Stats_Resources_Health)));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Corruption: %0.2f"), ResourceManager->GetFloat(TagDefinitions::Stats_Resources_Corruption)));
 	
 	// Determine the current corruption tier
-	const float Corruption = ResourceManager->GetFloat(CorruptionTag);
+	const float Corruption = ResourceManager->GetFloat(TagDefinitions::Stats_Resources_Corruption);
 	const int CurrentTier = Corruption > 0.0f ? FMath::CeilToInt(Corruption / CorruptionPerTier) : 0;
 	if (State.CorruptionTier != CurrentTier) BroadcastCorruptionTierChanges(State, CurrentTier);
 	
@@ -262,7 +264,7 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 		State.DamageIntervalTimer -= DamageInterval;
 		
 		const float Damage = GetDamagePerTick(CurrentTier);
-		ResourceManager->ModifyResource(HealthTag, -Damage);
+		ResourceManager->ModifyResource(TagDefinitions::Stats_Resources_Health, -Damage);
 		
 		PlayerDamaged(Player, Damage);
 		OnPlayerDamaged.Broadcast(Player, Damage);
@@ -286,16 +288,16 @@ void ABaldrsLight::BroadcastCorruptionTierChanges(FBaldrsLightPlayerState& State
 }
 
 // Event implementations
-void ABaldrsLight::PlayerEnteredLight_Implementation(ACharacter* Player) { }
-void ABaldrsLight::PlayerExitedLight_Implementation(ACharacter* Player) { }
-void ABaldrsLight::PlayerCured_Implementation(ACharacter* Player) { }
-void ABaldrsLight::PlayerDamaged_Implementation(ACharacter* Player, float Damage) { }
-void ABaldrsLight::PlayerCorruptionTierChanged_Implementation(ACharacter* Player, int Tier) { }
+void ABaldrsLight::PlayerEnteredLight_Implementation(APlayerBase* Player) { }
+void ABaldrsLight::PlayerExitedLight_Implementation(APlayerBase* Player) { }
+void ABaldrsLight::PlayerCured_Implementation(APlayerBase* Player) { }
+void ABaldrsLight::PlayerDamaged_Implementation(APlayerBase* Player, float Damage) { }
+void ABaldrsLight::PlayerCorruptionTierChanged_Implementation(APlayerBase* Player, int Tier) { }
 
 #if WITH_EDITOR
 void ABaldrsLight::DrawEditorDebug() const
 {
-    UWorld* World = GetWorld();
+    const UWorld* World = GetWorld();
     if (!World || !bShowLightDebug) return;
     const FVector FloorCenter = GetActorLocation();
 	

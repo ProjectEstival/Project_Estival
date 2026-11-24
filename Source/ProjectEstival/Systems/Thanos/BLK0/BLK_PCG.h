@@ -3,12 +3,14 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Engine/DataTable.h"
+#include "Systems/Core/GameModes/LevelManager.h"
 #include "BLK_PCG.generated.h"
 
 class UTextRenderComponent;
+class ASpawnerBase; 
 
 //Prefabs
-enum class EWFCDirection : uint8
+enum class EWFCDirection : uint8 
 {
 	/**TO BE RENAMED TO U, D, L, R (U is East) */ 
 	North,
@@ -54,6 +56,9 @@ struct FWFCTile : public FTableRowBase
 	
 	UPROPERTY(EditAnywhere, Category = "Tile", meta = (ClampMin = 0.01))
 	float Weight = 1.0f;
+	
+	UPROPERTY(EditAnywhere, Category = "Tile")
+	bool bForcedOnly = false;
 };
 
 //Force tiles to place before the generation
@@ -77,7 +82,7 @@ struct FWFCForcedTile
 
 //Fills a rectangular grid with prefabs picked by WFC, matching tile sockets so near prefabs can connect.
 UCLASS()
-class PROJECTESTIVAL_API ABLK_PCG : public AActor
+class PROJECTESTIVAL_API ABLK_PCG : public AActor, public ILevelManager
 {
 	GENERATED_BODY()
 
@@ -90,6 +95,17 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	
+	virtual void BuildFloor_Implementation(int32 Floor) override;
+	
+	UPROPERTY(EditAnywhere, Category = "Run")
+	TObjectPtr<AActor> PartyStartMarker;
+	
+	UPROPERTY(EditAnywhere, Category = "Run")
+	TObjectPtr<ASpawnerBase> BossSpawner;
+	
+	UPROPERTY(EditAnywhere, Category = "Run", meta = (ClampMin = 1))
+	int32 MaxGenerationAttempts = 10;
 	
 	//Data Table of FWFCTile rows - the row name is each tile's identifier, used by ForcedTiles
 	UPROPERTY(EditAnywhere, Category = "WFC")
@@ -133,7 +149,7 @@ public:
 	bool bGenerateOnBeginPlay = true;
 
 	UFUNCTION(CallInEditor, Category = "WFC")
-	void GenerateGrid();
+	bool GenerateGrid();
 
 	UFUNCTION(CallInEditor, Category = "WFC")
 	void ClearGrid();

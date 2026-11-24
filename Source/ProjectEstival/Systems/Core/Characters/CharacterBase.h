@@ -2,13 +2,13 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
+#include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "Systems/Mike/Combat/ResourceComponent.h"
 #include "GenericTeamAgentInterface.h"
 #include "GameFramework/Character.h"
-#include "Systems/Maria/Revivable.h"
-#include "Systems/Mike/Combat/ResourceComponent.h"
-#include "Systems/Mike/Combat/Loadouts/LoadoutComponent.h"
+#include "GameplayTagContainer.h"
+#include "CoreMinimal.h"
+
 #include "CharacterBase.generated.h"
 
 class UInputAction;
@@ -17,11 +17,12 @@ class UAimComponent;
 class UAC_StatusEffectComponent;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
+
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnRevived);
 
 /**Base class for every Estival character*/
 UCLASS(Abstract)
-class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter, public IGenericTeamAgentInterface, public IRevivable
+class PROJECTESTIVAL_API AEstivalBaseCharacter : public ACharacter, public IGenericTeamAgentInterface
 {
 	GENERATED_BODY()
 
@@ -68,7 +69,6 @@ protected:
 	FGenericTeamId DefaultTeam = FGenericTeamId(0);
 
 public:
-	
 	UPROPERTY(BlueprintAssignable, Category= "Events")
 	FOnDeath OnDeath;
 	
@@ -116,6 +116,7 @@ public:
 		return Loadout.Get();
 	}
 
+
 	UFUNCTION(BlueprintCallable, Category= "Character")
 	UAimComponent* GetAim() const
 	{
@@ -126,14 +127,17 @@ public:
 	{
 		this->TeamId = TeamID;
 	}
+
 	virtual FGenericTeamId GetGenericTeamId() const override
 	{
 		return this->TeamId;
 	}
-	
-	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
-	
-	virtual bool TryRevive_Implementation(const float HealthPercent) override;
+
+	virtual float TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator,
+	                         AActor* DamageCauser) override;
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Health")
+	bool TryRevive(const float HealthPercent);
 	
 	UFUNCTION(BlueprintCallable, Category = "Health")
 	bool IsAlive() const;
@@ -166,4 +170,7 @@ private:
 	void Die();
 	bool bIsDead = false;
 	FGenericTeamId TeamId = FGenericTeamId::NoTeam;
+	
+	UPROPERTY(Transient)
+	TObjectPtr<AController> LastController;
 };

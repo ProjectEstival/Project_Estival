@@ -8,7 +8,6 @@
 #include "Systems/Thanos/Components/AC_LookAtComponent.h"
 #include "Components/StateTreeAIComponent.h"
 
-
 // Sets default values
 ACompanionAIController::ACompanionAIController(const FObjectInitializer& ObjectInitializer):
 Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT("PathFollowingComponent")))
@@ -61,6 +60,8 @@ void ACompanionAIController::OnPossess(APawn* InPawn)
 
 void ACompanionAIController::OnUnPossess()
 {
+	StateTreeAI->StopLogic(TEXT("Unpossessed"));
+	
 	// give the "body" back as we found it for example when a human player drops in
 	if (UAC_LookAtComponent* LookAt = GetPawn() ? GetPawn()->FindComponentByClass<UAC_LookAtComponent>() : nullptr)
 	{

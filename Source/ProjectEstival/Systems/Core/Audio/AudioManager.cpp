@@ -11,6 +11,7 @@
 #include "MusicPlayer.h"
 #include "Engine/GameInstance.h"
 #include "Engine/World.h"
+#include "GameFramework/Actor.h"
 
 
 void UAudioManager::Initialize(FSubsystemCollectionBase& Collection)
@@ -18,6 +19,10 @@ void UAudioManager::Initialize(FSubsystemCollectionBase& Collection)
 	Super::Initialize(Collection);
 	if (GEngine) GEngine->AddOnScreenDebugMessage(-1, 5, FColor::Blue, "[Audio Manager] Initialized");
 	MusicPlayer = NewObject<UMusicPlayer>(this);
+#if WITH_EDITOR
+	// Release our native instance before FMOD shuts down its PIE runtime system.
+	IFMODStudioModule::Get().PreEndPIEEvent().AddUObject(MusicPlayer.Get(), &UMusicPlayer::Deinitialize);
+#endif
 }
 
 void UAudioManager::Deinitialize()
@@ -25,8 +30,18 @@ void UAudioManager::Deinitialize()
 	ParameterTweener.StopAll();
 	StopAllSnapshots(true);
 
+	if (AActor* AudioActor = OwnerlessAudioActor.Get())
+	{
+		AudioActor->Destroy();
+	}
+	OwnerlessAudioActor.Reset();
+
 	if (IsValid(MusicPlayer))
 	{
+#if WITH_EDITOR
+		if (IFMODStudioModule::IsAvailable())
+			IFMODStudioModule::Get().PreEndPIEEvent().RemoveAll(MusicPlayer.Get());
+#endif
 		MusicPlayer->Deinitialize();
 		MusicPlayer = nullptr;
 	}
@@ -76,9 +91,31 @@ UFMODAudioComponent* UAudioManager::CreateAttachedAudio(UFMODEvent* Event, UScen
 	return Component;
 }
 
-UFMODAudioComponent* UAudioManager::Create2DAudio(UFMODEvent* Event, AActor* Owner) const
+UFMODAudioComponent* UAudioManager::Create2DAudio(UFMODEvent* Event, AActor* Owner)
 {
-	if (!IsValid(Event) || !IsValid(Owner)) return nullptr;
+	if (!IsValid(Event)) return nullptr;
+	// An explicitly supplied but destroyed owner is an error, not a request for fallback ownership.
+	if (Owner && !IsValid(Owner)) return nullptr;
+
+	if (!Owner)
+	{
+		UWorld* World = GetWorld();
+		if (!IsValid(World) || !World->IsGameWorld() || World->bIsTearingDown) return nullptr;
+
+		Owner = OwnerlessAudioActor.Get();
+		if (!IsValid(Owner) || Owner->GetWorld() != World)
+		{
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.ObjectFlags |= RF_Transient;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+			Owner = World->SpawnActor<AActor>(AActor::StaticClass(), FTransform::Identity, SpawnParams);
+			if (!IsValid(Owner)) return nullptr;
+			Owner->SetActorHiddenInGame(true);
+			Owner->SetActorEnableCollision(false);
+			Owner->SetActorTickEnabled(false);
+			OwnerlessAudioActor = Owner;
+		}
+	}
 
 	UFMODAudioComponent* Component = NewObject<UFMODAudioComponent>(Owner);
 	if (!IsValid(Component)) return nullptr;
@@ -175,12 +212,9 @@ bool UAudioManager::PlayMusic(UFMODEvent* Event)
 {
 	if (!IsValid(Event) || !IsValid(MusicPlayer)) return false;
 
-	UWorld* World = GetGameInstance() ? GetGameInstance()->GetWorld() : nullptr;
-	if (!MusicPlayer->Initialize(World)) return false;
-
-	if (MusicPlayer->GetCurrentEvent() != Event)
+	if (MusicPlayer->GetCurrentEvent() != Event || (!MusicPlayer->IsPlaying() && !MusicPlayer->IsPaused()))
 	{
-		ParameterTweener.StopAllForObject(MusicPlayer->GetComponent());
+		ParameterTweener.StopAllForObject(MusicPlayer);
 	}
 
 	return MusicPlayer->Play(Event);
@@ -190,13 +224,31 @@ void UAudioManager::StopMusic(bool bAllowFadeOut)
 {
 	if (!IsValid(MusicPlayer)) return;
 
-	ParameterTweener.StopAllForObject(MusicPlayer->GetComponent());
+	ParameterTweener.StopAllForObject(MusicPlayer);
 	MusicPlayer->Stop(bAllowFadeOut);
 }
 
-UFMODAudioComponent* UAudioManager::GetMusicComponent() const
+bool UAudioManager::SetMusicParameter(FName ParameterName, float Value, float Duration)
 {
-	return IsValid(MusicPlayer) ? MusicPlayer->GetComponent() : nullptr;
+	if (!IsValid(MusicPlayer) || ParameterName.IsNone()) return false;
+	ParameterTweener.Stop(MusicPlayer, ParameterName);
+	if (Duration <= 0.f) return MusicPlayer->SetParameter(ParameterName, Value);
+
+	float StartValue = 0.f;
+	if (!MusicPlayer->GetParameter(ParameterName, StartValue)) return false;
+	const TWeakObjectPtr<UMusicPlayer> WeakPlayer(MusicPlayer);
+	ParameterTweener.Tween(MusicPlayer, ParameterName, StartValue, Value, Duration,
+		[WeakPlayer, ParameterName](float NewValue)
+		{
+			return WeakPlayer.IsValid() && WeakPlayer->SetParameter(ParameterName, NewValue);
+		});
+	return true;
+}
+
+bool UAudioManager::GetMusicParameter(FName ParameterName, float& OutValue) const
+{
+	OutValue = 0.f;
+	return IsValid(MusicPlayer) && MusicPlayer->GetParameter(ParameterName, OutValue);
 }
 
 void UAudioManager::SetMusicPaused(const bool bPaused) const
@@ -217,7 +269,6 @@ bool UAudioManager::IsMusicPaused() const
 void UAudioManager::DestroyAudio(UFMODAudioComponent* Component)
 {
 	if (!IsValid(Component)) return;
-	if (IsValid(MusicPlayer) && Component == MusicPlayer->GetComponent()) return;
 
 	ParameterTweener.StopAllForObject(Component);
 

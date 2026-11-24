@@ -1,5 +1,6 @@
 #include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 
+#include "Systems/Core/Characters/PlayerBase.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
@@ -26,6 +27,7 @@ void ULocalPlayerSessionDirectory::RegisterPlayer(ULocalPlayer* LocalPlayer)
 	if (Record.PlayerColorSlot == INDEX_NONE) Record.PlayerColorSlot = FindAvailableColorSlot();
 	ApplyPlayerLightColor(LocalPlayer);
 }
+
 void ULocalPlayerSessionDirectory::UnregisterPlayer(ULocalPlayer* LocalPlayer)
 {
 	if (!IsValid(LocalPlayer)) return;
@@ -56,6 +58,7 @@ void ULocalPlayerSessionDirectory::AssociateInputDevice(ULocalPlayer* LocalPlaye
 	if (!Record.InputDevices.Contains(InputDeviceId)) Record.InputDevices.Add(InputDeviceId);
 	DeviceOwners.Add(InputDeviceId, LocalPlayer);
 }
+
 ULocalPlayer* ULocalPlayerSessionDirectory::RemoveInputDevice(const FInputDeviceId InputDeviceId)
 {
 	TWeakObjectPtr<ULocalPlayer> Owner;
@@ -64,6 +67,7 @@ ULocalPlayer* ULocalPlayerSessionDirectory::RemoveInputDevice(const FInputDevice
 	if (FLocalPlayerSessionRecord* Record = Players.Find(Owner)) Record->InputDevices.Remove(InputDeviceId);
 	return Owner.Get();
 }
+
 void ULocalPlayerSessionDirectory::SetProfile(ULocalPlayer* LocalPlayer, const FGuid& ProfileId)
 {
 	if (!IsValid(LocalPlayer)) return;
@@ -77,6 +81,7 @@ void ULocalPlayerSessionDirectory::SetFocusedWidget(ULocalPlayer* LocalPlayer, U
 	RegisterPlayer(LocalPlayer);
 	Players.FindChecked(TWeakObjectPtr<ULocalPlayer>(LocalPlayer)).FocusedWidget = Widget;
 }
+
 void ULocalPlayerSessionDirectory::FocusWidget(ULocalPlayer* LocalPlayer, UWidget* Widget)
 {
 	if (!IsValid(LocalPlayer) || !IsValid(Widget)) return;
@@ -94,6 +99,7 @@ const FLocalPlayerSessionRecord* ULocalPlayerSessionDirectory::FindPlayer(const 
 {
 	return IsValid(LocalPlayer) ? Players.Find(TWeakObjectPtr<ULocalPlayer>(const_cast<ULocalPlayer*>(LocalPlayer))) : nullptr;
 }
+
 const FLocalPlayerSessionRecord* ULocalPlayerSessionDirectory::FindPlayerForDevice(const FInputDeviceId InputDeviceId) const
 {
 	const TWeakObjectPtr<ULocalPlayer>* Owner = DeviceOwners.Find(InputDeviceId);
@@ -105,6 +111,7 @@ FGuid ULocalPlayerSessionDirectory::GetProfileId(const ULocalPlayer* LocalPlayer
 	const FLocalPlayerSessionRecord* Record = FindPlayer(LocalPlayer);
 	return Record ? Record->ProfileId : FGuid();
 }
+
 int32 ULocalPlayerSessionDirectory::GetPlayerColorSlot(const ULocalPlayer* LocalPlayer) const
 {
 	const FLocalPlayerSessionRecord* Record = FindPlayer(LocalPlayer);
@@ -114,9 +121,38 @@ int32 ULocalPlayerSessionDirectory::GetPlayerColorSlot(const ULocalPlayer* Local
 FLinearColor ULocalPlayerSessionDirectory::GetPlayerColor(const ULocalPlayer* LocalPlayer) const
 {
 	const int32 Slot = GetPlayerColorSlot(LocalPlayer);
+	return GetPlayerColorForSlot(Slot);
+}
+
+FLinearColor ULocalPlayerSessionDirectory::GetPlayerColorForSlot(const int32 Slot) const
+{
 	if (const FLinearColor* Color = PlayerSlotColors.Find(Slot)) return *Color;
 	return FLinearColor::White;
 }
+
+int32 ULocalPlayerSessionDirectory::GetNextAvailableColorSlot(const TSet<int32>& ExcludedSlots) const
+{
+	auto IsSlotInUse = [this, &ExcludedSlots](const int32 Slot)
+	{
+		if (ExcludedSlots.Contains(Slot)) return true;
+		for (const TPair<TWeakObjectPtr<ULocalPlayer>, FLocalPlayerSessionRecord>& Entry : Players)
+		{
+			if (Entry.Key.IsValid() && Entry.Value.PlayerColorSlot == Slot) return true;
+		}
+		return false;
+	};
+	
+	for (const int32 CandidateSlot : PlayerColorSlotOrder)
+	{
+		if (!IsSlotInUse(CandidateSlot)) return CandidateSlot;
+	}
+	
+	int32 OverflowSlot = 0;
+	for (const int32 CandidateSlot : PlayerColorSlotOrder) OverflowSlot = FMath::Max(OverflowSlot, CandidateSlot + 1);
+	while (IsSlotInUse(OverflowSlot)) ++OverflowSlot;
+	return OverflowSlot;
+}
+
 void ULocalPlayerSessionDirectory::SetPlayerSlotColor(const int32 Slot, const FLinearColor Color)
 {
 	if (Slot == INDEX_NONE) return;
@@ -128,6 +164,7 @@ void ULocalPlayerSessionDirectory::SetPlayerSlotColor(const int32 Slot, const FL
 		if (Entry.Key.IsValid() && Entry.Value.PlayerColorSlot == Slot) ApplyPlayerLightColor(Entry.Key.Get());
 	}
 }
+
 void ULocalPlayerSessionDirectory::ApplyPlayerLightColor(const ULocalPlayer* LocalPlayer) const
 {
 	// I can't get Unreal to see my DualShock controllers to test this, but if we ever set up the dlls from Sony, this should work(?)
@@ -158,6 +195,7 @@ int32 ULocalPlayerSessionDirectory::FindAvailableColorSlot() const
 	while (IsSlotInUse(OverflowSlot)) ++OverflowSlot;
 	return OverflowSlot;
 }
+
 bool ULocalPlayerSessionDirectory::IsProfileAssigned(const FGuid& ProfileId, const ULocalPlayer* ExceptPlayer) const
 {
 	if (!ProfileId.IsValid()) return false;
@@ -166,4 +204,15 @@ bool ULocalPlayerSessionDirectory::IsProfileAssigned(const FGuid& ProfileId, con
 		if (Pair.Key.IsValid() && Pair.Key.Get() != ExceptPlayer && Pair.Value.ProfileId == ProfileId) return true;
 	}
 	return false;
+}
+
+TSubclassOf<APlayerBase> ULocalPlayerSessionDirectory::PlayerToSelectedCharacter(APlayerController* PC)
+{
+	if (!PC) return nullptr;
+	
+	if (ULocalPlayer* LocalPlayer = PC->GetLocalPlayer())
+	{
+		if (const TSubclassOf<APlayerBase>* Character = SelectedCharacters.Find(LocalPlayer)) return Character->Get();
+	}
+	return nullptr;
 }

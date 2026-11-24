@@ -9,8 +9,9 @@
 
 class APlayerController;
 class ULocalPlayer;
-class UWidget;
+class APlayerBase;
 class FSlateUser;
+class UWidget;
 
 // Runtime links for one local player. Input device IDs and platform user IDs are deliberately distinct
 struct FLocalPlayerSessionRecord
@@ -49,9 +50,15 @@ public:
 	int32 GetPlayerColorSlot(const ULocalPlayer* LocalPlayer) const;
 	UFUNCTION(BlueprintPure, Category = "Local Players")
 	FLinearColor GetPlayerColor(const ULocalPlayer* LocalPlayer) const;
+	FLinearColor GetPlayerColorForSlot(int32 Slot) const;
+	int32 GetNextAvailableColorSlot(const TSet<int32>& ExcludedSlots) const;
 	UFUNCTION(BlueprintCallable, Category = "Local Players")
 	void SetPlayerSlotColor(int32 Slot, FLinearColor Color);
 	bool IsProfileAssigned(const FGuid& ProfileId, const ULocalPlayer* ExceptPlayer = nullptr) const;
+	
+	UFUNCTION(BlueprintCallable, Category="Character Select")
+	TSubclassOf<APlayerBase> PlayerToSelectedCharacter(APlayerController* PC);
+	TMap<TObjectPtr<ULocalPlayer>, TSubclassOf<APlayerBase>> SelectedCharacters;
 	
 private:
 	UPROPERTY(Config, EditAnywhere, BlueprintReadOnly, Category = "Player Colors", meta = (AllowPrivateAccess = "true"))

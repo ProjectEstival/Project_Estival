@@ -2,6 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "AbilityTask.h"
+#include "Engine/EngineTypes.h"
 #include "MoveCasterTask.generated.h"
 
 class ACharacter;
@@ -20,7 +21,7 @@ enum class EMoveCasterDirection : uint8
 };
 
 /** Moves the caster along the ground over a set time, or teleports them if the time is 0. Interrupting the ability stops the move. */
-UCLASS(meta = (DisplayName = "Move Caster"))
+UCLASS(meta = (DisplayName = "Move Caster"), HideFunctions = (OnStart, OnEnd))
 class PROJECTESTIVAL_API UMoveCasterTask : public UAbilityTask
 {
 	GENERATED_BODY()
@@ -43,6 +44,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Move", meta = (EditCondition = "Duration == 0", EditConditionHides))
 	bool bThroughWalls = false;
 
+	/** Pass through other characters while moving. Area attacks and zones can't find the caster until the move ends. */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Move", meta = (EditCondition = "Duration > 0", EditConditionHides))
+	bool bThroughCharacters = false;
+
 	/** Run where the caster ends up, unless the move was interrupted. */
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Move")
 	TArray<TObjectPtr<UAbilityEffect>> ArriveEffects;
@@ -57,4 +62,6 @@ private:
 	void Arrive();
 
 	uint16 MoveId = 0;
+	bool bIgnoringCharacters = false;
+	ECollisionResponse OldPawnResponse = ECR_Block;
 };

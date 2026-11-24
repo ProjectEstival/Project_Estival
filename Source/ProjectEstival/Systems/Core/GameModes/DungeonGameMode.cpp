@@ -6,6 +6,7 @@
 #include "TimerManager.h"
 #include "Kismet/GameplayStatics.h"
 #include "Systems/Core/EstivalGameInstance.h"
+#include "Systems/Core/Audio/AudioManager.h"
 #include "Systems/Core/Characters/PlayerBase.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "Systems/Dimitris/CurrencySubsystem.h"
@@ -13,6 +14,8 @@
 #include "Systems/Mike/Combat/TeamAttitudeSolver.h"
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
+
+class UAudioManager;
 
 ADungeonGameMode::ADungeonGameMode()
 {
@@ -165,6 +168,14 @@ void ADungeonGameMode::FloorReady(const FTransform& PartyStart, AEstivalBaseChar
 
 	Phase = EDungeonPhase::Playing;
 	OnFloorStarted.Broadcast(GetFloor());
+	
+	if (UAudioManager* AudioManager = GetGameInstance()->GetSubsystem<UAudioManager>())
+	{
+		if (BossMusicEvent)
+		{
+			AudioManager->PlayMusic(ExploreMusicEvent);
+		}
+	}
 }
 
 void ADungeonGameMode::RollFloorModifiers()
@@ -297,6 +308,15 @@ void ADungeonGameMode::StartBossEncounter()
  
 	bossStarted = true;
 	OnBossEncounterStarted.Broadcast(GetFloor());
+	
+	if (UAudioManager* AudioManager = GetGameInstance()->GetSubsystem<UAudioManager>())
+	{
+		if (BossMusicEvent)
+		{
+			AudioManager->PlayMusic(BossMusicEvent);
+			AudioManager->SetMusicParameter("FightStart", 1);
+		}
+	}
 }
 
 void ADungeonGameMode::LeaveRun()

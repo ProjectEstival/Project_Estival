@@ -2,8 +2,11 @@
 
 #include "Components/SphereComponent.h"
 #include "Components/StaticMeshComponent.h"
+#include "GameFramework/PlayerController.h"
+#include "Engine/LocalPlayer.h"
 #include "GameFramework/Pawn.h"
 #include "Engine/GameInstance.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 
 ACurrencyPickup::ACurrencyPickup()
 {
@@ -30,62 +33,57 @@ void ACurrencyPickup::BeginPlay()
 );
 }
 
-void ACurrencyPickup::OnPickupOverlap(
-	UPrimitiveComponent* OverlappedComponent,
-	AActor* OtherActor,
-	UPrimitiveComponent* OtherComp,
-	int32 OtherBodyIndex,
-	bool bFromSweep,
-	const FHitResult& SweepResult)
+void ACurrencyPickup::OnPickupOverlap(UPrimitiveComponent* OverlappedComponent,AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,int32 OtherBodyIndex,bool bFromSweep,const FHitResult& SweepResult)
 {
-	if (bCollected)
-	{
-		return;
-	}
+	if (bCollected) return;
 
 	APawn* Pawn = Cast<APawn>(OtherActor);
+	if (!Pawn || !Pawn->IsPlayerControlled()) return;
+	
+	APlayerController* PlayerController =Cast<APlayerController>(Pawn->GetController());
 
-	if (!Pawn || !Pawn->IsPlayerControlled())
-	{
-		return;
-	}
+	if (!PlayerController) return;
+
+	ULocalPlayer* LocalPlayer = PlayerController->GetLocalPlayer();
+
+	if (!LocalPlayer) return;
 
 	UGameInstance* GameInstance = GetGameInstance();
 
-	if (!GameInstance)
-	{
-		return;
-	}
+	if (!GameInstance) return;
 
 	UCurrencySubsystem* CurrencySystem =
 		GameInstance->GetSubsystem<UCurrencySubsystem>();
 
-	if (!CurrencySystem)
-	{
-		return;
-	}
+	if (!CurrencySystem) return;
 
 	const int32 PickupAmount = bRandomizeAmount
-		? FMath::RandRange(
-			FMath::Max(1, MinAmount),
+		? FMath::RandRange(FMath::Max(1, MinAmount),
 			FMath::Max(FMath::Max(1, MinAmount), MaxAmount))
 		: FMath::Max(1, Amount);
 
 	bCollected = true;
 
-	CurrencySystem->AddCurrency(CurrencyType, PickupAmount);
+	CurrencySystem->AddCurrency(LocalPlayer,CurrencyStorage,PickupAmount);
 
-	UE_LOG(LogTemp, Log, TEXT("Collected %d currency of type %d"),
-		PickupAmount, static_cast<int32>(CurrencyType));
-
-	Destroy();
+	UE_LOG(LogTemp, Log, TEXT("Collected %d currency (Storage: %d)"),
+		PickupAmount, static_cast<int32>(CurrencyStorage));
+	
+	if (const auto Pooling = UWorld::GetSubsystem<UActorPoolSubsystem>(GetWorld())) Pooling->ReleaseActor(this);
 }
 
 void ACurrencyPickup::SetCurrency(
-	ECurrencyType Type,
+	ECurrencyStorage Storage,
 	int32 NewAmount)
 {
-	CurrencyType = Type;
+	CurrencyStorage = Storage;
 	Amount = FMath::Max(1, NewAmount);
 	bRandomizeAmount = false;
+}
+
+void ACurrencyPickup::OnAcquired_Implementation()
+{
+	bCollected = false;
+	Amount = DefaultAmount;
 }

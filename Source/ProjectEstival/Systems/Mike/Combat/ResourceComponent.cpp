@@ -1,4 +1,5 @@
 ﻿#include "ResourceComponent.h"
+
 #include "Systems/Mike/Stats/StatisticsComponent.h"
 
 UResourceComponent::UResourceComponent()

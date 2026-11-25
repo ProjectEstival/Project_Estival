@@ -18,6 +18,11 @@
 #include "EnvironmentQuery/EnvQueryManager.h"
 #include "StateTreeAsyncExecutionContext.h"
 #include "EngineUtils.h"
+#include "Systems/Maria/Interaction System/InteractionComponent.h"
+#include "Systems/Maria/Revive System/ReviveComponent.h"
+#include "Systems/Mike/Combat/ResourceComponent.h"
+#include "Systems/Core/TagDefinitions.h"
+
 
 DEFINE_LOG_CATEGORY_STATIC(LogCompanionAI, Log, All);
 
@@ -179,7 +184,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 			continue;
 		}
 
-		const double DistSq = FVector::DistSquared(Me->GetActorLocation(), Enemy->GetActorLocation());
+		const double DistSq = FVector::DistSquared2D(Me->GetActorLocation(), Enemy->GetActorLocation());
 		if (DistSq < NearestSeenSq)
 		{
 			NearestSeenSq = DistSq;
@@ -189,7 +194,7 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		// "in the fight" = close to the player or close to me
 		const bool bNearMe = DistSq < EngageRadiusSq;
 		const bool bNearPlayer = InstanceData.FollowTarget
-			&& FVector::DistSquared(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
+			&& FVector::DistSquared2D(InstanceData.FollowTarget->GetActorLocation(), Enemy->GetActorLocation()) < EngageRadiusSq;
 
 		if (!bNearMe && !bNearPlayer)
 		{
@@ -238,6 +243,11 @@ EStateTreeRunStatus FCompanionFindThreatTask::Tick(FStateTreeExecutionContext& C
 		const FColor LineColor = Tactics ? Tactics->DebugColor : FColor::Red;
 		DrawDebugLine(Me->GetWorld(), Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation(), LineColor, false, -1.f, 0, 3.f);
 	}
+	
+	// distance on the floor so the companions can reach tall enemies (like Fenrir)
+	InstanceData.DistanceToTarget = InstanceData.AttackTarget
+		? static_cast<float>(FVector::Dist2D(Me->GetActorLocation(), InstanceData.AttackTarget->GetActorLocation()))
+		: TNumericLimits<float>::Max();
 	
 	// global task: keeps running for the whole tree
 	return EStateTreeRunStatus::Running;
@@ -330,7 +340,7 @@ bool FCompanionUseAbilityTask::TryTacticsAbilities(AEstivalBaseCharacter* Me, co
 	}
 
 	// no target bound? Then only rows that start at 0 can match
-	const double Distance = IsValid(Target) ? FVector::Dist(Me->GetActorLocation(), Target->GetActorLocation()) : 0.0;
+	const double Distance = IsValid(Target) ? FVector::Dist2D(Me->GetActorLocation(), Target->GetActorLocation()) : 0.0;
 
 	// from the top: the first row that is in range AND fires wins
 	for (const FCompanionAbilityRule& Rule : Tactics->Abilities)
@@ -540,6 +550,124 @@ void ACompanionAIController::NextTactics()
 	SetTactics(TacticsPresets[(Current + 1) % TacticsPresets.Num()]);
 }
 
+// ---------- Find Revive Target ----------
+
+EStateTreeRunStatus FCompanionFindReviveTargetTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	// on enter too, so the output is ready before the first tick
+	UpdateTarget(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FCompanionFindReviveTargetTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	UpdateTarget(Context.GetInstanceData(*this));
+	return EStateTreeRunStatus::Running;
+}
+
+void FCompanionFindReviveTargetTask::UpdateTarget(FInstanceDataType& InstanceData)
+{
+	InstanceData.ReviveTarget = nullptr;
+	if (!InstanceData.Pawn)
+	{
+		return;
+	}
+
+	// remember every human body while a player controls it
+	bool bAnyHumanUp = false;
+	for (FConstPlayerControllerIterator It = InstanceData.Pawn->GetWorld()->GetPlayerControllerIterator(); It; ++It)
+	{
+		const APlayerController* PlayerController = It->Get();
+		AEstivalBaseCharacter* Human = PlayerController ? Cast<AEstivalBaseCharacter>(PlayerController->GetPawn()) : nullptr;
+		if (!Human)
+		{
+			continue;
+		}
+
+		InstanceData.Humans.AddUnique(Human);
+		if (Human->IsAlive())
+		{
+			bAnyHumanUp = true;
+		}
+	}
+
+	// design rule: wait while a human can still do it
+	if (bAnyHumanUp && InstanceData.bOnlyWhenAllHumansDown)
+	{
+		return;
+	}
+
+	// the nearest body that can still be revived
+	const FVector MyLocation = InstanceData.Pawn->GetActorLocation();
+	double NearestDistance = TNumericLimits<double>::Max();
+	for (const TWeakObjectPtr<AEstivalBaseCharacter>& HumanPtr : InstanceData.Humans)
+	{
+		AEstivalBaseCharacter* Human = HumanPtr.Get();
+		const UReviveComponent* Revive = Human ? Human->FindComponentByClass<UReviveComponent>() : nullptr;
+		if (!Revive || !Revive->CanBeRevived())
+		{
+			continue;
+		}
+
+		const double Distance = FVector::Dist(MyLocation, Human->GetActorLocation());
+		if (Distance < NearestDistance)
+		{
+			NearestDistance = Distance;
+			InstanceData.ReviveTarget = Human;
+		}
+	}
+}
+
+// ---------- Revive ----------
+
+EStateTreeRunStatus FCompanionReviveTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	UInteractionComponent* Interaction = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<UInteractionComponent>() : nullptr;
+	if (!Interaction || !IsValid(InstanceData.Target))
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// the same call the Interact key makes. It picks the nearest body within 2 m, so Move To brings us close first
+	if (!Interaction->StartInteract())
+	{
+		UE_LOG(LogCompanionAI, Warning, TEXT("%s could not start reviving %s"), *GetNameSafe(InstanceData.Pawn), *GetNameSafe(InstanceData.Target));
+		return EStateTreeRunStatus::Failed;
+	}
+	return EStateTreeRunStatus::Running;
+}
+
+EStateTreeRunStatus FCompanionReviveTask::Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const
+{
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	const UInteractionComponent* Interaction = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<UInteractionComponent>() : nullptr;
+	if (!Interaction)
+	{
+		return EStateTreeRunStatus::Failed;
+	}
+
+	// the component counts the 3 seconds on its own tick
+	if (Interaction->IsHolding())
+	{
+		return EStateTreeRunStatus::Running;
+	}
+
+	// the hold is over: done if the human stands again and cancelled if not
+	const AEstivalBaseCharacter* Downed = Cast<AEstivalBaseCharacter>(InstanceData.Target);
+	return Downed && Downed->IsAlive() ? EStateTreeRunStatus::Succeeded : EStateTreeRunStatus::Failed;
+}
+
+void FCompanionReviveTask::ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+{
+	// leaving early for a fight or because the human got up? Stop holding, like Move To stops moving
+	const FInstanceDataType& InstanceData = Context.GetInstanceData(*this);
+	if (UInteractionComponent* Interaction = InstanceData.Pawn ? InstanceData.Pawn->FindComponentByClass<UInteractionComponent>() : nullptr)
+	{
+		Interaction->StopInteract();
+	}
+}
+
 // ------- DEBUG
 #if !UE_BUILD_SHIPPING
 // Estival.Bots.NextTactics: every bot switches to its next style
@@ -561,4 +689,31 @@ static FAutoConsoleCommandWithWorldAndArgs NextTacticsCommand(
 	TEXT("Estival.Bots.NextTactics"),
 	TEXT("Switches every companion bot to its next Bot Tactics preset."),
 	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&NextTacticsForAllBots));
+
+// Estival.Bots.DownHumans: every human goes down, to test revive. Add a player number, like 1, to down only that player
+static void DownHumans(const TArray<FString>& Args, UWorld* World)
+{
+	if (!World)
+	{
+		return;
+	}
+
+	const int32 OnlyPlayer = Args.IsEmpty() ? INDEX_NONE : FCString::Atoi(*Args[0]);
+	int32 PlayerIndex = 0;
+	for (FConstPlayerControllerIterator It = World->GetPlayerControllerIterator(); It; ++It, ++PlayerIndex)
+	{
+		const AEstivalBaseCharacter* Human = It->Get() ? Cast<AEstivalBaseCharacter>(It->Get()->GetPawn()) : nullptr;
+		UResourceComponent* Resources = Human ? Human->GetResources() : nullptr;
+		if (Resources && (OnlyPlayer == INDEX_NONE || OnlyPlayer == PlayerIndex))
+		{
+			// health 0 runs the same Die() a killing blow runs
+			Resources->SetCurrent(TagDefinitions::Stats_Resources_Health, 0.f);
+		}
+	}
+}
+
+static FAutoConsoleCommandWithWorldAndArgs DownHumansCommand(
+	TEXT("Estival.Bots.DownHumans"),
+	TEXT("Every human goes down, to test bot revive. Add a player number to down only that one: Estival.Bots.DownHumans 1"),
+	FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&DownHumans));
 #endif

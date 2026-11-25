@@ -20,7 +20,10 @@ AEnemyAIController::AEnemyAIController(const FObjectInitializer& ObjectInitializ
 void AEnemyAIController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+}
+
+void AEnemyAIController::Initialize()
+{
 	if (AIPerceptionComp)
 	{
 		AIPerceptionComp->OnTargetPerceptionUpdated.AddDynamic(this, &AEnemyAIController::OnTargetSensorUpdated);
@@ -29,7 +32,6 @@ void AEnemyAIController::BeginPlay()
 	
 	GetWorld()->GetTimerManager().SetTimer(CheckDistanceTimerHandle, this, &AEnemyAIController::DistCheck, CheckDistTimer, true);
 }
-
 
 void AEnemyAIController::OnTargetSensorUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
@@ -116,6 +118,8 @@ void AEnemyAIController::OnPossess(APawn* InPawn)
 	Super::OnPossess(InPawn);
 	
 	if (!InPawn) return;
+	
+	Initialize();
 	
 	if (AEnemyBaseCharacter* EnemyChar = Cast<AEnemyBaseCharacter>(InPawn))
 	{

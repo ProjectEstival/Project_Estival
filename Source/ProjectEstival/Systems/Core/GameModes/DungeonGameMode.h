@@ -5,6 +5,7 @@
 #include "GameFramework/GameModeBase.h"
 #include "DungeonGameMode.generated.h"
 
+class UFMODEvent;
 class AEstivalBaseCharacter;
 class APlayerBase;
 
@@ -21,9 +22,15 @@ public:
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnFloorEvent OnFloorStarted;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Run")
+	FOnFloorEvent OnFloorLoading;
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnFloorEvent OnFloorCleared;
+	
+	UPROPERTY(BlueprintAssignable, Category = "Run")
+	FOnFloorEvent OnBossEncounterStarted;
 
 	UPROPERTY(BlueprintAssignable, Category = "Run")
 	FOnRunEnded OnRunEnded;
@@ -36,6 +43,9 @@ public:
 
 	UFUNCTION(BlueprintCallable, Exec, Category = "Run")
 	void ContinueRun();
+	
+	UFUNCTION(BlueprintCallable, Category = "Run")
+	void StartBossEncounter();
 
 	UFUNCTION(BlueprintCallable, Exec, Category = "Run")
 	void LeaveRun();
@@ -79,6 +89,12 @@ protected:
 	UFUNCTION(BlueprintNativeEvent, Category = "Run")
 	TSubclassOf<APlayerBase> ChoosePlayerHero(APlayerController* Player);
 	
+	UPROPERTY(EditDefaultsOnly, Category = "Music")
+	TObjectPtr<UFMODEvent> ExploreMusicEvent;
+	
+	UPROPERTY(EditDefaultsOnly, Category = "Music")
+	TObjectPtr<UFMODEvent> BossMusicEvent;
+	
 	UFUNCTION(Exec)
 	void BossDefeated();
 
@@ -104,6 +120,7 @@ private:
 	TSet<TWeakObjectPtr<AEstivalBaseCharacter>> PendingCharacters;
 	int32 FloorIndex = 0;
 	EDungeonPhase Phase = EDungeonPhase::LoadingFloor;
+	bool bossStarted = false;
 	FDelegateHandle SpawnHandle;
 
 	void SpawnParty();

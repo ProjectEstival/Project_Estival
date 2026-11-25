@@ -5,6 +5,7 @@
 #include "Systems/Stratos/SpawnerBase.h"
 #include "Systems/Core/Spawning/EnemySpawner.h"
 #include "Systems/Core/GameModes/DungeonGameMode.h" 
+#include "Systems/Core/Spawning/RoomSpawnPoint.h"
 #include "Systems/Core/Characters/PlayerBase.h"
 
 // Sets default values
@@ -99,8 +100,8 @@ void ABLK_PCG::BuildFloor_Implementation(int32 Floor) {
 	}
 
 	//Spawn boss
-	AEstivalBaseCharacter* Boss = nullptr;
-	if (BossSpawner && BossSpawner->EnemySpawnerComponent) {
+	AEstivalBaseCharacter* Boss = bGenerated ? ARoomSpawnPoint::SpawnAllIn(SpawnedActors) : nullptr;
+	if (!Boss && BossSpawner && BossSpawner->EnemySpawnerComponent) {
 		BossSpawner->EnemySpawnerComponent->SpawnEnemies();
 
 		for (AActor* Spawned : BossSpawner->EnemySpawnerComponent->GetSpawnedEnemies()) {
@@ -112,15 +113,14 @@ void ABLK_PCG::BuildFloor_Implementation(int32 Floor) {
 	}
 	if (!Boss) {
 		UE_LOG(LogTemp, Warning, TEXT("BLK_PCG: no boss spawned for floor %d, only BossDefeated can clear it"), Floor);
-		/** TODO DELETEME */
-		return;
 	}
-
 	//Update gamemode
 	const FTransform PartyStart = PartyStartMarker ? PartyStartMarker->GetActorTransform() : GetActorTransform();
 	if (ADungeonGameMode* GameMode = GetWorld()->GetAuthGameMode<ADungeonGameMode>()) {
 		GameMode->FloorReady(PartyStart, Boss);
-		Boss->OnDeath.AddDynamic(GameMode, &ADungeonGameMode::ContinueRun);
+		if (Boss) {
+			Boss->OnDeath.AddDynamic(GameMode, &ADungeonGameMode::ContinueRun);
+		}
 	}
 }
 
@@ -267,6 +267,11 @@ bool ABLK_PCG::InitializeCells()
 	CellPossibilities.Init(AllOptions, GridWidth * GridHeight);
 
 	RestrictBoundaryCells();
+	
+	for (TArray<int32>& Options : CellPossibilities)
+	{
+		Options.RemoveAll([this](int32 TileIndex) { return Tiles[TileIndex].bForcedOnly; });
+	}
 
 	//pin forced cells to their tile first
 	for (const FWFCForcedTile& Forced : ForcedTiles)

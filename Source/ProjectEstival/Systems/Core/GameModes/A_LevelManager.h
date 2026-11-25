@@ -12,5 +12,7 @@ public:
 	virtual void BuildFloor_Implementation(int32 Floor) override;
 protected:
 	void FinishFloor(FTransform StartTransform, AEstivalBaseCharacter *Boss);
+	UPROPERTY()
+	FTimerHandle timerHandle;
 	//void ClearCurrentFloor();
 };

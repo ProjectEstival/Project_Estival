@@ -4,7 +4,6 @@
 #include "Systems/Mike/Combat/ResourceComponent.h"
 #include "Systems/Core/Characters/PlayerBase.h"
 #include "UObject/ConstructorHelpers.h"
-#include "Components/ActorComponent.h"
 #include "GameFramework/Character.h"
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
@@ -51,20 +50,32 @@ void ABaldrsLight::PostInitializeComponents()
 {
 	Super::PostInitializeComponents();
 	
-	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.AddDynamic(this, &ABaldrsLight::InitializePosition);
+	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.AddDynamic(this, &ABaldrsLight::InitializePostGameMode);
 }
 void ABaldrsLight::EndPlay(const EEndPlayReason::Type EndPlayReason)
 {
 	Super::EndPlay(EndPlayReason);
 	
-	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.RemoveDynamic(this, &ABaldrsLight::InitializePosition);
+	if (ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) GameMode->OnFloorStarted.RemoveDynamic(this, &ABaldrsLight::InitializePostGameMode);
 }
-void ABaldrsLight::BeginPlay()
+void ABaldrsLight::Tick(const float DeltaTime)
 {
-	Super::BeginPlay();
-		
-	CorruptionTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Corruption"));
-	HealthTag = FGameplayTag::RequestGameplayTag(FName("Stats.Resources.Health"));
+	Super::Tick(DeltaTime);
+	
+	UpdateLightPosition(DeltaTime);
+	UpdatePlayerStates(DeltaTime);
+	UpdateSpotlight();
+	
+#if WITH_EDITOR
+	DrawEditorDebug();
+#endif
+}
+void ABaldrsLight::InitializePostGameMode(int32 Floor)
+{
+	const ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode());
+	if (!IsValid(GameMode)) return;
+	
+	SetActorLocation(GameMode->GetParty()[0]->GetActorLocation() + FVector(0.0f, 0.0f, LanternHeight));
 	
 	PlayerStates.Reset();
 	for (APlayerBase* Player : GetPlayers())
@@ -80,22 +91,6 @@ void ABaldrsLight::BeginPlay()
 	HorizontalVelocity = FVector::ZeroVector;
 	bMovementInitialized = true;
 	UpdateSpotlight();
-}
-void ABaldrsLight::Tick(float DeltaTime)
-{
-	Super::Tick(DeltaTime);
-	
-	UpdateLightPosition(DeltaTime);
-	UpdatePlayerStates(DeltaTime);
-	UpdateSpotlight();
-	
-#if WITH_EDITOR
-	DrawEditorDebug();
-#endif
-}
-void ABaldrsLight::InitializePosition(int32 Floor)
-{
-	if (const ADungeonGameMode* GameMode = Cast<ADungeonGameMode>(GetWorld()->GetAuthGameMode())) SetActorLocation(GameMode->GetParty()[0]->GetActorLocation() + FVector(0.0f, 0.0f, LanternHeight));
 }
 
 TArray<APlayerBase*> ABaldrsLight::GetPlayers() const
@@ -209,7 +204,7 @@ void ABaldrsLight::UpdateSpotlight() const
 }
 
 // Corruption
-void ABaldrsLight::UpdatePlayerStates(float DeltaTime)
+void ABaldrsLight::UpdatePlayerStates(const float DeltaTime)
 {
 	for (FBaldrsLightPlayerState& State : PlayerStates)
 	{
@@ -236,7 +231,7 @@ void ABaldrsLight::UpdatePlayerStates(float DeltaTime)
 		UpdateCorruption(State, DeltaTime);
 	}
 }
-void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaTime)
+void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, const float DeltaTime)
 {
 	APlayerBase* Player = State.Player;
 	if (!IsValid(Player) || DeltaTime <= 0.0f) return;
@@ -244,14 +239,14 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 	// Add/remove corruption
 	UResourceComponent* ResourceManager = Player->FindComponentByClass<UResourceComponent>();
 	if (!ResourceManager) return;
-	ResourceManager->ModifyResource(CorruptionTag, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
+	ResourceManager->ModifyResource(TagDefinitions::Stats_Resources_Corruption, State.bInsideLight ? -CorruptionRecoveryRate * DeltaTime : CorruptionRate * DeltaTime);
 	
 	// Debug player health / corruption [DELETE ME]
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Health: %.2f"), ResourceManager->GetFloat(HealthTag)));
-	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Corruption: %.2f"), ResourceManager->GetFloat(CorruptionTag)));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Health: %0.2f"), ResourceManager->GetFloat(TagDefinitions::Stats_Resources_Health)));
+	GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::White, FString::Printf(TEXT("Corruption: %0.2f"), ResourceManager->GetFloat(TagDefinitions::Stats_Resources_Corruption)));
 	
 	// Determine the current corruption tier
-	const float Corruption = ResourceManager->GetFloat(CorruptionTag);
+	const float Corruption = ResourceManager->GetFloat(TagDefinitions::Stats_Resources_Corruption);
 	const int CurrentTier = Corruption > 0.0f ? FMath::CeilToInt(Corruption / CorruptionPerTier) : 0;
 	if (State.CorruptionTier != CurrentTier) BroadcastCorruptionTierChanges(State, CurrentTier);
 	
@@ -269,7 +264,7 @@ void ABaldrsLight::UpdateCorruption(FBaldrsLightPlayerState& State, float DeltaT
 		State.DamageIntervalTimer -= DamageInterval;
 		
 		const float Damage = GetDamagePerTick(CurrentTier);
-		ResourceManager->ModifyResource(HealthTag, -Damage);
+		ResourceManager->ModifyResource(TagDefinitions::Stats_Resources_Health, -Damage);
 		
 		PlayerDamaged(Player, Damage);
 		OnPlayerDamaged.Broadcast(Player, Damage);
@@ -302,7 +297,7 @@ void ABaldrsLight::PlayerCorruptionTierChanged_Implementation(APlayerBase* Playe
 #if WITH_EDITOR
 void ABaldrsLight::DrawEditorDebug() const
 {
-    UWorld* World = GetWorld();
+    const UWorld* World = GetWorld();
     if (!World || !bShowLightDebug) return;
     const FVector FloorCenter = GetActorLocation();
 	

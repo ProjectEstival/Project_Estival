@@ -127,6 +127,10 @@ struct FCompanionFindThreatInstanceData
 	// every enemy in the fight. The target query picks from these
 	UPROPERTY(VisibleAnywhere, Category="Output")
 	TArray<TObjectPtr<AActor>> Threats;
+	
+	// distance on the floor to AttackTarget. Tall enemies like Fenrir have their centre high above the floor
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	float DistanceToTarget = 0.f;
 
 	// the target query that is still running, or INDEX_NONE. code only
 	int32 QueryId = INDEX_NONE;
@@ -275,4 +279,70 @@ struct FCompanionReadTacticsTask : public FStateTreeTaskCommonBase
 
 private:
 	static void Read(FInstanceDataType& InstanceData);
+};
+
+// instance data for Find Revive Target
+USTRUCT()
+struct FCompanionFindReviveTargetInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	// on: bots wait while any human is still up. off: any downed human
+	UPROPERTY(EditAnywhere, Category="Parameter")
+	bool bOnlyWhenAllHumansDown = true;
+
+	// the nearest downed human who still has lives, or none.
+	UPROPERTY(VisibleAnywhere, Category="Output")
+	TObjectPtr<AActor> ReviveTarget;
+
+	// every human body seen alive. A downed body has no controller, so this is how we still know it's a human.
+	TArray<TWeakObjectPtr<AEstivalBaseCharacter>> Humans;
+};
+
+// global task: picks a downed human for the Revive state
+USTRUCT(meta=(DisplayName="Find Revive Target", Category="Companion"))
+struct FCompanionFindReviveTargetTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionFindReviveTargetInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+
+private:
+	static void UpdateTarget(FInstanceDataType& InstanceData);
+};
+
+// instance data for Revive
+USTRUCT()
+struct FCompanionReviveInstanceData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, Category="Context")
+	TObjectPtr<APawn> Pawn;
+
+	// bind to Find Revive Target's ReviveTarget
+	UPROPERTY(EditAnywhere, Category="Input")
+	TObjectPtr<AActor> Target;
+};
+
+// Holds revive through the bot's interaction component
+// Succeeds when Target stands up. Fails when the hold is cancelled, for example when a hit pushes the bot away
+USTRUCT(meta=(DisplayName="Revive", Category="Companion"))
+struct FCompanionReviveTask : public FStateTreeTaskCommonBase
+{
+	GENERATED_BODY()
+
+	using FInstanceDataType = FCompanionReviveInstanceData;
+	virtual const UStruct* GetInstanceDataType() const override { return FInstanceDataType::StaticStruct(); }
+
+	virtual EStateTreeRunStatus EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
+	virtual EStateTreeRunStatus Tick(FStateTreeExecutionContext& Context, const float DeltaTime) const override;
+	virtual void ExitState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const override;
 };

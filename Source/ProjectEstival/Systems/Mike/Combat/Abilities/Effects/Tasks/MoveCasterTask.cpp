@@ -1,6 +1,7 @@
 #include "MoveCasterTask.h"
 #include "TimerManager.h"
 #include "Engine/World.h"
+#include "Components/CapsuleComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/RootMotionSource.h"
@@ -27,7 +28,10 @@ void UMoveCasterTask::OnStart_Implementation()
 void UMoveCasterTask::OnEnd_Implementation(const bool bCancelled)
 {
 	const ACharacter* Character = Cast<ACharacter>(GetContext().Instigator);
-	if (bCancelled && IsValid(Character)) Character->GetCharacterMovement()->RemoveRootMotionSourceByID(MoveId);
+	if (!IsValid(Character)) return;
+
+	if (bCancelled) Character->GetCharacterMovement()->RemoveRootMotionSourceByID(MoveId);
+	if (bIgnoringCharacters) Character->GetCapsuleComponent()->SetCollisionResponseToChannel(ECC_Pawn, OldPawnResponse);
 }
 
 FVector UMoveCasterTask::FindDestination(const FAbilityContext& Now) const
@@ -84,6 +88,14 @@ void UMoveCasterTask::StartMoving(const ACharacter* Character, const FVector& To
 	Move->FinishVelocityParams.Mode = ERootMotionFinishVelocityMode::ClampVelocity;
 	Move->FinishVelocityParams.ClampVelocity = Movement->GetMaxSpeed();
 	MoveId = Movement->ApplyRootMotionSource(Move);
+
+	if (bThroughCharacters)
+	{
+		UCapsuleComponent* Capsule = Character->GetCapsuleComponent();
+		OldPawnResponse = Capsule->GetCollisionResponseToChannel(ECC_Pawn);
+		Capsule->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+		bIgnoringCharacters = true;
+	}
 
 	FTimerHandle Timer;
 	GetWorld()->GetTimerManager().SetTimer(Timer, this, &UMoveCasterTask::Arrive, Duration, false);

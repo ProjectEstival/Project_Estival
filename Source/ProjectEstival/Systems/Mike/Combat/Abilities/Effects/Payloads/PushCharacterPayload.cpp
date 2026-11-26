@@ -1,11 +1,12 @@
 ﻿#include "PushCharacterPayload.h"
-#include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Systems/Core/Characters/CharacterBase.h"
+#include "Systems/Thanos/Components/AC_StatusEffectComponent.h"
 
 bool UPushCharacterPayload::TryApplySelf_Implementation(const FAbilityContext& Context, AActor* Target) const
 {
-	const ACharacter* TargetCharacter = Cast<ACharacter>(Target);
-	if (!TargetCharacter) return false;
+	const AEstivalBaseCharacter* TargetCharacter = Cast<AEstivalBaseCharacter>(Target);
+	if (!TargetCharacter || TargetCharacter->GetStatusEffects()->HasEffect(TagDefinitions::Status_Grounded)) return false;
 
 	const FVector TargetLocation = TargetCharacter->GetActorLocation();
 	FVector Dir;

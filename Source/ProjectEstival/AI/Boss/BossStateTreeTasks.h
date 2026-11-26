@@ -178,6 +178,11 @@ struct FBossUseAbilityInstanceData
 	// where the ability aims
 	UPROPERTY(EditAnywhere, Category="Parameter")
 	FVector AimLocation = FVector::ZeroVector;
+	
+	// keep aiming at AimLocation while the ability runs (binds to NearestLocation).
+	// effects that run later (the 2nd Charge dash for example) should go where the target is now
+	UPROPERTY(EditAnywhere, Category="Parameter", meta=(EditCondition="bAimAtLocation"))
+	bool bKeepAiming = false;
 
 	// stands still this long after the ability ends (the players' window to hit back?)
 	UPROPERTY(EditAnywhere, Category="Parameter", meta=(ClampMin=0, Units="s"))

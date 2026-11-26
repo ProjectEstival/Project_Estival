@@ -10,6 +10,7 @@
 #include "Algo/Sort.h"
 #include "DrawDebugHelpers.h"
 #include "Systems/Mike/Combat/Loadouts/AimComponent.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // ---------- Watch Phase ------------
 
@@ -236,6 +237,21 @@ EStateTreeRunStatus FBossUseAbilityTask::Tick(FStateTreeExecutionContext& Contex
 	// fired: wait until the ability is over
 	if (Character->GetLoadout()->IsBusy())
 	{
+		// abilities with late effects (Charge) should follow the target
+		if (InstanceData.bAimAtLocation && InstanceData.bKeepAiming)
+		{
+			// while a dash moves the body aim the way it goes.
+			// between dashes: aim at the target again
+			const FVector Velocity = Character->GetVelocity();
+			if (Character->GetCharacterMovement()->HasRootMotionSources() && !Velocity.IsNearlyZero())
+			{
+				Character->GetAim()->SetAimDirection(Velocity);
+			}
+			else
+			{
+				Character->GetAim()->SetAimLocation(InstanceData.AimLocation);
+			}
+		}
 		return EStateTreeRunStatus::Running;
 	}
 

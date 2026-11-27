@@ -5,6 +5,7 @@
 #include "Systems/Stratos/SpawnerBase.h"
 #include "Systems/Core/Spawning/EnemySpawner.h"
 #include "Systems/Core/GameModes/DungeonGameMode.h" 
+#include "Systems/Core/Spawning/RoomSpawnPoint.h"
 #include "Systems/Core/Characters/PlayerBase.h"
 
 // Sets default values
@@ -99,8 +100,8 @@ void ABLK_PCG::BuildFloor_Implementation(int32 Floor) {
 	}
 
 	//Spawn boss
-	AEstivalBaseCharacter* Boss = nullptr;
-	if (BossSpawner && BossSpawner->EnemySpawnerComponent) {
+	AEstivalBaseCharacter* Boss = bGenerated ? ARoomSpawnPoint::SpawnAllIn(SpawnedActors) : nullptr;
+	if (!Boss && BossSpawner && BossSpawner->EnemySpawnerComponent) {
 		BossSpawner->EnemySpawnerComponent->SpawnEnemies();
 
 		for (AActor* Spawned : BossSpawner->EnemySpawnerComponent->GetSpawnedEnemies()) {
@@ -266,6 +267,11 @@ bool ABLK_PCG::InitializeCells()
 	CellPossibilities.Init(AllOptions, GridWidth * GridHeight);
 
 	RestrictBoundaryCells();
+	
+	for (TArray<int32>& Options : CellPossibilities)
+	{
+		Options.RemoveAll([this](int32 TileIndex) { return Tiles[TileIndex].bForcedOnly; });
+	}
 
 	//pin forced cells to their tile first
 	for (const FWFCForcedTile& Forced : ForcedTiles)

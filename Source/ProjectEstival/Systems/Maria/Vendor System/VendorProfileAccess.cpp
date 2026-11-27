@@ -1,18 +1,25 @@
-﻿#include "VendorProfileAccess.h"
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#include "VendorProfileAccess.h"
 #include "Engine/GameInstance.h"
 #include "Engine/LocalPlayer.h"
 #include "GameFramework/Pawn.h"
 #include "GameFramework/PlayerController.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 
-FVendorProfileAccess FVendorProfileAccess::Find(AActor* Buyer)
+ULocalPlayer* FVendorProfileAccess::FindLocalPlayer(AActor* Buyer)
 {
-	FVendorProfileAccess Access;
-	if (!Buyer) return Access;
+	if (!Buyer) return nullptr;
 
 	const APawn* Pawn = Cast<APawn>(Buyer);
 	const APlayerController* Controller = Pawn ? Cast<APlayerController>(Pawn->GetController()) : Cast<APlayerController>(Buyer);
-	Access.LocalPlayer = Controller ? Controller->GetLocalPlayer() : nullptr;
+	return Controller ? Controller->GetLocalPlayer() : nullptr;
+}
+
+FVendorProfileAccess FVendorProfileAccess::Find(AActor* Buyer)
+{
+	FVendorProfileAccess Access;
+	Access.LocalPlayer = FindLocalPlayer(Buyer);
 	if (!Access.LocalPlayer) return Access;
 
 	Access.Profiles = UGameInstance::GetSubsystem<UPlayerProfileSubsystem>(Buyer->GetGameInstance());

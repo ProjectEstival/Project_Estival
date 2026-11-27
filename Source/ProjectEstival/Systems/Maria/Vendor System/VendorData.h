@@ -1,21 +1,23 @@
-﻿#pragma once
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
 
 #include "CoreMinimal.h"
-#include "GameplayTagContainer.h"
+#include "Systems/Dimitris/CurrencyTypes.h"
 #include "Engine/DataAsset.h"
 #include "VendorData.generated.h"
 
 class UStaticMesh;
 class UTexture2D;
 
-/** One currency amount. The currency is any tag the buyer's wallet understands, so run and permanent currencies take the same path. */
+/** One currency amount, paid through UCurrencySubsystem. Storage picks the balance: Run (runes) or Permanent (fragments). */
 USTRUCT(BlueprintType)
 struct FVendorPrice
 {
 	GENERATED_BODY()
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vendor")
-	FGameplayTag Currency;
+	ECurrencyStorage Storage = ECurrencyStorage::Run;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Vendor", meta = (ClampMin = "0"))
 	int32 Amount = 0;

@@ -2,26 +2,15 @@
 
 #include "Vendor.h"
 #include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
-#include "CurrencyWallet.h"
+#include "Systems/Dimitris/CurrencySubsystem.h"
+#include "VendorProfileAccess.h"
 #include "VendorSocketComponent.h"
 #include "Components/SphereComponent.h"
+#include "Engine/GameInstance.h"
 #include "Engine/World.h"
 
 namespace
 {
-	/** Every wallet the buyer carries, the actor itself and its components. A buyer can have one per currency source. */
-	TArray<UObject*> FindWallets(AActor* Buyer)
-	{
-		TArray<UObject*> Wallets;
-		if (Buyer->Implements<UCurrencyWallet>()) Wallets.Add(Buyer);
-
-		for (UActorComponent* Component : Buyer->GetComponentsByInterface(UCurrencyWallet::StaticClass()))
-		{
-			Wallets.Add(Component);
-		}
-		return Wallets;
-	}
-
 	/** Picks one entry. A tiered item's chance is its tier's SpawnWeight shared among that tier's candidates by their own weights,
 	 * so a tier turns up as often as its weight says however many items it holds. An item without a tier uses its weight as is.
 	 * */
@@ -205,18 +194,12 @@ EVendorTransactionResult AVendor::ProcessPurchase(AVendorItem* Item, AActor* Buy
 	UVendorItemDefinition* Definition = Slot ? Item->GetDefinition() : nullptr;
 	if (!Definition || !Buyer) return EVendorTransactionResult::Unavailable;
 
-	for (const UVendorGrant* Reward : Definition->Grants)
-	{
-		if (Reward && !Reward->CanGrant(Buyer)) return EVendorTransactionResult::NotGrantable;
-	}
+	for (const UVendorGrant* Reward : Definition->Grants) { if (Reward && !Reward->CanGrant(Buyer)) return EVendorTransactionResult::NotGrantable; }
 
 	const EVendorTransactionResult Payment = TryCharge(Buyer, Definition->GetPrices());
 	if (Payment != EVendorTransactionResult::Success) return Payment;
 
-	for (const UVendorGrant* Reward : Definition->Grants)
-	{
-		if (Reward) Reward->Grant(Buyer);
-	}
+	for (const UVendorGrant* Reward : Definition->Grants) { if (Reward) Reward->Grant(Buyer); }
 
 	if (bRefillOnPurchase) RefillSlot(*Slot);
 	return EVendorTransactionResult::Success;
@@ -236,31 +219,33 @@ EVendorTransactionResult AVendor::ProcessReroll(AActor* Buyer)
 
 EVendorTransactionResult AVendor::TryCharge(AActor* Buyer, const TArray<FVendorPrice>& Prices) const
 {
-	const bool bFree = !Prices.ContainsByPredicate([](const FVendorPrice& Price) { return Price.Amount > 0; });
-	if (bFree) return EVendorTransactionResult::Success;
-
-	const TArray<UObject*> Wallets = FindWallets(Buyer);
-	if (Wallets.IsEmpty()) return EVendorTransactionResult::NoWallet;
-
-	// a wallet answers false for currencies it doesn't hold, so the one that can cover a price is the one holding its currency.
-	// Everything is matched before anything is spent so a multi-currency price never charges half
-	TArray<TPair<UObject*, const FVendorPrice*>> Payments;
+	// prices on the same balance are summed, so two entries can't each pass the check and overdraw together
+	TMap<ECurrencyStorage, int32> Totals;
 	for (const FVendorPrice& Price : Prices)
 	{
-		if (Price.Amount <= 0) continue;
+		if (Price.Amount > 0) Totals.FindOrAdd(Price.Storage) += Price.Amount;
+	}
+	if (Totals.IsEmpty()) return EVendorTransactionResult::Success;
 
-		UObject* const* Payer = Wallets.FindByPredicate([&Price](UObject* Wallet)
-		{
-			return ICurrencyWallet::Execute_CanAfford(Wallet, Price.Currency, Price.Amount);
-		});
-		if (!Payer) return EVendorTransactionResult::NotEnoughCurrency;
+	ULocalPlayer* LocalPlayer = FVendorProfileAccess::FindLocalPlayer(Buyer);
+	UCurrencySubsystem* Currency = UGameInstance::GetSubsystem<UCurrencySubsystem>(GetGameInstance());
+	if (!LocalPlayer || !Currency) return EVendorTransactionResult::NoPlayer;
 
-		Payments.Emplace(*Payer, &Price);
+	for (const TPair<ECurrencyStorage, int32>& Total : Totals)
+	{
+		if (Currency->GetCurrency(LocalPlayer, Total.Key) < Total.Value) return EVendorTransactionResult::NotEnoughCurrency;
 	}
 
-	for (const TPair<UObject*, const FVendorPrice*>& Payment : Payments)
+	TArray<TPair<ECurrencyStorage, int32>> Charged;
+	for (const TPair<ECurrencyStorage, int32>& Total : Totals)
 	{
-		if (!ICurrencyWallet::Execute_TrySpend(Payment.Key, Payment.Value->Currency, Payment.Value->Amount)) return EVendorTransactionResult::NotEnoughCurrency;
+		if (!Currency->TryConsumeCurrency(LocalPlayer, Total.Key, Total.Value))
+		{
+			// the permanent balance can fail to save, so what was already taken is given back and a multi-currency price never charges half
+			for (const TPair<ECurrencyStorage, int32>& Taken : Charged) Currency->AddCurrency(LocalPlayer, Taken.Key, Taken.Value);
+			return EVendorTransactionResult::NotEnoughCurrency;
+		}
+		Charged.Emplace(Total.Key, Total.Value);
 	}
 	return EVendorTransactionResult::Success;
 }

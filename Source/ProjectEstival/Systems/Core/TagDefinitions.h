@@ -21,7 +21,5 @@ namespace TagDefinitions
 	// Ability events
 	PROJECTESTIVAL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(AbilityEvent_Hit);
 	
-	// Currency
-	PROJECTESTIVAL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Curreny_Run_Runes);
-	PROJECTESTIVAL_API UE_DECLARE_GAMEPLAY_TAG_EXTERN(Currency_Perma_Fragments);
+	
 }

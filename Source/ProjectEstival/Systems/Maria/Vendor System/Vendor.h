@@ -1,4 +1,6 @@
-﻿#pragma once
+﻿// Fill out your copyright notice in the Description page of Project Settings.
+
+#pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -18,8 +20,8 @@ enum class EVendorTransactionResult : uint8
 	Unavailable,
 	/** A grant refused (already maxed, already unlocked). The buyer was not charged. */
 	NotGrantable,
-	/** The buyer has no ICurrencyWallet. */
-	NoWallet,
+	/** The buyer isn't a local player with a profile, so there is no balance to charge. */
+	NoPlayer,
 	NotEnoughCurrency
 };
 

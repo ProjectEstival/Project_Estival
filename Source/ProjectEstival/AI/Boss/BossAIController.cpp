@@ -123,17 +123,30 @@ void ABossAIController::PickNextAbility()
 		}
 	}
 
-	// after the opening: weighted random. Not the same ability twice in a row
+	// after the opening weighted random is random but not the same ability twice in a row
 	TArray<TPair<FGameplayTag, float>> Candidates;
 	float Total = 0.f;
 	for (const TPair<FGameplayTag, float>& Entry : Now.Weights)
 	{
-		if (Entry.Value > 0.f && Entry.Key != LastAbility)
+		if (Entry.Value > 0.f && Entry.Key != LastAbility && IsReadyInTime(Entry.Key))
 		{
 			Candidates.Emplace(Entry.Key, Entry.Value);
 			Total += Entry.Value;
 		}
 	}
+
+	// if nothing is ready in time pick like before, so the rotation never stops
+	if (Candidates.IsEmpty())
+	{
+		for (const TPair<FGameplayTag, float>& Entry : Now.Weights)
+		{
+			if (Entry.Value > 0.f && Entry.Key != LastAbility)
+			{
+				Candidates.Emplace(Entry.Key, Entry.Value);
+				Total += Entry.Value;
+			}
+		}
+	};
 
 	// only one usable ability: repeating it is better thanhaving the boss doing nothing
 	if (Candidates.IsEmpty() && Now.Weights.FindRef(LastAbility) > 0.f)
@@ -154,6 +167,18 @@ void ABossAIController::PickNextAbility()
 	}
 
 	UE_LOG(LogBossAI, Log, TEXT("%s: next ability %s"), *GetNameSafe(GetPawn()), *NextAbility.ToString());
+}
+
+bool ABossAIController::IsReadyInTime(const FGameplayTag Slot) const
+{
+	const AEstivalBaseCharacter* Body = Cast<AEstivalBaseCharacter>(GetPawn());
+	if (!Body || !Rotation)
+	{
+		return true;
+	}
+
+	// still on cooldown when Patience runs out: the boss would only wait and give up
+	return Body->GetLoadout()->GetCooldownRemaining(Slot) < Rotation->Patience;
 }
 
 bool ABossAIController::IsAbilityTurn() const

@@ -101,6 +101,9 @@ protected:
 	
 private:
 	void PickNextAbility();
+	
+	// can this slot be used before the boss gives up on it?
+	bool IsReadyInTime(FGameplayTag Slot) const;
 
 	// the loadout calls this every time the body uses an ability
 	UFUNCTION()

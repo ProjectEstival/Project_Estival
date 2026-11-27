@@ -13,7 +13,7 @@ AEstivalBaseCharacter::AEstivalBaseCharacter()
 {
 	// components do their own ticking, the character only ticks while an ability makes it face the aim
 	PrimaryActorTick.bCanEverTick = true;
-	PrimaryActorTick.bStartWithTickEnabled = false;
+	PrimaryActorTick.bStartWithTickEnabled = true;
 	
 	LookAt = CreateDefaultSubobject<UAC_LookAtComponent>(TEXT("LookAt"));
 	StatusEffects = CreateDefaultSubobject<UAC_StatusEffectComponent>(TEXT("StatusEffects"));

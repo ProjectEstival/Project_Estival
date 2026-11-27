@@ -18,5 +18,4 @@ namespace TagDefinitions
 	
 	// Ability events
 	UE_DEFINE_GAMEPLAY_TAG_COMMENT(AbilityEvent_Hit, "AbilityEvent.Hit", "The hit frame of an ability animation");
-	
-	
+}

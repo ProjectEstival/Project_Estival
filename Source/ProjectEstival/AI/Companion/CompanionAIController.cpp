@@ -34,6 +34,9 @@ Super(ObjectInitializer.SetDefaultSubobjectClass<UCrowdFollowingComponent>(TEXT(
 	SightConfig->DetectionByAffiliation.bDetectNeutrals = true;
 	SightConfig->DetectionByAffiliation.bDetectFriendlies = true;
 	
+	// sight asks the controller for its team.
+	AAIController::SetGenericTeamId(FGenericTeamId(0));
+	
 	// registering sight with the perception component because otherwise the bot can't see anything
 	Perception->ConfigureSense(*SightConfig);
 	

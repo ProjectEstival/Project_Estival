@@ -11,6 +11,7 @@ UENUM(BlueprintType)
 enum class ELocalDeviceJoinPolicy : uint8
 {
 	RespectPlatformUser,
+	OnePlayerPerDevice,
 	AttachToFirstLocalPlayer
 };
 
@@ -37,7 +38,7 @@ private:
 	bool HandleKeyDown(const FKeyEvent& Event) const;
 	void AssociateConnectedDevices() const;
 	int32 MaxLocalPlayers = 4;
-	ELocalDeviceJoinPolicy DeviceJoinPolicy = ELocalDeviceJoinPolicy::RespectPlatformUser;
+	ELocalDeviceJoinPolicy DeviceJoinPolicy = ELocalDeviceJoinPolicy::OnePlayerPerDevice;
 	FDelegateHandle ConnectionChangeHandle;
 	void HandleDeviceConnectionChange(EInputDeviceConnectionState ConnectionState, FPlatformUserId PlatformUserId, FInputDeviceId InputDeviceId) const;
 };

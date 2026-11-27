@@ -122,14 +122,6 @@ void UPlayerCard::NativeDestruct()
 
 void UPlayerCard::OnResourceChanged(const FGameplayTag Stat, const float NewValue, const float OldValue, const float MaxValue) const
 {
-	if (Stat.MatchesTagExact(TagDefinitions::Stats_Resources_Health) && HealthBar)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Health"));
-		HealthBar.Get()->SetPercent(NewValue / MaxValue);
-	}
-	else if (Stat.MatchesTagExact(TagDefinitions::Stats_Resources_Corruption) && CorruptionBar)
-	{
-		UE_LOG(LogTemp, Warning, TEXT("Corruption"));
-		CorruptionBar.Get()->SetPercent(NewValue / MaxValue);
-	}
+	if (Stat.MatchesTagExact(TagDefinitions::Stats_Resources_Health) && HealthBar) HealthBar.Get()->SetPercent(NewValue / MaxValue);
+	else if (Stat.MatchesTagExact(TagDefinitions::Stats_Resources_Corruption) && CorruptionBar) CorruptionBar.Get()->SetPercent(NewValue / MaxValue);
 }

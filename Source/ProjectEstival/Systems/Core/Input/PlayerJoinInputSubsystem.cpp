@@ -118,9 +118,6 @@ void UPlayerJoinInputSubsystem::AssociateConnectedDevices() const
 	{
 		if (!IsValid(LocalPlayer)) continue;
 		Directory->RegisterPlayer(LocalPlayer);
-		TArray<FInputDeviceId> Devices;
-		IPlatformInputDeviceMapper::Get().GetAllConnectedInputDevicesForUser(LocalPlayer->GetPlatformUserId(), Devices);
-		for (const FInputDeviceId DeviceId : Devices) Directory->AssociateInputDevice(LocalPlayer, DeviceId);
 	}
 	
 	// Keyboard and mouse share the platform's default input device and belong to player 0
@@ -141,6 +138,7 @@ void UPlayerJoinInputSubsystem::HandleDeviceConnectionChange(const EInputDeviceC
 	}
 	if (ConnectionState == EInputDeviceConnectionState::Connected)
 	{
+		if (DeviceJoinPolicy == ELocalDeviceJoinPolicy::OnePlayerPerDevice) return;
 		if (ULocalPlayer* Player = GI->FindLocalPlayerFromPlatformUserId(PlatformUserId))
 		{
 			if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>()) Directory->AssociateInputDevice(Player, InputDeviceId);
@@ -228,16 +226,25 @@ bool UPlayerJoinInputSubsystem::JoinDevice(const FInputDeviceId InputDeviceId) c
 		return true;
 	}
 	
-	if (ULocalPlayer* Player = GI->FindLocalPlayerFromDeviceId(InputDeviceId); IsValid(Player))
+	if (DeviceJoinPolicy == ELocalDeviceJoinPolicy::RespectPlatformUser)
 	{
-		Profiles->HandlePlayerJoined(Player, InputDeviceId, false);
-		return true;
+		if (ULocalPlayer* Player = GI->FindLocalPlayerFromDeviceId(InputDeviceId); IsValid(Player))
+		{
+			Profiles->HandlePlayerJoined(Player, InputDeviceId, false);
+			return true;
+		}
 	}
 	
 	IPlatformInputDeviceMapper& Mapper = IPlatformInputDeviceMapper::Get();
 	FPlatformUserId PlatformUserId = Mapper.GetUserForInputDevice(InputDeviceId);
 	const FPlatformUserId UnpairedUserId = Mapper.GetUserForUnpairedInputDevices();
-	if (!PlatformUserId.IsValid() || PlatformUserId == UnpairedUserId)
+	if (DeviceJoinPolicy == ELocalDeviceJoinPolicy::OnePlayerPerDevice)
+	{
+		const FPlatformUserId OldUserId = PlatformUserId;
+		PlatformUserId = Mapper.AllocateNewUserId();
+		if (!PlatformUserId.IsValid() || !Mapper.Internal_ChangeInputDeviceUserMapping(InputDeviceId, PlatformUserId, OldUserId)) return false;
+	}
+	else if (!PlatformUserId.IsValid() || PlatformUserId == UnpairedUserId)
 	{
 		const FPlatformUserId OldUserId = PlatformUserId;
 		PlatformUserId = Mapper.GetFirstPlatformUserWithNoInputDevice();
@@ -245,10 +252,13 @@ bool UPlayerJoinInputSubsystem::JoinDevice(const FInputDeviceId InputDeviceId) c
 		if (!PlatformUserId.IsValid() || !Mapper.Internal_ChangeInputDeviceUserMapping(InputDeviceId, PlatformUserId, OldUserId)) return false;
 	}
 	
-	if (ULocalPlayer* ExistingUserPlayer = GI->FindLocalPlayerFromPlatformUserId(PlatformUserId))
+	if (DeviceJoinPolicy == ELocalDeviceJoinPolicy::RespectPlatformUser)
 	{
-		Profiles->HandlePlayerJoined(ExistingUserPlayer, InputDeviceId, false);
-		return true;
+		if (ULocalPlayer* ExistingUserPlayer = GI->FindLocalPlayerFromPlatformUserId(PlatformUserId))
+		{
+			Profiles->HandlePlayerJoined(ExistingUserPlayer, InputDeviceId, false);
+			return true;
+		}
 	}
 	if (GI->GetNumLocalPlayers() >= MaxLocalPlayers)
 	{

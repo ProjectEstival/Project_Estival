@@ -6,7 +6,7 @@ FName MacrosLibrary::ValidateSetting(const FName SettingValue, const FString& Se
 {
 	if (SettingValue == NAME_None)
 	{
-		EERROR(ECat::Gameplay, 5.f, "Setting %s has NAME_None Value", *SettingName);
+		//EERROR(ECat::Gameplay, 5.f, "Setting %s has NAME_None Value", *SettingName);
 	}
 	return SettingValue;
 }

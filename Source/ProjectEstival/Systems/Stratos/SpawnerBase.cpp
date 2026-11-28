@@ -3,6 +3,7 @@
 
 #include "Systems/Stratos/SpawnerBase.h"
 #include "Systems/Core/Spawning/EnemySpawner.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
 #include "Engine/World.h"
 #include "Engine/EngineTypes.h"
 
@@ -35,6 +36,14 @@ AActor* ASpawnerBase::SpawnActor(
     {
         return nullptr;
     }
+    
+    if (World->IsGameWorld())
+    {
+        if (UActorPoolSubsystem* PoolSubsystem = World->GetSubsystem<UActorPoolSubsystem>())
+        {
+            return PoolSubsystem->AcquireActor(ActorClass, SpawnTransform);
+        }
+    }
 
     FActorSpawnParameters SpawnParameters;
 
@@ -46,6 +55,25 @@ AActor* ASpawnerBase::SpawnActor(
         SpawnTransform,
         SpawnParameters
     );
+}
+
+void ASpawnerBase::ReleaseActor(AActor* ActorToRelease)
+{
+    if (!IsValid(ActorToRelease))
+    {
+        return;
+    }
+    
+    UWorld* World = GetWorld();
+    if (World && World->IsGameWorld())
+    {
+        if (UActorPoolSubsystem* PoolSubsystem = World->GetSubsystem<UActorPoolSubsystem>())
+        {
+            PoolSubsystem->ReleaseActor(ActorToRelease);
+            return;
+        }
+    }
+    ActorToRelease->Destroy();
 }
 
 void ASpawnerBase::TestSpawnEnemies()

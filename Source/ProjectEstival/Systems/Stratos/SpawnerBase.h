@@ -23,6 +23,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
 	AActor* SpawnActor(TSubclassOf<AActor> ActorClass, const FTransform& SpawnTransform);
 
+	UFUNCTION(BlueprintCallable, Category = "Spawning")
+	void ReleaseActor(AActor* ActorToRelease);
+	
 	UFUNCTION(CallInEditor, Category = "Spawning")
 	void TestSpawnEnemies();
 

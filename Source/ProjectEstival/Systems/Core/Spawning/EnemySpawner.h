@@ -31,18 +31,22 @@ class PROJECTESTIVAL_API UEnemySpawner : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UEnemySpawner();
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawning")
 	TArray<TSubclassOf<AActor>> EnemyClasses;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawning")
 	TArray<FEnemySpawnPoint> SpawnPoints;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Spawning|Pooling")
+	bool bPrewarmOnBeginPlay = true;
+	
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
-        void SpawnEnemies();
+	void SpawnEnemies();
 	
 	UFUNCTION(BlueprintCallable, Category = "Spawning")
 	void ClearSpawnedEnemies();
-	//We need to get the reference of what we spawn
+	
 	const TArray<TObjectPtr<AActor>>& GetSpawnedEnemies() const { return SpawnedEnemies; }
 
 	private:

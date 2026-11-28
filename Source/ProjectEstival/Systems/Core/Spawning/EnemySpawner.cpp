@@ -3,6 +3,9 @@
 
 #include "Systems/Core/Spawning/EnemySpawner.h"
 #include "Systems/Stratos/SpawnerBase.h"
+#include "Systems/Core/EstivalGameInstance.h"
+#include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
+#include "Engine/World.h"
 
 
 // Sets default values for this component's properties
@@ -21,8 +24,52 @@ void UEnemySpawner::BeginPlay()
 {
 	Super::BeginPlay();
 
-	// ...
 	
+	if (!bPrewarmOnBeginPlay || EnemyClasses.IsEmpty())
+    	{
+    		return;
+    	}
+    
+    	UWorld* World = GetWorld();
+    	if (!World || !World->IsGameWorld())
+    	{
+    		return;
+    	}
+    
+    	UActorPoolSubsystem* PoolSubsystem = World->GetSubsystem<UActorPoolSubsystem>();
+    	UEstivalGameInstance* GI = World->GetGameInstance<UEstivalGameInstance>();
+    	if (!PoolSubsystem || !GI)
+    	{
+    		return;
+    	}
+    
+    	int32 TotalSpawnAmount = 0;
+    	for (const FEnemySpawnPoint& SpawnPoint : SpawnPoints)
+    	{
+    		if (SpawnPoint.Amount > 0 && IsValid(SpawnPoint.SpawnMarker))
+    		{
+    			TotalSpawnAmount += SpawnPoint.Amount;
+    		}
+    	}
+    
+    	if (TotalSpawnAmount <= 0)
+    	{
+    		return;
+    	}
+    
+    	const int32 PrewarmPerClass = FMath::Max(
+    		1,
+    		FMath::CeilToInt(static_cast<float>(TotalSpawnAmount) / EnemyClasses.Num())
+    	);
+    
+    	for (TSubclassOf<AActor> EnemyClass : EnemyClasses)
+    	{
+    		if (EnemyClass)
+    		{
+    			const FActorPoolSettings Settings = GI->GetActorPoolSettings(EnemyClass);
+    			PoolSubsystem->Prewarm(EnemyClass, Settings, PrewarmPerClass);
+    		}
+    	}
 }
 
 

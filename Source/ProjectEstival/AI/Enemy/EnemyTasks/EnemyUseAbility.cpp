@@ -1,9 +1,9 @@
-﻿#include "EyeballAttackTask.h"
+﻿#include "EnemyUseAbility.h"
 #include "StateTreeExecutionContext.h"
 #include "AI/Enemy/EnemyBaseCharacter.h"
 
 
-EStateTreeRunStatus FEyeballAttackTask::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
+EStateTreeRunStatus FEnemyUseAbility::EnterState(FStateTreeExecutionContext& Context, const FStateTreeTransitionResult& Transition) const
 {
 	FEyeballAttackTaskInstanceData& InstanceData = Context.GetInstanceData<FEyeballAttackTaskInstanceData>(*this);
 	if (!IsValid(InstanceData.Enemy))

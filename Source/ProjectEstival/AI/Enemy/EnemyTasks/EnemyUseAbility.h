@@ -2,7 +2,7 @@
 
 #include "CoreMinimal.h"
 #include "StateTreeTaskBase.h"
-#include "EyeballAttackTask.generated.h"
+#include "EnemyUseAbility.generated.h"
 
 class AEnemyBaseCharacter;
 class UAnimMontage;
@@ -21,7 +21,7 @@ struct FEyeballAttackTaskInstanceData
 };
 
 USTRUCT()
-struct FEyeballAttackTask : public FStateTreeTaskCommonBase
+struct FEnemyUseAbility : public FStateTreeTaskCommonBase
 {
 	GENERATED_BODY()
 	

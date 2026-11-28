@@ -17,12 +17,17 @@ class PROJECTESTIVAL_API Solver {
 	
 public:
 	Solver(FWave& InWave, const FGrid& InGrid, const TArray<FRoomModule>& InModules, FRandomStream& InRandom);
-	const bool Solve(FWave& Wave); /** TODO: Same here */
+	const bool Solve();
 	
 private:
-	bool Propagate(int32 StartCell, TArray<int32>& CellsToVisit);
-	const int32 FindLowestEntropyCell(); /** TODO: Change this to not change the solver directly the solver */
-	void Collapce(int32 CellIndex);
+	//Tell the neighbouring cells
+	bool Propagate(TArray<int32>& CellsToVisit);
+	
+	//Which cell to decide next
+	const int32 FindLowestEntropyCell();
+	
+	//Decide this cell
+	void Collapse(int32 CellIndex);
 	
 	FWave& Wave;
 	const FGrid& Grid;

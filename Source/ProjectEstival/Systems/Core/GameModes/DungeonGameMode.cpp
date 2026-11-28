@@ -8,6 +8,7 @@
 #include "Systems/Core/EstivalGameInstance.h"
 #include "Systems/Core/Audio/AudioManager.h"
 #include "Systems/Core/Characters/PlayerBase.h"
+#include "Systems/Core/Profiles/LocalPlayerSessionDirectory.h"
 #include "Systems/Core/Profiles/PlayerProfileSubsystem.h"
 #include "Systems/Dimitris/CurrencySubsystem.h"
 #include "Systems/Maria/Pooling System/ActorPoolSubsystem.h"
@@ -85,6 +86,14 @@ TSubclassOf<APlayerBase> ADungeonGameMode::ChoosePlayerHero_Implementation(APlay
 	const TArray<TSubclassOf<APlayerBase>> Heroes = GetHeroes();
 	const ULocalPlayer* LocalPlayer = Player ? Player->GetLocalPlayer() : nullptr;
 	if (Heroes.IsEmpty() || !LocalPlayer) return nullptr;
+
+	if (const UGameInstance* GI = GetGameInstance())
+	{
+		if (ULocalPlayerSessionDirectory* Directory = GI->GetSubsystem<ULocalPlayerSessionDirectory>())
+		{
+			if (const TSubclassOf<APlayerBase> SelectedHero = Directory->PlayerToSelectedCharacter(Player)) return SelectedHero;
+		}
+	}
 
 	return Heroes[LocalPlayer->GetLocalPlayerIndex() % Heroes.Num()];
 }

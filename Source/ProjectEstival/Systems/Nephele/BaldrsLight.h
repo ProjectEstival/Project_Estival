@@ -77,6 +77,8 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Baldr's Light|Movement", meta = (ClampMin = "0.0"))
 	float CosmeticMovementResponseSpeed = 4.0f;
 	
+	FVector CalculatePlayersBarycenter() const;
+	
 	// Events
 	UPROPERTY(BlueprintAssignable, Category = "Baldr's Light|Events")
 	FBaldrsLightPlayerEvent OnPlayerEnteredLight;
@@ -159,7 +161,6 @@ private:
 	UPROPERTY()
 	TArray<FBaldrsLightPlayerState> PlayerStates;
 	TArray<APlayerBase*> GetPlayers() const;
-	FVector CalculatePlayersBarycenter() const;
 	void UpdatePlayerStates(float DeltaTime);
 	
 	void UpdateSpotlight() const;

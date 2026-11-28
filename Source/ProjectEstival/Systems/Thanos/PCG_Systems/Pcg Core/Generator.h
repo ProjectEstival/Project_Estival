@@ -25,6 +25,10 @@ public:
 	//The dataAsset that holds all the pcg customizable data
 	UPROPERTY(EditAnywhere, Category = "PCG")
 	TObjectPtr<UProfile> Profile;
+	
+	//There was a bug with player spawning so i spawn them with some height 
+	UPROPERTY(EditAnywhere, Category = "PCG", meta = (Units = "cm"))
+	float PartySpawnHeight = 150.0f;
 
 	//For testing, it will spawn the same thing every time
 	UPROPERTY(EditAnywhere, Category = "PCG|Debug")

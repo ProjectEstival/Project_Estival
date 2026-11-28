@@ -17,7 +17,7 @@ class PROJECTESTIVAL_API AEnemyBaseCharacter : public AEstivalBaseCharacter
 	
 public: 
 
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "State Tree")
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI State Tree")
 	TObjectPtr<UStateTree> StateTreeAsset;
 	
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "AI Animaions")

@@ -112,7 +112,17 @@ void AEnemyAIController::DistCheck()
 	}
 }
 
-// Assigns Correct state tree to controller.
+void AEnemyAIController::SetGenericTeamId(const FGenericTeamId& NewTeamID)
+{
+	
+}
+
+FGenericTeamId AEnemyAIController::GetGenericTeamId() const
+{
+	return TeamID;
+}
+
+// Initializes everything the controller needs to control the pawn.
 void AEnemyAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);

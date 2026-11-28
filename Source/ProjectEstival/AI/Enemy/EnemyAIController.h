@@ -43,6 +43,9 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Tags", meta = (Categories = "AI.Enemy.StateTree.ChangeToDefence"))
 	FGameplayTag ChangeToDefence;
 
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AI Team")
+	FGenericTeamId TeamID;
+	
 protected:
 	
 	virtual void BeginPlay() override;
@@ -50,6 +53,10 @@ protected:
 	void OnPossess(APawn* InPawn) override;
 	
 	void OnUnPossess() override;
+	
+	virtual void SetGenericTeamId(const FGenericTeamId& NewTeamID) override;
+	
+	virtual FGenericTeamId GetGenericTeamId() const override;
 	
 	FTimerHandle CheckDistanceTimerHandle;
 	

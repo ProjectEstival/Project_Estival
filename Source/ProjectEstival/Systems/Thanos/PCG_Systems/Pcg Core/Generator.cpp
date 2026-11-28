@@ -139,7 +139,8 @@ void AGenerator::BuildFloor_Implementation(int32 Floor) {
 	}
 
 	AEstivalBaseCharacter* Boss = bGenerated ? ARoomSpawnPoint::SpawnAllIn(SpawnedRooms) : nullptr;
-	const FTransform PartyStart = StartRoom ? StartRoom->GetActorTransform() : GetActorTransform();
+	FTransform PartyStart = StartRoom ? StartRoom->GetActorTransform() : GetActorTransform();
+	PartyStart.AddToTranslation(FVector(0.0f, 0.0f, PartySpawnHeight));
 
 	if (ADungeonGameMode* GameMode = GetWorld()->GetAuthGameMode<ADungeonGameMode>()) {
 		GameMode->FloorReady(PartyStart, Boss);

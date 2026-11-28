@@ -14,6 +14,7 @@ namespace TagDefinitions
 	// Status
 	UE_DEFINE_GAMEPLAY_TAG(Status_Invincible, "Status.Invincible");
 	UE_DEFINE_GAMEPLAY_TAG(Status_Stunned, "Status.Stunned");
+	UE_DEFINE_GAMEPLAY_TAG_COMMENT(Status_Grounded, "Status.Grounded", "Cannot be pushed from abilities when this status is active");
 	UE_DEFINE_GAMEPLAY_TAG(Status_Healing, "Status.Healing");
 	
 	// Ability events
